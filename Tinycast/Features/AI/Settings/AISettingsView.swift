@@ -102,9 +102,14 @@ struct AISettingsView: View {
             : "Tinycast contacts only the selected provider when an AI feature runs."
     }
 
-    /// Why the on-device route is missing from the picker, or `nil` when it is there.
     private var appleIntelligenceReason: String? {
-        settings.isAppleIntelligenceAvailable() ? nil : AppleIntelligenceProvider.status().message
+        guard #available(macOS 26.0, *) else {
+            return nil
+        }
+
+        return settings.isAppleIntelligenceAvailable()
+            ? nil
+            : AppleIntelligenceProvider.status().message
     }
 
     private var providerSummary: String {

@@ -285,23 +285,42 @@ private struct PaletteTransparencyRow: View {
             subtitleLineLimit: 2,
             anchor: .generalAppearance
         ) {
-            Slider(
-                value: value, in: -100...100, step: 50, neutralValue: 0,
-                label: { EmptyView() },
-                minimumValueLabel: { Text("Less") },
-                maximumValueLabel: { Text("More") },
-                tick: { SliderTick($0) },
-                onEditingChanged: { editing in
-                    isEditing = editing
-                    if !editing, let draft {
-                        settings.paletteTransparency = Int(draft)
-                        self.draft = nil
+            if #available(macOS 26.0, *) {
+                Slider(
+                    value: value, in: -100...100, step: 50, neutralValue: 0,
+                    label: { EmptyView() },
+                    minimumValueLabel: { Text("Less") },
+                    maximumValueLabel: { Text("More") },
+                    tick: { SliderTick($0) },
+                    onEditingChanged: { editing in
+                        isEditing = editing
+                        if !editing, let draft {
+                            settings.paletteTransparency = Int(draft)
+                            self.draft = nil
+                        }
                     }
-                }
-            )
-            .labelsHidden()
-            .accessibilityLabel("Background transparency")
-            .frame(width: Theme.Size.paletteTransparencySlider)
+                )
+                .labelsHidden()
+                .accessibilityLabel("Background transparency")
+                .frame(width: Theme.Size.paletteTransparencySlider)
+            } else {
+                Slider(
+                    value: value, in: -100...100, step: 50,
+                    label: { EmptyView() },
+                    minimumValueLabel: { Text("Less") },
+                    maximumValueLabel: { Text("More") },
+                    onEditingChanged: { editing in
+                        isEditing = editing
+                        if !editing, let draft {
+                            settings.paletteTransparency = Int(draft)
+                            self.draft = nil
+                        }
+                    }
+                )
+                .labelsHidden()
+                .accessibilityLabel("Background transparency")
+                .frame(width: Theme.Size.paletteTransparencySlider)
+            }
             Button("Reset") {
                 draft = nil
                 settings.paletteTransparency = 0

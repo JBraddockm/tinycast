@@ -52,7 +52,10 @@ final class AppCore {
     let chatHistory: ChatHistoryStore
     let aiChat: AIChatState
     let aiSettings = AISettingsStore(
-        isAppleIntelligenceAvailable: { AppleIntelligenceProvider.status().isAvailable })
+        isAppleIntelligenceAvailable: {
+            guard #available(macOS 26.0, *) else { return false }
+            return AppleIntelligenceProvider.status().isAvailable
+        })
     let mcpSettings = MCPSettingsStore()
     let mcp = MCPServerManager()
     let quickActionSettings = QuickActionSettingsStore()
@@ -470,6 +473,7 @@ final class AppCore {
             settings: aiSettings, subscription: chatGPTSubscription, installedAI: installedAI)
     }
 
+    /// Permissive guardrails: the text transformed is the reader's own, which `.default` refuses.
     /// Permissive guardrails: the text transformed is the reader's own, which `.default` refuses.
     func quickActionProvider(for action: QuickAction) throws -> any AIProvider {
         quickActionSettings.repairModel(
