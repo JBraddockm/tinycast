@@ -37,10 +37,11 @@
 		0B57F477B21A81B22DAA5513 /* AppleShortcutRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64E4C6445202F80D6756AF1A /* AppleShortcutRunner.swift */; };
 		0B9C941402B85C69A33200C2 /* UninstallProtection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37A48095F6487DEE76663F88 /* UninstallProtection.swift */; };
 		0C1CACEF014462D3F581CE54 /* EmojiSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B42664C60B760276FBAAD61 /* EmojiSettingsView.swift */; };
-		0C5583A2305B479800033986 /* AIGuardRailsPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C5583A1305B477F00033986 /* AIGuardRailsPolicy.swift */; };
+		0C5583A2305B479800033986 /* (null) in Sources */ = {isa = PBXBuildFile; };
 		0CC2291DE8806FDFB478F8A0 /* FileSearchSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90831A25F96F3563BEC60FCC /* FileSearchSurface.swift */; };
 		0CD06036347A6D96B1F7947F /* AppleShortcut.swift in Sources */ = {isa = PBXBuildFile; fileRef = A379CB384B76FF70AC72E235 /* AppleShortcut.swift */; };
 		0CDD3AE7DF97899340E56061 /* FileSearchQuickLook.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A83359DA89BD4E1E6FC3087 /* FileSearchQuickLook.swift */; };
+		0CDE8E5A305EBD2200C2C8C1 /* AIGuardRailsPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CDE8E59305EBD2200C2C8C1 /* AIGuardRailsPolicy.swift */; };
 		0D509E0E71CBCBB72EF0BDFE /* CustomWindowSizeStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE31A7F41EDA33E7E574F62D /* CustomWindowSizeStore.swift */; };
 		0D8A65A0A7A2188F56D576FF /* Quarantine.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4984C964DC144E213DF4F63 /* Quarantine.swift */; };
 		0DD808F80666846F4E74BAD8 /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23591B301A183579098AA019 /* OnboardingView.swift */; };
@@ -682,6 +683,7 @@
 		0B2FAC737503B853DE6B5ED4 /* MeetingCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingCardView.swift; sourceTree = "<group>"; };
 		0C3B9645DB2293FA144B5AA2 /* Paster.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Paster.swift; sourceTree = "<group>"; };
 		0CB8DC0BB8BFB2AC298B1DCF /* ExtensionRegistriesPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtensionRegistriesPanel.swift; sourceTree = "<group>"; };
+		0CDE8E59305EBD2200C2C8C1 /* AIGuardRailsPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIGuardRailsPolicy.swift; sourceTree = "<group>"; };
 		0CFA4726A74C5CCA6E301665 /* DialogChip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DialogChip.swift; sourceTree = "<group>"; };
 		0D4F22647E4E1BA19F0FC520 /* AppVersion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppVersion.swift; sourceTree = "<group>"; };
 		0DFEBE220187043060F7F286 /* ToolRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolRunner.swift; sourceTree = "<group>"; };
@@ -2170,7 +2172,7 @@
 		87070A80E9E3AB3E4B0A9E54 /* AI */ = {
 			isa = PBXGroup;
 			children = (
-				0C5583A1305B477F00033986 /* AIGuardRailsPolicy.swift */,
+				0CDE8E59305EBD2200C2C8C1 /* AIGuardRailsPolicy.swift */,
 				62F0568B29175D36EF95BB84 /* Model */,
 				E98B3DB43012A362EF8DAE1D /* Service */,
 				F582FC7869A272CD878A62D4 /* Settings */,
@@ -3268,6 +3270,7 @@
 				9F82DA5A46BB39A6C6DD075D /* DialogRequest.swift in Sources */,
 				BA835EDCB6D17DE6BFE2D39E /* DialogTextField.swift in Sources */,
 				5C801A9043908577FB99A555 /* DialogView.swift in Sources */,
+				0CDE8E5A305EBD2200C2C8C1 /* AIGuardRailsPolicy.swift in Sources */,
 				48F5623110FDD1FC69CEAF7A /* DisabledApplicationsSection.swift in Sources */,
 				A1F267E9D9914DB60DEEE0AD /* DoubleTapDetector.swift in Sources */,
 				DFB25A4CDD35071B745F2EF9 /* DoubleTapModifier.swift in Sources */,
@@ -3384,7 +3387,7 @@
 				9F50314FD939DE2B6C5434A1 /* HTTPAIProvider.swift in Sources */,
 				A500AF3BF8910B335A7A936C /* HUDPanel.swift in Sources */,
 				68537C3544E4EBC40E3ACD39 /* HUDPresenter.swift in Sources */,
-				0C5583A2305B479800033986 /* AIGuardRailsPolicy.swift in Sources */,
+				0C5583A2305B479800033986 /* (null) in Sources */,
 				14D056C9DA105D9D89A9691E /* HealthTicker.swift in Sources */,
 				507D6A26EA5451465B1BE5AF /* HotKeyAction.swift in Sources */,
 				B2404EBFB52B8199DC2536F6 /* HotKeyBinding.swift in Sources */,
