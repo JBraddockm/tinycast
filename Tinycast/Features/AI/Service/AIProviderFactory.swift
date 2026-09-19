@@ -18,6 +18,7 @@ enum AIProviderFactory {
             installedAI: installedAI, keyStore: keyStore)
     }
 
+    /// Apple Intelligence needs macOS 26; every other route works back to macOS 15.
     /// `guardrails` reaches only the on-device model, the one route that filters locally.
     static func make(
         selection: AIModelSelection,
@@ -25,14 +26,29 @@ enum AIProviderFactory {
         subscription: ChatGPTSubscriptionManager,
         installedAI: InstalledAIManager,
         keyStore: KeychainSecretStore = .aiAPIKeys,
-        guardrails: SystemLanguageModel.Guardrails = .default
+        guardrails: AIGuardrailsPolicy = .default
     ) throws -> any AIProvider {
         switch selection {
         case .appleIntelligence:
+            guard #available(macOS 26.0, *) else {
+                throw AIProviderError.unavailable(
+                    "Apple Intelligence requires macOS 26 or later."
+                )
+            }
+
             if let message = AppleIntelligenceProvider.status().message {
                 throw AIProviderError.unavailable(message)
             }
-            return AppleIntelligenceProvider(guardrails: guardrails)
+
+            let resolvedGuardrails: SystemLanguageModel.Guardrails
+            switch guardrails {
+            case .default:
+                resolvedGuardrails = .default
+            case .permissiveContentTransformations:
+                resolvedGuardrails = .permissiveContentTransformations
+            }
+
+            return AppleIntelligenceProvider(guardrails: resolvedGuardrails)
         case .codex(let model, let effort):
             guard settings.enabledInstalledProviders.contains(.codex) else {
                 throw AIProviderError.unavailable("Codex is disabled in AI Settings.")

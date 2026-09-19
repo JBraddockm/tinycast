@@ -43,23 +43,30 @@ struct OverflowFadeMask: ViewModifier {
             return [.init(color: .black, location: 0)]
         }
         let extent = min(band / height, 0.5)
+
+        let topOpacity1: Double = 1 - topStrength
+        let topOpacity2: Double = 1 - topStrength * 0.75
+        let topOpacity3: Double = 1 - topStrength * 0.25
+        let bottomOpacity3: Double = 1 - bottomStrength * 0.25
+        let bottomOpacity2: Double = 1 - bottomStrength * 0.75
+        let bottomOpacity1: Double = 1 - bottomStrength
+
+        let loc1: CGFloat = extent * 0.35
+        let loc2: CGFloat = extent * 0.7
+        let loc3: CGFloat = extent
+        let loc4: CGFloat = 1 - extent
+        let loc5: CGFloat = 1 - extent * 0.7
+        let loc6: CGFloat = 1 - extent * 0.35
+
         return [
-            .init(color: .black.opacity(1 - topStrength), location: 0),
-            .init(
-                color: .black.opacity(1 - topStrength * 0.75),
-                location: extent * 0.35),
-            .init(
-                color: .black.opacity(1 - topStrength * 0.25),
-                location: extent * 0.7),
-            .init(color: .black, location: extent),
-            .init(color: .black, location: 1 - extent),
-            .init(
-                color: .black.opacity(1 - bottomStrength * 0.25),
-                location: 1 - extent * 0.7),
-            .init(
-                color: .black.opacity(1 - bottomStrength * 0.75),
-                location: 1 - extent * 0.35),
-            .init(color: .black.opacity(1 - bottomStrength), location: 1)
+            .init(color: .black.opacity(topOpacity1), location: 0),
+            .init(color: .black.opacity(topOpacity2), location: loc1),
+            .init(color: .black.opacity(topOpacity3), location: loc2),
+            .init(color: .black, location: loc3),
+            .init(color: .black, location: loc4),
+            .init(color: .black.opacity(bottomOpacity3), location: loc5),
+            .init(color: .black.opacity(bottomOpacity2), location: loc6),
+            .init(color: .black.opacity(bottomOpacity1), location: 1)
         ]
     }
 

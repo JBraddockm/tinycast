@@ -2,6 +2,7 @@ import FoundationModels
 import Foundation
 
 /// The only provider with nothing to configure, so a first run may select it unasked.
+@available(macOS 26.0, *)
 struct AppleIntelligenceProvider: AIProvider {
     /// The caller's, not a constant: the default filter refuses text the reader already wrote.
     let guardrails: SystemLanguageModel.Guardrails
