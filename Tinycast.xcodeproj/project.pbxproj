@@ -40,6 +40,7 @@
 		0B57F477B21A81B22DAA5513 /* AppleShortcutRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64E4C6445202F80D6756AF1A /* AppleShortcutRunner.swift */; };
 		0B9C941402B85C69A33200C2 /* UninstallProtection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37A48095F6487DEE76663F88 /* UninstallProtection.swift */; };
 		0C1CACEF014462D3F581CE54 /* EmojiSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B42664C60B760276FBAAD61 /* EmojiSettingsView.swift */; };
+		0C55DC00305F2DED001440B6 /* AIGuardrailsPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C55DBFF305F2DEA001440B6 /* AIGuardrailsPolicy.swift */; };
 		0CC2291DE8806FDFB478F8A0 /* FileSearchSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90831A25F96F3563BEC60FCC /* FileSearchSurface.swift */; };
 		0CD06036347A6D96B1F7947F /* AppleShortcut.swift in Sources */ = {isa = PBXBuildFile; fileRef = A379CB384B76FF70AC72E235 /* AppleShortcut.swift */; };
 		0CDD3AE7DF97899340E56061 /* FileSearchQuickLook.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A83359DA89BD4E1E6FC3087 /* FileSearchQuickLook.swift */; };
@@ -713,6 +714,7 @@
 		0B2FAC737503B853DE6B5ED4 /* MeetingCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingCardView.swift; sourceTree = "<group>"; };
 		0C3B9645DB2293FA144B5AA2 /* Paster.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Paster.swift; sourceTree = "<group>"; };
 		0C3F123266ED0DA4BC9616B9 /* NoteMarkdownParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteMarkdownParser.swift; sourceTree = "<group>"; };
+		0C55DBFF305F2DEA001440B6 /* AIGuardrailsPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIGuardrailsPolicy.swift; sourceTree = "<group>"; };
 		0CB8DC0BB8BFB2AC298B1DCF /* ExtensionRegistriesPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtensionRegistriesPanel.swift; sourceTree = "<group>"; };
 		0CFA4726A74C5CCA6E301665 /* DialogChip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DialogChip.swift; sourceTree = "<group>"; };
 		0D4F22647E4E1BA19F0FC520 /* AppVersion.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppVersion.swift; sourceTree = "<group>"; };
@@ -891,7 +893,7 @@
 		52998BAB1D8287CF14E46EF0 /* SettingsBackup.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsBackup.swift; sourceTree = "<group>"; };
 		52BD814D567DFEFD303B1750 /* PaletteRowIndex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteRowIndex.swift; sourceTree = "<group>"; };
 		5311551EDC3AE497384CDE89 /* NoteSwitcherWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteSwitcherWindowController.swift; sourceTree = "<group>"; };
-		5392500F86E23C099D33561D /* Tinycast.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Tinycast.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5392500F86E23C099D33561D /* Tinycast Dev.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Tinycast Dev.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		539938F5D4D2AFEE587113D3 /* AIModelMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIModelMenu.swift; sourceTree = "<group>"; };
 		53D7E98E448F05816493DB37 /* PaletteEscapeAction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PaletteEscapeAction.swift; sourceTree = "<group>"; };
 		53DBA322BA1F117530075F51 /* QuickActionFailure.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickActionFailure.swift; sourceTree = "<group>"; };
@@ -1214,7 +1216,7 @@
 		CCCBDD92DEAD780A1DC423CA /* ExtensionScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtensionScreen.swift; sourceTree = "<group>"; };
 		CD0A6DDC1C30A6E2C6DF7E7D /* WindowManagementSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WindowManagementSettingsView.swift; sourceTree = "<group>"; };
 		CD6B72A1A1FF3D08CFC3FA7D /* NoteCheckboxGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteCheckboxGeometry.swift; sourceTree = "<group>"; };
-		CEE5FA2E56073002C2DA6D6A /* ClipboardTextHelper */ = {isa = PBXFileReference; includeInIndex = 0; path = ClipboardTextHelper; sourceTree = BUILT_PRODUCTS_DIR; };
+		CEE5FA2E56073002C2DA6D6A /* ClipboardTextHelper */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = ClipboardTextHelper; sourceTree = BUILT_PRODUCTS_DIR; };
 		CEEF20B209EEEAB7ED97DF36 /* QuickActionPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickActionPanel.swift; sourceTree = "<group>"; };
 		CF2A1ECA5667B8FD1B1F9FD8 /* UpdateCheckStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateCheckStore.swift; sourceTree = "<group>"; };
 		CF64F5FCB3872996AE57FDBB /* FileSearchCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileSearchCoordinator.swift; sourceTree = "<group>"; };
@@ -1465,7 +1467,7 @@
 			isa = PBXGroup;
 			children = (
 				CEE5FA2E56073002C2DA6D6A /* ClipboardTextHelper */,
-				5392500F86E23C099D33561D /* Tinycast.app */,
+				5392500F86E23C099D33561D /* Tinycast Dev.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -2255,6 +2257,7 @@
 		87070A80E9E3AB3E4B0A9E54 /* AI */ = {
 			isa = PBXGroup;
 			children = (
+				0C55DBFF305F2DEA001440B6 /* AIGuardrailsPolicy.swift */,
 				62F0568B29175D36EF95BB84 /* Model */,
 				E98B3DB43012A362EF8DAE1D /* Service */,
 				F582FC7869A272CD878A62D4 /* Settings */,
@@ -3147,7 +3150,7 @@
 			packageProductDependencies = (
 			);
 			productName = Tinycast;
-			productReference = 5392500F86E23C099D33561D /* Tinycast.app */;
+			productReference = 5392500F86E23C099D33561D /* Tinycast Dev.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -3554,6 +3557,7 @@
 				C05022DE7B77920ECFB177EE /* LauncherItemsTable.swift in Sources */,
 				D1F9C28CA4048480DB818EE9 /* LauncherList.swift in Sources */,
 				CD992176EA721B3DC30FE9FF /* LauncherOrder.swift in Sources */,
+				0C55DC00305F2DED001440B6 /* AIGuardrailsPolicy.swift in Sources */,
 				633DCA2F00A274C375EB4423 /* LauncherRankingStore.swift in Sources */,
 				7FF6A0A4702E1C1365F2D76A /* LauncherScreen.swift in Sources */,
 				67516BE31774EE56EE2173BA /* LeadCard.swift in Sources */,
@@ -3937,7 +3941,7 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				CODE_SIGN_IDENTITY = "Tinycast Self-Signed";
+				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
@@ -3959,7 +3963,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MACOSX_DEPLOYMENT_TARGET = 15.6;
 				MARKETING_VERSION = 0.1.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -3976,6 +3980,7 @@
 		828D07C0809E0B5A914BF94E /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				COMBINE_HIDPI_IMAGES = YES;
 				EXECUTABLE_NAME = ClipboardTextHelper;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -4022,7 +4027,7 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				CODE_SIGN_IDENTITY = "Tinycast Self-Signed";
+				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
@@ -4041,7 +4046,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 26.0;
+				MACOSX_DEPLOYMENT_TARGET = 15.6;
 				MARKETING_VERSION = 0.1.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
@@ -4059,6 +4064,7 @@
 		D8C6CAC15EBCF3A29913F5C8 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
 				COMBINE_HIDPI_IMAGES = YES;
 				EXECUTABLE_NAME = ClipboardTextHelper;
 				LD_RUNPATH_SEARCH_PATHS = (

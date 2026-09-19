@@ -35,8 +35,7 @@ struct ExtensionPickerList: View {
                 .padding(searchPlaceholder == nil ? metrics.spacing.sm : 0)
         }
         .frame(width: width ?? form.controlWidth)
-        .glassEffect(
-            .regular, in: RoundedRectangle(cornerRadius: metrics.radius.menuPanel, style: .continuous)
+        .frosted(in: RoundedRectangle(cornerRadius: metrics.radius.menuPanel, style: .continuous)
         )
     }
 

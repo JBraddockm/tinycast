@@ -449,9 +449,19 @@ enum Theme {
 }
 
 extension View {
-    /// A floating glass control surface, frosted so it reads brighter than clear glass.
+    @ViewBuilder
     func frosted(in shape: some Shape) -> some View {
-        glassEffect(.regular.interactive().tint(Theme.Colors.glassFrost), in: shape)
-            .tint(.clear)
+        if #available(macOS 26.0, *) {
+            self
+                .glassEffect(.regular.interactive().tint(Theme.Colors.glassFrost), in: shape)
+                .tint(.clear)
+        } else {
+            self
+                .background(.ultraThinMaterial, in: shape)
+                .overlay(
+                    shape.stroke(Theme.Colors.glassFrost.opacity(0.3), lineWidth: 1)
+                )
+                .clipShape(shape)
+        }
     }
 }
