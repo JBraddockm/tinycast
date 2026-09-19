@@ -52,7 +52,8 @@ struct ShortcutRecorderPopover: View {
             width: Theme.Size.shortcutPopover.width, height: Theme.Size.shortcutPopover.height
         )
         // Stock glass owns its elevation, as in `PopoverMenu` — no hand-tuned shadow.
-        .frosted(in: CalloutShape(caretEdge: placement.caretEdge, caretX: placement.caretX))
+        .glassEffect(
+            .regular, in: CalloutShape(caretEdge: placement.caretEdge, caretX: placement.caretX))
     }
 
     private var state: State {

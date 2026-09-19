@@ -75,9 +75,9 @@ so `didExit` drains the pipe before composing its message — what a server prin
 the only reason a reader will ever see. And pending calls are failed *before* the owner is told,
 because the owner's own `close()` would otherwise overwrite the real reason with "not running".
 
-The command is found by `Platform/ExecutableLocator`, which walks PATH, the usual install prefixes
-and every nvm Node version before asking a login shell — a GUI app inherits Finder's PATH, which has
-none of `npx`, `uvx` or `node` on it.
+The command is found by `Platform/ExecutableLocator`, which asks a login shell first and only then
+walks PATH, the usual install prefixes and every nvm Node version — a GUI app inherits Finder's PATH,
+which has none of `npx`, `uvx` or `node` on it.
 
 ## Tool names
 

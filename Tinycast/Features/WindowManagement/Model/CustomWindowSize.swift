@@ -57,27 +57,62 @@ struct CustomWindowSize: Codable, Hashable, Identifiable, Sendable {
         }
     }
 
+    /// Points, applied on top of the anchor; +Y is down, as everywhere in AX space.
+    struct Offset: Codable, Hashable, Sendable {
+        static let range: ClosedRange<Int> = -4000...4000
+        static let zero = Offset(x: 0, y: 0)
+
+        var x: Int
+        var y: Int
+
+        init(x: Int, y: Int) {
+            self.x = x.clamped(to: Self.range)
+            self.y = y.clamped(to: Self.range)
+        }
+    }
+
     let id: UUID
     var name: String
     var width: Dimension
     var height: Dimension
     var anchor: WindowLayoutAnchor
+    var offset: Offset
 
     init(
         id: UUID = UUID(), name: String, width: Dimension = Dimension(60, .percent),
-        height: Dimension = Dimension(60, .percent), anchor: WindowLayoutAnchor = .center
+        height: Dimension = Dimension(60, .percent), anchor: WindowLayoutAnchor = .center,
+        offset: Offset = .zero
     ) {
         self.id = id
         self.name = name
         self.width = width
         self.height = height
         self.anchor = anchor
+        self.offset = offset
+    }
+
+    // Hand-written, so an added field keeps stored sizes and older backups readable.
+    private enum CodingKeys: String, CodingKey {
+        case id, name, width, height, anchor, offset
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        name = try container.decode(String.self, forKey: .name)
+        width = try container.decode(Dimension.self, forKey: .width)
+        height = try container.decode(Dimension.self, forKey: .height)
+        anchor = try container.decode(WindowLayoutAnchor.self, forKey: .anchor)
+        offset = try container.decodeIfPresent(Offset.self, forKey: .offset) ?? .zero
     }
 
     var entryID: String { Self.entryIDPrefix + id.uuidString.lowercased() }
 
     /// The settings row's subtitle: what this size does, in one line.
-    var summary: String { "\(width.label) × \(height.label) · \(anchor.title)" }
+    var summary: String {
+        let base = "\(width.label) × \(height.label) · \(anchor.title)"
+        return offset == .zero ? base : "\(base) · Offset \(offset.x), \(offset.y) pt"
+    }
 
     static func id(fromEntryID entryID: String) -> UUID? {
         guard entryID.hasPrefix(entryIDPrefix) else { return nil }
@@ -96,6 +131,7 @@ struct CustomWindowSize: Codable, Hashable, Identifiable, Sendable {
         cleaned.name = name.trimmingCharacters(in: .whitespacesAndNewlines)
         cleaned.width = Dimension(width.value, width.unit)
         cleaned.height = Dimension(height.value, height.unit)
+        cleaned.offset = Offset(x: offset.x, y: offset.y)
         return cleaned
     }
 
@@ -108,7 +144,10 @@ struct CustomWindowSize: Codable, Hashable, Identifiable, Sendable {
         guard canvas.width > 0, canvas.height > 0 else { return nil }
         let size = CGSize(
             width: width.length(in: canvas.width), height: height.length(in: canvas.height))
-        return WindowPlacementEngine.rounded(anchor.placement.place(size, in: canvas))
+        // Offset before the clamp: the nudge is the user's intent, the clamp only a safety net.
+        let placed = anchor.placement.place(size, in: canvas)
+            .offsetBy(dx: CGFloat(offset.x), dy: CGFloat(offset.y))
+        return WindowPlacementEngine.rounded(WindowPlacementEngine.clamped(placed, into: canvas))
     }
 
     /// Where this size puts a window, on the display the window is already on.

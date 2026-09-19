@@ -60,7 +60,7 @@ struct DialogView: View {
         .padding(metrics.spacing.dialogInset)
         .frame(width: width, alignment: .leading)
         .background(Theme.Colors.panelScrim, in: shape)
-        .frosted(in: shape)
+        .glassEffect(.regular, in: shape)
     }
 
     @ViewBuilder private var actions: some View {

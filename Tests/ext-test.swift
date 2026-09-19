@@ -26,6 +26,7 @@ struct ExtensionTests {
         var huds: [String] = []
         var oauthTokens: [String: String] = [:]
         private let fetcher = ExtensionFetcher()
+        private let sockets = ExtensionWebSocketBridge()
 
         func perform(api: String, method: String, arguments: [RenderValue]) async throws -> String {
             calls.append("\(api).\(method)")
@@ -35,6 +36,13 @@ struct ExtensionTests {
             }
             if api == "fetch" {
                 return ExtensionRuntime.jsonString(from: try await fetcher.request(arguments.first))
+            }
+            if api == "websocket" {
+                return ExtensionRuntime.jsonString(
+                    from: try await sockets.perform(method: method, arguments: arguments))
+            }
+            if api == "dns" {
+                return ExtensionRuntime.jsonString(from: await ExtensionNameResolver.resolve(arguments.first))
             }
             switch "\(api).\(method)" {
             case "feedback.showToast":
@@ -70,6 +78,10 @@ struct ExtensionTests {
             default:
                 return ""
             }
+        }
+
+        func sessionEnded() {
+            sockets.closeAll()
         }
     }
 
@@ -255,7 +267,12 @@ struct ExtensionTests {
                 [
                     "name": "mode", "type": "dropdown", "default": "b",
                     "data": [["title": "A", "value": "a"], ["title": "B", "value": "b"]]
-                ]
+                ],
+                [
+                    "name": "editor", "type": "appPicker",
+                    "default": "/System/Applications/Utilities/Terminal.app"
+                ],
+                ["name": "browser", "type": "appPicker"]
             ],
             "commands": [
                 ["name": "search", "title": "Search", "mode": "view", "keywords": ["find"]],
@@ -311,6 +328,16 @@ struct ExtensionTests {
             String(describing: prefs["flag"]?.effectiveDefault))
         check("dropdown options", prefs["mode"]?.options.count == 2)
         check("dropdown default", prefs["mode"]?.effectiveDefault == .string("b"))
+
+        // Raycast dereferences `preference.name` unconditionally, so a bare path crashes the command.
+        let picked = prefs["editor"]?.runtimeValue(nil)?.jsonValue as? [String: Any]
+        check(
+            "an app picker resolves to an Application", picked?["name"] as? String == "Terminal",
+            String(describing: picked))
+        check(
+            "an app picker carries its bundle id",
+            picked?["bundleId"] as? String == "com.apple.Terminal", String(describing: picked))
+        check("an unset app picker is absent", prefs["browser"]?.runtimeValue(nil) == nil)
 
         // A manifest with no commands isn't an extension Tinycast can run.
         check("rejects a manifest with no commands", ExtensionManifest(json: ["name": "x"]) == nil)
@@ -402,6 +429,7 @@ struct ExtensionTests {
         check("a section after loose actions starts one", actions.last?.startsSection == true)
         check("destructive style", actions.last?.isDestructive == true)
         sectionBoundaryChecks()
+        submenuPrimaryActionChecks()
     }
 
     /// Boundaries follow section nodes: Raycast authors mostly leave sections untitled.
@@ -431,6 +459,83 @@ struct ExtensionTests {
         check(
             "separators follow section nodes, not titles",
             starts == [false, false, false, true, true, true, true], "\(starts)")
+    }
+
+    /// A submenu reached first must not become ⏎'s target as though it were its own child. #783.
+    static func submenuPrimaryActionChecks() {
+        func action(_ id: Int) -> String {
+            #"{"id":\#(id),"type":"Action","props":{"title":"A\#(id)"},"children":[]}"#
+        }
+        let json = """
+            {"id":1,"type":"ActionPanel","props":{},"children":[
+              {"id":2,"type":"ActionPanel.Submenu","props":{"title":"Open…"},"children":[
+                \(action(3)),
+                \(action(4))]},
+              {"id":5,"type":"ActionPanel.Section","props":{"title":"Other"},"children":[\(action(6))]}]}
+            """
+        guard let object = try? JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any],
+            let panel = RenderNode(json: object)
+        else {
+            check("submenu fixture decodes", false)
+            return
+        }
+        let actions = ExtensionScreen.actions(in: panel)
+        check(
+            "an action reached through a submenu carries its title",
+            actions.first?.enclosingSubmenuTitle == "Open…",
+            String(describing: actions.first?.enclosingSubmenuTitle))
+        check(
+            "the submenu's own leaves still flatten into the palette",
+            actions.map(\.title) == ["A3", "A4", "A6"], "\(actions.map(\.title))")
+        check(
+            "an action outside any submenu carries no submenu title",
+            actions.last?.enclosingSubmenuTitle == nil,
+            String(describing: actions.last?.enclosingSubmenuTitle))
+
+        // A loose action reached without ever entering a submenu is unaffected: primary fires it.
+        let looseFirstJSON = """
+            {"id":1,"type":"ActionPanel","props":{},"children":[
+              \(action(2)),
+              {"id":3,"type":"ActionPanel.Submenu","props":{"title":"Share"},"children":[\(action(4))]}]}
+            """
+        guard
+            let looseObject = try? JSONSerialization.jsonObject(with: Data(looseFirstJSON.utf8))
+                as? [String: Any],
+            let loosePanel = RenderNode(json: looseObject)
+        else {
+            check("loose-first fixture decodes", false)
+            return
+        }
+        let looseActions = ExtensionScreen.actions(in: loosePanel)
+        check(
+            "a loose action ahead of any submenu keeps the primary a direct action",
+            looseActions.first?.enclosingSubmenuTitle == nil,
+            String(describing: looseActions.first?.enclosingSubmenuTitle))
+
+        // Mirrors ExtensionCommandScreen.primaryActionTitle/activate(at:), unreachable from here.
+        func primaryActionOutcome(_ actions: [ExtensionAction]) -> (title: String, opensPanel: Bool) {
+            guard let primary = actions.first else { return ("Run", false) }
+            return (
+                primary.enclosingSubmenuTitle ?? primary.title,
+                primary.enclosingSubmenuTitle != nil
+            )
+        }
+
+        let submenuOutcome = primaryActionOutcome(actions)
+        check(
+            "a submenu-backed primary's title is the submenu's, not the leaf's",
+            submenuOutcome.title == "Open…", submenuOutcome.title)
+        check(
+            "⏎ on a submenu-backed primary opens the actions panel instead of dispatching",
+            submenuOutcome.opensPanel, "\(submenuOutcome)")
+
+        let looseOutcome = primaryActionOutcome(looseActions)
+        check(
+            "a loose primary's title is its own leaf's",
+            looseOutcome.title == "A2", looseOutcome.title)
+        check(
+            "⏎ on a loose primary dispatches directly, since it never opens the panel",
+            !looseOutcome.opensPanel, "\(looseOutcome)")
     }
 
     static func screenChecks() {
@@ -569,10 +674,22 @@ struct ExtensionTests {
             "a text area keeps the vertical keys",
             ExtensionFormField(type: "Form.TextArea").ownsVerticalKeys)
         let detail = ExtensionScreen(
-            // Doubled delimiters: the heading contains `"#`, which closes a single-# string.
-            tree: tree(##"{"id":2,"type":"Detail","props":{"markdown":"# Hi"},"children":[]}"##),
+            tree: tree(
+                """
+                {"id":2,"type":"Detail","props":{"markdown":"# Hi","actions":
+                  {"id":7,"type":"ActionPanel","props":{},"children":[
+                    {"id":8,"type":"Action","props":{"title":"Open",
+                      "onAction":{"$fn":"8:onAction"}},"children":[]}]}},"children":[]}
+                """),
             query: "")
         check("kind is detail", detail.kind == .detail)
+        check("rowless detail has no rows", detail.rows.isEmpty)
+        check(
+            "rowless detail falls back to screen actions",
+            detail.actionPanel(forItemAt: 0)?.id == 7)
+        let detailActions = ExtensionScreen.actions(in: detail.actionPanel(forItemAt: 0))
+        check("rowless detail keeps action title", detailActions.first?.title == "Open")
+        check("rowless detail keeps action handler", detailActions.first?.handler == "8:onAction")
 
         let unsupported = ExtensionScreen(
             tree: tree(#"{"id":2,"type":"MenuBarExtra","props":{},"children":[]}"#), query: "")

@@ -46,6 +46,13 @@ struct CustomWindowSizeEditorPanel: View {
                 }
             }
 
+            field("Offset") {
+                HStack(spacing: Theme.Spacing.lg) {
+                    offsetField(label: "X", name: "Horizontal offset", value: \.x)
+                    offsetField(label: "Y", name: "Vertical offset", value: \.y)
+                }
+            }
+
             field("Position") {
                 WindowLayoutPositionGrid(selection: size.anchor) { size.anchor = $0 }
             }
@@ -108,6 +115,15 @@ struct CustomWindowSizeEditorPanel: View {
             .buttonBorderShape(.roundedRectangle(radius: Theme.Radius.barControl))
             .fixedSize()
         }
+    }
+
+    private func offsetField(
+        label: String, name: String, value: WritableKeyPath<CustomWindowSize.Offset, Int>
+    ) -> some View {
+        WindowLayoutNumberField(
+            label: label, name: name, suffix: "pt", range: CustomWindowSize.Offset.range,
+            value: size.offset[keyPath: value],
+            onCommit: { size.offset[keyPath: value] = $0 })
     }
 
     private var canSave: Bool {

@@ -21,8 +21,10 @@ struct CalculatorHistoryScreen: PaletteScreen {
         }
     }
 
-    private var calc: CalcResult? { CalcMemo.evaluate(vm.query, rates: currencyRates.rates) }
-    private var entries: [CalcHistoryEntry] { history.search(vm.query) }
+    private var format: CalcNumberFormat { core.calcNumberFormat }
+    private var calc: CalcResult? { CalcMemo.evaluate(vm.query, rates: currencyRates.rates, format: format) }
+    /// History is stored canonical, so a localized query is searched in the same spelling.
+    private var entries: [CalcHistoryEntry] { history.search(format.canonical(vm.query) ?? vm.query) }
 
     var rows: [Row] {
         let entries = entries.map(Row.entry)
@@ -152,7 +154,7 @@ enum CalcHistoryActionsMenu {
         -> PopoverMenuContent
     {
         PopoverMenuContent(
-            header: entry.expression,
+            header: core.calcNumberFormat.localizedExpression(entry.expression),
             items: [
                 PopoverMenuItem(title: "Copy Answer", systemImage: "doc.on.doc", shortcut: "↵") {
                     core.calculatorCoordinator.copyHistoryEntry(entry)

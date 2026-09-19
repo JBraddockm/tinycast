@@ -344,9 +344,10 @@ reviews:
       - name: XcodeGen project in sync
         mode: error
         instructions: >-
-          Fail if project.yml changed and Tinycast.xcodeproj/project.pbxproj did
-          not, or if Tinycast.xcodeproj/project.pbxproj changed and project.yml
-          did not. Otherwise pass.
+          Fail only if project.yml changed and Tinycast.xcodeproj/project.pbxproj
+          did not. A project.pbxproj change without a project.yml change is
+          expected: XcodeGen globs source folders, so adding, moving or removing
+          a file regenerates the project alone. Otherwise pass.
 
       - name: Memory footprint reported
         mode: warning

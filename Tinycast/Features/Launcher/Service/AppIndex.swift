@@ -257,6 +257,14 @@ extension AppEntry {
             bundleID: nil, kind: .quickAction, symbolName: action.iconSymbol)
     }
 
+    /// The one row a custom command draws, wherever it is offered from.
+    init(_ command: CustomCommand) {
+        self.init(
+            id: command.entryID, name: command.name,
+            url: URL(string: "tinycast://custom-command/" + command.id.uuidString)!,
+            bundleID: nil, kind: .customCommand, symbolName: command.iconSymbol)
+    }
+
     /// The one row a quicklink draws, wherever it is offered from.
     init(_ quicklink: Quicklink) {
         self.init(
@@ -347,6 +355,8 @@ final class AppIndex {
     private var meetingEntries: [AppEntry] = []
     /// The catalog's commands a disabled feature hides; the Commands slice is recomputed from it.
     private var hiddenCommands: Set<CommandID> = []
+    /// Kept out of launcher search by a "Show in launcher" switch, yet still runnable by shortcut.
+    private var unlistedCommands: Set<CommandID> = []
     private var nameCache = BundleNameCache()
     private var paneCache: SettingsPaneScanner.Cache?
     private var isRefreshing = false
@@ -373,7 +383,7 @@ final class AppIndex {
     private var visibleCatalogEntries: [AppEntry] {
         CommandCatalog.all.filter {
             guard let command = CommandCatalog.command(for: $0) else { return true }
-            return !hiddenCommands.contains(command)
+            return !hiddenCommands.contains(command) && !unlistedCommands.contains(command)
         }
     }
 
@@ -390,15 +400,18 @@ final class AppIndex {
         publishEntries()
     }
 
+    func setCommandsListed(_ commands: Set<CommandID>, _ listed: Bool) {
+        let updated =
+            listed ? unlistedCommands.subtracting(commands) : unlistedCommands.union(commands)
+        guard updated != unlistedCommands else { return }
+        unlistedCommands = updated
+        publishEntries()
+    }
+
     /// Replaces the command slice without rescanning, so Settings edits land at once.
     func setCustomCommands(_ commands: [CustomCommand]) {
-        let entries = commands.filter(\.isEnabled).map { command in
-            AppEntry(
-                id: command.entryID, name: command.name,
-                url: URL(string: "tinycast://custom-command/" + command.id.uuidString)!,
-                bundleID: nil, kind: .customCommand, symbolName: command.iconSymbol)
-        }
-        .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        let entries = commands.filter(\.isEnabled).map(AppEntry.init)
+            .sorted { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
         guard entries != customCommandEntries else { return }
         customCommandEntries = entries
         publishEntries()

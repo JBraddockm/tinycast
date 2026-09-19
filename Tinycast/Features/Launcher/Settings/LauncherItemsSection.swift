@@ -22,7 +22,7 @@ struct LauncherItemsSection: View {
         Section {
             Toggle(isOn: enabledBinding) {
                 SettingsRowTitle(anchor, "Enable \(anchor.title)")
-                Text("Off hides them all and stops their shortcuts. Uncheck one below to hide just that one.")
+                Text("Off hides all of them and stops their shortcuts.")
             }
         } header: {
             SettingsSectionHeader(anchor)
@@ -101,6 +101,7 @@ struct LauncherItemRow: View {
             Toggle("", isOn: itemBinding)
                 .labelsHidden()
                 .toggleStyle(.checkbox)
+                .launcherVisibilityHelp()
                 .accessibilityLabel("Show \(entry.name) in launcher")
         }
     }

@@ -17,9 +17,6 @@ struct QuickActionModelPicker: View {
                     effortLabel: { Text("Reasoning effort") })
             }
             .labelsHidden()
-            Text("Same as Quick Actions follows the Model section of the Quick Actions pane.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
         }
     }
 }

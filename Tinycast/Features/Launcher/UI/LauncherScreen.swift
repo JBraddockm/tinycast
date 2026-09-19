@@ -52,15 +52,24 @@ struct LauncherScreen: PaletteScreen {
         self.openArgumentOptions = openArgumentOptions
         self.scrollToFollow = scrollToFollow
 
-        var results = appIndex.orderedResults(
-            query: vm.query, visibility: visibility, favorites: favorites)
+        // Listed even when hidden from search: the shortcut that opened it still has to be answered.
+        let pinned = vm.argumentEntryID.flatMap(core.customCommands.command(entryID:))
+            .map(AppEntry.init).flatMap { $0.name == vm.query ? $0 : nil }
+        var results =
+            pinned.map { [$0] }
+            ?? appIndex.orderedResults(query: vm.query, visibility: visibility, favorites: favorites)
         // A typed web address leads: nothing the index holds answers it better.
-        if let browser = CommandCatalog.openInBrowser(for: vm.query), visibility.isVisible(browser) {
+        if pinned == nil, let browser = CommandCatalog.openInBrowser(for: vm.query),
+            visibility.isVisible(browser)
+        {
             results.insert(browser, at: 0)
         }
-        let calc = CalcMemo.evaluate(vm.query, rates: currencyRates.rates)
+        // No card over a pinned row: its fields hang off the selection, which must start on it.
+        let calc =
+            pinned == nil
+            ? CalcMemo.evaluate(vm.query, rates: currencyRates.rates, format: core.calcNumberFormat) : nil
         // After the calculator: `#FF5733` is never arithmetic, so the two can't both answer.
-        let color = calc == nil ? ColorValue.parse(vm.query) : nil
+        let color = calc == nil && pinned == nil ? ColorValue.parse(vm.query) : nil
         let fallbacks = core.fallbackCoordinator.entries(for: vm.query)
         let entries = results.map(Row.entry) + fallbacks.map { Row.fallback($0.fallback, $0.entry) }
         let pinsFavorites = vm.query.trimmingCharacters(in: .whitespaces).isEmpty
@@ -141,6 +150,12 @@ struct LauncherScreen: PaletteScreen {
                 placement: .afterQuery, onOpenOptions: openArgumentOptions,
                 onSubmit: { activate(at: selection) })
         }
+        if entry.kind == .customCommand {
+            return CustomCommandArgumentsAccessory.make(
+                command: core.customCommands.command(entryID: entry.id), vm: vm,
+                metrics: core.settings.interfaceSize.metrics, focus: focus,
+                onSubmit: { activate(at: selection) })
+        }
         return ExtensionArgumentsAccessory.make(
             entry: entry, coordinator: core.extensionCoordinator,
             values: { name in headerFieldBinding(entry: entry, name: name) },
@@ -158,6 +173,10 @@ struct LauncherScreen: PaletteScreen {
         if entry.kind == .quicklink {
             guard let quicklink = quicklink(for: entry) else { return [:] }
             return QuicklinkArgumentsAccessory.values(for: quicklink, core: core, vm: vm)
+        }
+        if entry.kind == .customCommand {
+            guard let command = core.customCommands.command(entryID: entry.id) else { return [:] }
+            return CustomCommandArgumentsAccessory.values(for: command, vm: vm)
         }
         var values: [String: String] = [:]
         for argument in core.extensionCoordinator.commandArguments(for: entry) ?? [] {
@@ -397,7 +416,10 @@ struct LauncherScreen: PaletteScreen {
                 vm.selection = 0
                 openActions()
             },
-            onActivate: { core.launcherCoordinator.launch($0, searchQuery: vm.query) },
+            onActivate: {
+                core.launcherCoordinator.launch(
+                    $0, searchQuery: vm.query, arguments: argumentValues(for: $0))
+            },
             onActions: { app in
                 if let index = rows.firstIndex(of: .entry(app)) { vm.selection = index }
                 openActions()

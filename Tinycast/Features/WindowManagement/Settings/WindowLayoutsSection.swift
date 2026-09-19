@@ -18,7 +18,6 @@ struct WindowLayoutsSection: View {
         return Section {
             Toggle(isOn: $settings.windowLayoutsShowInLauncher) {
                 SettingsRowTitle(.windowManagementLayouts, "Show layouts in launcher")
-                Text("Find your layouts in launcher search, beside the window commands.")
             }
 
             if store.layouts.count > Self.filterThreshold {
@@ -49,8 +48,6 @@ struct WindowLayoutsSection: View {
             }
         } header: {
             SettingsSectionHeader(.windowManagementLayouts)
-        } footer: {
-            Text("A layout puts named apps at fixed sizes on chosen displays, in one pass.")
         }
     }
 
@@ -61,7 +58,7 @@ struct WindowLayoutsSection: View {
 
     private var emptyMessage: String {
         store.layouts.isEmpty
-            ? "Save an arrangement once, then put every window back with one shortcut."
+            ? "Save an arrangement, then restore it with one shortcut."
             : "No layout matches “\(query)”."
     }
 }
@@ -117,7 +114,7 @@ private struct WindowLayoutSettingsRow: View {
             Toggle("", isOn: visibilityBinding)
                 .labelsHidden()
                 .toggleStyle(.checkbox)
-                .help("Show in launcher")
+                .launcherVisibilityHelp()
                 .accessibilityLabel("Show \(layout.name) in launcher")
         }
     }

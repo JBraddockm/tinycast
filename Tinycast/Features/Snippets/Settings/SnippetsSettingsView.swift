@@ -14,9 +14,7 @@ struct SnippetsSettingsView: View {
             FeatureSwitchSection(
                 anchor: .snippetsSnippets,
                 enableTitle: "Enable snippets",
-                enableSubtitle:
-                    "Reusable Markdown templates, expanded from the launcher or a typed keyword.",
-                launcherSubtitle: "Find your snippets in launcher search.",
+                enableSubtitle: "Expand templates from the launcher or by keyword.",
                 // Enabling is also keyword-expansion consent, so it uses the confirming setter.
                 isEnabled: Binding(
                     get: { settings.snippetsEnabled },
@@ -29,12 +27,11 @@ struct SnippetsSettingsView: View {
                         Button("Grant Access…") { Permissions.openAccessibilitySettings() }
                     } label: {
                         Label(
-                            "Keyword expansion needs the Accessibility permission.",
+                            "Keyword expansion needs Accessibility access.",
                             systemImage: "exclamationmark.triangle"
                         )
                         .foregroundStyle(.orange)
-                        Text(
-                            "The same grant pasting uses. Launcher search keeps working meanwhile.")
+                        Text("Launcher search still works.")
                     }
                 }
             }
@@ -86,7 +83,6 @@ struct SnippetsSettingsView: View {
                 Button("Add…") { editor = SnippetEditRequest(record: nil) }
             } label: {
                 SettingsRowTitle(.snippetsLibrary, "New Snippet")
-                Text("Give the snippet a searchable name and an optional expansion keyword.")
             }
 
             LabeledContent {
@@ -94,7 +90,7 @@ struct SnippetsSettingsView: View {
                     .accessibilityHint("Reveals this Tinycast channel’s snippets folder in Finder.")
             } label: {
                 SettingsRowTitle(.snippetsLibrary, "Snippets Folder")
-                Text("Plain Markdown files in this channel’s Application Support folder.")
+                Text("Plain Markdown files.")
             }
         } header: {
             SettingsSectionHeader(.snippetsLibrary)

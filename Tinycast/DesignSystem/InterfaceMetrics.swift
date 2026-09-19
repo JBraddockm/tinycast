@@ -66,6 +66,9 @@ struct InterfaceMetrics: Equatable, Sendable {
         var bottomBarHeight: CGFloat { scaledPoints(Theme.Size.bottomBarHeight, scale) }
         var barButtonHeight: CGFloat { scaledPoints(Theme.Size.barButtonHeight, scale) }
         var rowIcon: CGFloat { scaledPoints(Theme.Size.rowIcon, scale) }
+        var colorDot: CGFloat { scaledPoints(Theme.Size.colorDot, scale) }
+        var calendarBarWidth: CGFloat { scaledPoints(Theme.Size.calendarBarWidth, scale) }
+        var calendarBarHeight: CGFloat { scaledPoints(Theme.Size.calendarBarHeight, scale) }
         var keyCap: CGFloat { scaledPoints(Theme.Size.keyCap, scale) }
         var compactKeyCap: CGFloat { scaledPoints(Theme.Size.compactKeyCap, scale) }
         var heroKeyCap: CGFloat { scaledPoints(Theme.Size.heroKeyCap, scale) }
@@ -73,6 +76,7 @@ struct InterfaceMetrics: Equatable, Sendable {
         var checkbox: CGFloat { scaledPoints(Theme.Size.checkbox, scale) }
 
         var menuWidth: CGFloat { scaledPoints(Theme.Size.menuWidth, scale) }
+        var actionMenuWidth: CGFloat { scaledPoints(Theme.Size.actionMenuWidth, scale) }
         var clipboardFilterMenuWidth: CGFloat { scaledPoints(Theme.Size.clipboardFilterMenuWidth, scale) }
         var fileSearchFilterMenuWidth: CGFloat { scaledPoints(Theme.Size.fileSearchFilterMenuWidth, scale) }
         var emojiCategoryMenuWidth: CGFloat { scaledPoints(Theme.Size.emojiCategoryMenuWidth, scale) }
@@ -86,7 +90,6 @@ struct InterfaceMetrics: Equatable, Sendable {
         var menuRowsMaxHeight: CGFloat {
             (Theme.Size.menuVisibleRows * (menuRowHeight + menuRowSpacing)).rounded()
         }
-
         var clipboardListWidth: CGFloat { scaledPoints(Theme.Size.clipboardListWidth, scale) }
         var clipboardMediaHeight: CGFloat { scaledPoints(Theme.Size.clipboardMediaHeight, scale) }
         var clipboardPreviewPixel: CGFloat { scaledPoints(Theme.Size.clipboardPreviewPixel, scale) }

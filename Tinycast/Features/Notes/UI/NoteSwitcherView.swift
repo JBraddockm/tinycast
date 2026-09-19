@@ -15,7 +15,7 @@ struct NoteSwitcherView: View {
             results
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .frosted(in: surface)
+        .glassEffect(.regular, in: surface)
         .clipShape(surface)
         .onAppear(perform: focusSearch)
         .onChange(of: notes.switcherFocusRevision) { _, _ in focusSearch() }
@@ -32,7 +32,7 @@ struct NoteSwitcherView: View {
             notes.moveSwitcherSelection(by: -1)
             return .handled
         }
-        .onKeyPress(.return) {
+        .onKeyPress(keys: [.return, KeyEquivalent("\u{3}")]) { _ in
             guard !notes.isRenamingSwitcherNote else { return .ignored }
             notes.selectSwitcherNote()
             return .handled

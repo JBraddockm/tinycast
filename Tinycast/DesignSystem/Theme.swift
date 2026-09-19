@@ -72,6 +72,9 @@ enum Theme {
         static let noteSwitcher = CGSize(width: 300, height: 240)
         static let noteSwitcherEmptyHeight: CGFloat = 96
         static let noteSwitcherDrop: CGFloat = 56
+        /// Fixed like every menu's width; the height is exactly four heading rows.
+        static let noteHeadingMenu = CGSize(
+            width: 220, height: menuRowHeight * 4 + menuRowSpacing * 3 + Spacing.sm * 2)
         static let noteFooterHeight: CGFloat = 28
         /// Holds the launcher's 36-point action capsule with the same margin its own bar gives it.
         static let noteTitlebar: CGFloat = 52
@@ -99,6 +102,13 @@ enum Theme {
         /// A `BarButton`'s hover capsule, shared by the footer group and the header's filter.
         static let barButtonHeight: CGFloat = 28
         static let rowIcon: CGFloat = 24
+        /// Colour-codes a secondary label, as Calendar.app marks an event's calendar.
+        static let colorDot: CGFloat = 8
+        /// The calendar-colour bar between a meeting row's icon and its title.
+        static let calendarBarWidth: CGFloat = 3
+        static let calendarBarHeight: CGFloat = 18
+        /// The same bar in the menu bar and its menu, sized to the system's 13pt menu text.
+        static let menuBarCalendarBarHeight: CGFloat = 12
         static let keyCap: CGFloat = 18
         /// Settings shortcut-recorder keycap — smaller than the palette's `keyCap` chip.
         static let recorderKeyCap: CGFloat = 16
@@ -134,6 +144,7 @@ enum Theme {
         static let emojiGridInset: CGFloat = 16
         static let emojiCell: CGFloat = 56
         static let menuWidth: CGFloat = 276
+        static let actionMenuWidth: CGFloat = 320
         /// The clipboard type filter's menu; `menuWidth` is far too wide for six short rows.
         static let clipboardFilterMenuWidth: CGFloat = 200
         static let fileSearchFilterMenuWidth: CGFloat = 200
@@ -144,10 +155,8 @@ enum Theme {
         static let menuRowSpacing: CGFloat = 1
         /// Stated, not measured: `viewportHeight` counts headers, so a capped menu lands on a row.
         static let menuSectionHeader: CGFloat = 16
-        /// Longer than a settings fade so a compact menu edge dissolves without a hard boundary.
-        static let menuOverflowFade: CGFloat = 30
-        /// Six rows and half of the seventh, so a capped menu reads as scrollable, not clipped.
-        static let menuVisibleRows: CGFloat = 6.5
+        /// Five rows and half of the sixth, so a capped menu reads as scrollable, not clipped.
+        static let menuVisibleRows: CGFloat = 5.5
         /// Rounded: a half-row of an odd pitch lands the glass edge on a half pixel.
         static var menuRowsMaxHeight: CGFloat {
             (menuVisibleRows * (menuRowHeight + menuRowSpacing)).rounded()
@@ -281,8 +290,8 @@ enum Theme {
         static let entryScale: CGFloat = 0.94
         static let maximumScale: CGFloat = 1.003
         static let exitScaleDelta: CGFloat = 0.04
-        static let expansionDuration: TimeInterval = 0.14
-        static let settleDuration: TimeInterval = 0.08
+        static let expansionDuration: TimeInterval = 0.10
+        static let settleDuration: TimeInterval = 0.05
         static let exitDuration: TimeInterval = 0.18
         static let expansionTiming = CAMediaTimingFunction(controlPoints: 0.2, 0.7, 0.2, 1)
         static let settleTiming = CAMediaTimingFunction(controlPoints: 0.42, 0, 0.58, 1)
@@ -440,19 +449,9 @@ enum Theme {
 }
 
 extension View {
-    @ViewBuilder
+    /// A floating glass control surface, frosted so it reads brighter than clear glass.
     func frosted(in shape: some Shape) -> some View {
-        if #available(macOS 26.0, *) {
-            self
-                .glassEffect(.regular.interactive().tint(Theme.Colors.glassFrost), in: shape)
-                .tint(.clear)
-        } else {
-            self
-                .background(.ultraThinMaterial, in: shape)
-                .overlay(
-                    shape.stroke(Theme.Colors.glassFrost.opacity(0.3), lineWidth: 1)
-                )
-                .clipShape(shape)
-        }
+        glassEffect(.regular.interactive().tint(Theme.Colors.glassFrost), in: shape)
+            .tint(.clear)
     }
 }

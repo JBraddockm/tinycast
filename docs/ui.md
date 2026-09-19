@@ -151,7 +151,6 @@ panel, the shortcut-recorder callout and the Notes switcher, and `menuRow` is de
 `menuWidth 276` · `clipboardFilterMenuWidth 200` · `fileSearchFilterMenuWidth 200` ·
 `emojiCategoryMenuWidth 220` · `menuIcon 20` ·
 `emojiGridInset 16` ·
-`menuOverflowFade 30` ·
 `settingsSidebar 215` · `settingsRowIcon 20` · `dialogCompactWidth 290` ·
 `dialogWidth 420` · `dialogButtonHeight 34` · `dialogSymbol 28` · `dialogSymbolContainer 52` ·
 `dialogIcon 32` · `hudWidth 200` ·
@@ -159,7 +158,7 @@ panel, the shortcut-recorder callout and the Notes switcher, and `menuRow` is de
 
 Notes adds `noteWindow 520×420` (opening size on a first run only), `noteWindowMinimum 320×220`,
 `noteTitlebar 44`, `noteTitleInset 120`, `noteEditorInset 16`, `noteSearchHeight 34`,
-`noteFooterHeight 28`, `noteGlyph 16`, and `noteEmptyGlyph 28`.
+`noteFooterHeight 28`, `noteGlyph 16`, `noteEmptyGlyph 28`, and `noteHeadingMenu 220×159`.
 
 `keyCap` sizes the palette's keycap chips; `recorderKeyCap` (both size and radius) is the intentionally-smaller Settings shortcut-recorder chip.
 
@@ -199,7 +198,7 @@ shipped. Light is the same stop with the ink inverted, and is the only column op
 | `cardFill`        | white 0.05     | black 0.04     | settings/calc card fill                          |
 | `cardStroke`      | white 0.10     | black 0.10     | settings/calc card border + inset dividers       |
 | `glassFrost`      | white 0.05     | white **0.25** | whitish tint layered into the floating glass     |
-| `noteText`        | white 0.90     | black 0.85     | Notes Markdown source                            |
+| `noteText`        | white 0.90     | black 0.85     | Notes body text                                  |
 | `dropGuide`       | white 0.35     | black 0.35     | the palette's drop guides while dragging         |
 
 `glassFrost` is white in **both** — the frost brightens glass rather than inking it — so it is an
@@ -225,7 +224,7 @@ Source: `Palette/PalettePanel.swift`, `Palette/RootPaletteView.swift`.
 - **Header** (`headerHeight 44`): a back-chevron _or_ mode glyph, then the plain `TextField` (no border/background). Sub-screens (Clipboard, Calculator History) show the back chevron; the launcher shows a magnifying glass. The search icon aligns horizontally with row content.
 - **Compact keyboard entry:** pressing `↓` in the collapsed launcher expands the results and selects the first row without replacing or defocusing the shared search field.
 - **Bottom bar** (`bottomBarHeight 52`): a menu circle on the left, the action group on the right — both floating glass, no bar background. The action group is one glass `Capsule` holding the primary-action pill (label + `↵`) and the Actions toggle (`⌘K`).
-- **`BarButton`** is the shared bar control: bare label at rest, a `rowHover` capsule on hover, `barButtonHeight 28`. It carries the footer's two buttons and the clipboard header's type filter, so those hover identically. Hover state lives inside it, so sweeping one never re-renders the palette body.
+- **`BarButton`** is the shared bar control: bare label at rest, a `rowHover` capsule on hover, `barButtonHeight 28`. Set `isSelected` and it fills with `selection` instead, which beats hover; the Notes formatting bar lights its buttons this way. Set `isCompact` for `sm` padding instead of `md`: around a 16-point glyph frame that makes a 28-point square. It carries the footer's two buttons and the clipboard header's type filter, so those hover identically. Hover state lives inside it, so sweeping one never re-renders the palette body.
 
 ---
 
@@ -260,10 +259,42 @@ empty header moves the panel after a three-point threshold. Create, Reveal, Hide
 remain click-only controls. Escape closes the switcher before hiding, while Command-W and the hide
 control order the panel out. Show Notes only shows or focuses; focus loss leaves the panel visible.
 
-The editor is one native TextKit 2 surface. Its string is the canonical Markdown source, using one
-system font and the `noteText` color. Task markers render as native accessible checkboxes positioned
-with TextKit 2 segment geometry, and completed task text is dimmed and struck through. Other Markdown
-markers and fenced code stay literal. AppKit owns editing, undo, selection, Find, and marked text.
+The editor is one native TextKit 2 surface. Its string is the canonical Markdown source, and Render
+Markdown styles it in place with no new tokens. Notes type sits one system text style above the rest
+of the app, because a note is for reading: body text is the title3 size in `noteText`, and headings 1
+to 3 use the largeTitle, title1 and title2 sizes (bold, bold, semibold). Interface Size does not scale
+it. Inline code is monospaced on `controlSurface`, and links use the system link colour. Quotes and
+checked tasks dim to `textSecondary`, and a checked task is struck through. Markers on the caret's line
+show in `textTertiary`; everywhere else they are hidden. A revealed list or quote marker hangs left of
+its text, so the text does not move when the caret arrives, unless the marker is wider than the slot.
+
+A layout fragment draws the block chrome. A code band fills `cardFill` with `menu` corners at its ends
+and a `textTertiary` language label, inset by `lg`. A quote bar is `markdownQuoteBar` wide in `border`,
+stepping `markdownQuoteBar + lg` per depth. A rule is a `hairline` of `separator`. List markers sit in
+a slot per level, `markdownListMarker` grown in proportion to the body size. Bullets, numbers and
+checkboxes are `textSecondary`; a done box is filled with the check cut out. Headings 1 and 2 get `xl`
+space above, the rest `md`, and `xs` below; every list item gets `md` below. A table stays literal
+source in the code-block font, and a wrapped row hangs `lg` under its first line. AppKit owns editing,
+undo, selection, Find, and marked text.
+
+Under the editor, the formatting bar takes a `bottomBarHeight` band while Render Markdown and Show
+Formatting Bar are on, in place of the 28-point count footer. It is one row, not a capsule hugging the
+window: the count is plain text at the leading edge and the buttons sit in glass at the trailing edge,
+the same split as the palette's own bottom bar. The capsule is the title bar's recipe (`BarButton`s in
+`frosted(in: Capsule())`), inset `md` from the trailing edge as the title capsule is, with `xxs`
+between buttons and `sm` between groups. Each button is a compact 28-point square
+around a `noteGlyph` frame, so the capsule is 36 points wide collapsed and 397 expanded, and the count
+gives way from 524 points down. Collapsing and expanding grows the buttons out of the round button on
+`MenuMotion.chevronAnimation`, wrapped in an explicit `withAnimation` in the coordinator because the
+chord changes that state outside any view's transaction, and skips the animation under Reduce Motion. The band takes only the width it is offered, so the bar can never widen the note; past that,
+only the capsule's leading end clips. Lit buttons
+use `BarButton.isSelected`; hovering shows a `Tooltip` with the name and shortcut, because an AppKit
+tooltip does not appear while the app is inactive behind this non-activating panel. The glass is a
+`background`, never a wrapper, and nothing clips the row, because either one swallows that tooltip. The
+round button aligns its tooltip trailing and the heading button leading, so neither runs past the
+window edge. The heading menu is a borderless child window like the switcher, `noteHeadingMenu` in
+size, hung off the heading button's own reported frame and `xs` above it, drawn with
+`PopoverMenuRow`'s metrics on `menuPanel` glass.
 
 The switcher is its own glass panel over the editor, sized to its list up to a 240-point ceiling and
 never resizing the note window. Its plain search field and
@@ -354,9 +385,10 @@ Glass is normally for floating controls. The dialog root is the one modal-surfac
 
 - `View.frosted(in:)` = `glassEffect(.regular.interactive().tint(glassFrost), in:)` + `.tint(.clear)` — interactive lensing with a whitish frost tint (`glassFrost`) so the glass reads brighter than clear. Used on the action-group capsule, the menu circle and `PopoverMenu`. Dialogs intentionally use untinted, non-interactive `.glassEffect(.regular)` on their root instead; HUDs retain the panel recipe (see "Dialogs & HUD"). Tune interactive frost via the `glassFrost` token, not per call site.
 - **Menus are in-window overlays, not system popovers.** `.contextMenu`/`NSMenu` stall clicks for seconds inside a `LazyVStack` and spill outside the panel. Use `PopoverMenu` anchored to a corner via `.overlay`, inset `menuInset` (8pt) so its own corner isn't clipped by the panel's. A menu hung off a control instead of a corner — the clipboard type filter, `.topTrailing` — insets by that control's own metrics so their edges line up.
-- **A menu's `width` is fixed, never intrinsic**, so it can't jitter as its rows change. Every header menu states its own at its `RootPaletteView.menuContent` case — `menuWidth 276`, or a token of its own where that reads too wide (`clipboardFilterMenuWidth`, `fileSearchFilterMenuWidth`, `emojiCategoryMenuWidth`) — so retuning one never moves another.
+- **A menu's `width` is fixed, never intrinsic**, so it can't jitter as its rows change. Every header menu states its own at its `RootPaletteView.menuContent` case — `menuWidth 276`, or a token of its own where that reads too wide (`clipboardFilterMenuWidth`, `fileSearchFilterMenuWidth`, `emojiCategoryMenuWidth`) — so retuning one never moves another. Native footer menus add 30pt without changing those header widths; extension Actions owns its nearby 310pt width inside the feature.
 - **`PopoverMenu`** uses `glassEffect(.regular)` with `menuPanel 16` corners and **no hand-tuned shadow** — Tahoe glass carries its own elevation; adding a drop shadow reads heavy and non-native. A footer menu raises only its attached bottom corner to the controls' 18-point radius, so the two silhouettes meet exactly.
-- `PopoverMenuRow`: leading glyph, label, trailing shortcut glyph, `menuHover` fill on hover, `menuRow 10` corner. Menus animate in with opacity and scale from the anchored corner, stretching briefly to 1.003 before settling; `Theme.MenuMotion` owns the entry, settle and shorter exit timings.
+- Its native search field is a row-height sibling of the scroller, above header menus or below footer menus. It uses an 18pt horizontal inset to align with the visible row glyphs. The top field stays vertically symmetric; the bottom field keeps its 1pt optical lift. Menus omit the adjacent edge dissolve and centre **No Results** in one row when their filtered rows are empty. The 8pt resting list inset belongs to the scroll content, so rows can reach the surface edges without shifting their initial position; hover fills keep the dedicated `menuRow 10` corner.
+- `PopoverMenuRow`: leading glyph, label, trailing shortcut glyph and `menuHover` fill on hover. Menus animate in with opacity and scale from the anchored corner, stretching briefly to 1.003 before settling; `Theme.MenuMotion` owns the entry, settle and exit timings.
 - The glyph is a `PopoverMenuIcon`: `.symbol` (SF Symbol, `monochrome`, `menuSymbol` — or **red** when `isDestructive`) or `.file` (a real app icon via `IconCache`, used by the paste rows to show the paste target). `PopoverMenuItem` keeps a `systemImage:` convenience init, so symbol rows read exactly as before.
 - **Both glyph kinds share one square `menuIcon` (20) slot**, which pins one row height. A native SF Symbol uses the dedicated 14pt Medium `menuSymbol` font; file and brand icons keep their own artwork sizing inside the same slot.
 - Menu rows use the `md` icon→label gap; the fixed slot adds the remaining optical slack.
@@ -569,6 +601,11 @@ system-drawn and a pane reads exactly as macOS System Settings does.
   the way `SystemPromptEditor` does; dimming an editor that still accepts input is the bug, not the fix.
 - **A group is a `Section`**, with `header:` for its name and `footer:` for the caption that used to
   ride under the last row.
+- **A pane scans as section → setting → control, so its words are rationed.** A subtitle is a short
+  phrase, and only where the title leaves out a consequence or a limit ("Shortcuts still work when
+  hidden."); a footer carries a caveat, such as privacy or cost, never a restatement of its header. A
+  fact every list would repeat lives once, in a tooltip — `launcherVisibilityHelp()` on each launcher
+  checkbox.
 - **The pane's own title is not in the pane.** `SettingsToolbarController` puts it in the titlebar,
   seated in the detail column by `.sidebarTrackingSeparator`.
 - **Settings is the one window that keeps the system titlebar.** `AppWindowController` builds every
@@ -582,8 +619,8 @@ system-drawn and a pane reads exactly as macOS System Settings does.
   material, not `glassEffect`.
 - `SettingsComponents.swift` holds only what more than one pane or editor needs: **`SettingsRow`**,
   **`FeatureSwitchSection`** (a feature's master switch plus its launcher-visibility companion),
-  **`SettingsFilterField`** (the filter row above a long list), and the Settings editor header,
-  fields and surface. `ModalActionButtonStyle.swift` keeps every borderless surface's actions on one
+  **`SettingsFilterField`** (the filter row above a long list), **`launcherVisibilityHelp()`**, and the
+  Settings editor header, fields and surface. `ModalActionButtonStyle.swift` keeps every borderless surface's actions on one
   implementation — dialogs, Settings editors, the camera footers and the Quick Action panel. `Onboarding/OnboardingCard.swift` keeps the older hand-drawn card,
   which that window still uses.
 - **A Settings editor borrows the dialog language, not its job.** `SettingsEditorPresenter` hosts the
@@ -734,7 +771,7 @@ an IME's marked text. See
 
 ## Rules for agents working on the UI
 
-- **Restyle from screenshots, not extracted CSS.** Pixel-matching Raycast from its bundle led to wrong results before; compare rendered screenshots over a light desktop instead. There's no screen-recording from the shell here — verify AppKit rendering with a `swiftc` harness that prints layer state, and let the user do visual sign-off.
+- **Restyle from rendered screenshots, not guessed values.** Compare rendered screenshots over a light desktop. There's no screen-recording from the shell here — verify AppKit rendering with a `swiftc` harness that prints layer state, and let the user do visual sign-off.
 - **Don't add behavior that wasn't requested.** A restyle changes appearance, not interaction — keep selection/scroll/dismiss/focus flows exactly as they are unless the task is about them.
 - **New tokens go in `Theme`**, referenced everywhere. No magic numbers in views.
 - **Keep the shared grammar shared.** If you change row insets, the `fill` precedence, section-header style, or keycap style, change it for _all_ lists — divergence is the bug, not the feature.

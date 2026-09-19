@@ -43,7 +43,9 @@ final class WindowLayoutCoordinator {
     func applyWindowLayoutsPresence() {
         let visible = settings.windowManagementEnabled && settings.windowLayoutsShowInLauncher
         appIndex.setWindowLayouts(visible ? store.layouts : [])
-        appIndex.setCommandsVisible([.createWindowLayout, .captureWindowLayout], visible)
+        let commands: Set<CommandID> = [.createWindowLayout, .captureWindowLayout]
+        appIndex.setCommandsVisible(commands, settings.windowManagementEnabled)
+        appIndex.setCommandsListed(commands, settings.windowLayoutsShowInLauncher)
     }
 
     // MARK: - Running

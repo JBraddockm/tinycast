@@ -33,6 +33,7 @@ struct SettingsBackup: Codable {
         var popToRootSeconds: Int?
         var escapeKeyBehavior: String?
         var appearance: String?
+        var calcNumberStyle: String?
         var interfaceSize: String?
         var paletteTransparency: Int?
         var compactMode: Bool?
@@ -45,6 +46,8 @@ struct SettingsBackup: Codable {
         var fileSearchScopes: [String]?
         var fileSearchIgnorePatterns: [String]?
         var notesEnabled: Bool?
+        var notesRendersMarkdown: Bool?
+        var notesShowsFormattingBar: Bool?
         // `snippetsEnabled` is absent: an import must not enable keystroke listening.
         var customCommandsEnabled: Bool?
         var customCommandsShowInLauncher: Bool?
@@ -136,6 +139,7 @@ extension SettingsBackup {
             popToRootSeconds: s.popToRootTimeout.rawValue,
             escapeKeyBehavior: s.escapeKeyBehavior.rawValue,
             appearance: s.appearance.rawValue,
+            calcNumberStyle: s.calcNumberStyle.rawValue,
             interfaceSize: s.interfaceSize.rawValue,
             paletteTransparency: s.paletteTransparency,
             compactMode: s.compactMode,
@@ -147,6 +151,8 @@ extension SettingsBackup {
             fileSearchScopes: s.fileSearchScopes,
             fileSearchIgnorePatterns: s.fileSearchIgnorePatterns,
             notesEnabled: s.notesEnabled,
+            notesRendersMarkdown: s.notesRendersMarkdown,
+            notesShowsFormattingBar: s.notesShowsFormattingBar,
             customCommandsEnabled: s.customCommandsEnabled,
             customCommandsShowInLauncher: s.customCommandsShowInLauncher,
             snippetsShowInLauncher: s.snippetsShowInLauncher,
@@ -336,6 +342,10 @@ extension SettingsBackup {
             settings.appearance = appearance
             count += 1
         }
+        if let raw = s.calcNumberStyle, let style = CalcNumberStyle(rawValue: raw) {
+            settings.calcNumberStyle = style
+            count += 1
+        }
         if let value = s.paletteTransparency, (-100...100).contains(value) {
             settings.paletteTransparency = value
             count += 1
@@ -375,6 +385,14 @@ extension SettingsBackup {
         }
         if let flag = s.notesEnabled {
             settings.notesEnabled = flag
+            count += 1
+        }
+        if let flag = s.notesRendersMarkdown {
+            settings.notesRendersMarkdown = flag
+            count += 1
+        }
+        if let flag = s.notesShowsFormattingBar {
+            settings.notesShowsFormattingBar = flag
             count += 1
         }
         if let flag = s.customCommandsEnabled {

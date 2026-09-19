@@ -10,11 +10,6 @@ struct EmojiSettingsView: View {
 
             Section {
                 EmojiColumnCountPicker(selection: $settings.emojiGridColumns)
-            } header: {
-                SettingsSectionHeader(.emojiAppearance)
-            }
-
-            Section {
                 // A hand per tone, quicker to scan than a dropdown of tone names.
                 Picker(selection: $settings.emojiSkinTone) {
                     ForEach(EmojiSkinTone.allCases) { tone in
@@ -24,10 +19,8 @@ struct EmojiSettingsView: View {
                     SettingsRowTitle(.emojiAppearance, "Emoji Skin Tone")
                 }
                 .pickerStyle(.segmented)
-            } footer: {
-                Text("Applied when an emoji supports skin tones; pastes use it too.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            } header: {
+                SettingsSectionHeader(.emojiAppearance)
             }
         }
         .formStyle(.grouped)

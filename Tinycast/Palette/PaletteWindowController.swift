@@ -8,7 +8,7 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
     private var panel: PalettePanel?
     private(set) var previousApp: NSRunningApplication?
     /// Our key window at summon time, so hiding hands focus back to Settings, not a stale app.
-    private weak var previousOwnWindow: NSWindow?
+    private(set) weak var previousOwnWindow: NSWindow?
     private var popToRootTimer: Timer?
     // Reopen beat the timeout, so select the preserved query.
     private var queryWasPreserved = false
@@ -52,14 +52,12 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
         Signposts.interval("PaletteWindowController.show") {
             // Summoned over one of our own windows: there is no external paste or focus target.
             let frontmost = NSWorkspace.shared.frontmostApplication
-            if frontmost?.processIdentifier == NSRunningApplication.current.processIdentifier {
-                previousApp = nil
-                // Never the palette itself: a mode switch re-shows it while it already holds key.
-                if let key = NSApp.keyWindow, key !== panel { previousOwnWindow = key }
-            } else {
-                previousApp = frontmost
-                previousOwnWindow = nil
-            }
+            let ownPID = NSRunningApplication.current.processIdentifier
+            previousApp = frontmost?.processIdentifier == ownPID ? nil : frontmost
+            // Recorded even when another app is frontmost: our panels take key without activating.
+            let key = NSApp.keyWindow
+            // A mode switch re-shows the palette while it holds key; keep what it recorded then.
+            if key !== panel { previousOwnWindow = key }
             // Once per summon, and from `previousApp`, so the label names the paste target.
             core.palette.pasteTarget = PasteTarget(app: previousApp)
             let panel = ensurePanel()
@@ -222,6 +220,7 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
     /// Not for one of our own dialogs: hiding would tear down a command mid-`confirmAlert`.
     func windowDidResignKey(_ notification: Notification) {
         guard isVisible, !core.isShowingDialog else { return }
+        if core.palette.menuOpen { return }
         core.paletteCoordinator.hidePalette(restoreFocus: false)
     }
 
@@ -319,14 +318,6 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
             guard let core = self?.core, core.palette.query.isEmpty else { return false }
             // A form field owns the key: the text it deletes is the field's, not a query's.
             if core.palette.isEditingField { return false }
-            // The argument form steps back through the answers first, one key per field.
-            if core.palette.mode == .customCommandArguments,
-                let previous = core.customCommandArguments.retreat()
-            {
-                core.palette.query = previous
-                core.palette.selection = 0
-                return true
-            }
             if core.palette.mode == .extensionCommand {
                 core.extensionCoordinator.exitExtensionScreen()
                 return true

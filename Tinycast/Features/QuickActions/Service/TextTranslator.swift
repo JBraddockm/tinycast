@@ -9,7 +9,6 @@ enum TextTranslator {
         case unsupported
         case notInstalled(language: String)
         case failed
-        case osUnsupported
 
         var errorDescription: String? {
             switch self {
@@ -19,8 +18,6 @@ enum TextTranslator {
                 return "Apple's translator does not support this language pair."
             case .notInstalled(let language):
                 return "\(language) needs to be downloaded before it can be used."
-            case .osUnsupported:
-                return "Translation requires macOS 26 or later."
             case .failed:
                 return "The text could not be translated."
             }
@@ -39,7 +36,6 @@ enum TextTranslator {
 
     /// Installed pairs only: a missing language is downloaded in System Settings, never from here.
     static func translate(_ text: String, to target: Locale.Language) async throws -> String {
-        guard #available(macOS 26.0, *) else { throw Failure.osUnsupported }
         guard let source = sourceLanguage(of: text) else { throw Failure.undetectableSource }
         guard !source.isEquivalent(to: target) else { return text }
         switch await LanguageAvailability().status(from: source, to: target) {

@@ -13,9 +13,7 @@ struct WindowManagementSettingsView: View {
             FeatureSwitchSection(
                 anchor: .windowManagementWindowManagement,
                 enableTitle: "Enable window management",
-                enableSubtitle:
-                    "Moves the window you were last in, using the Accessibility permission Tinycast already uses to paste.",
-                launcherSubtitle: "Find the window commands in launcher search.",
+                enableSubtitle: "Moves the last window you used. Needs Accessibility.",
                 isEnabled: $settings.windowManagementEnabled,
                 showsInLauncher: $settings.windowManagementShowInLauncher)
 
@@ -79,7 +77,7 @@ struct WindowManagementSettingsView: View {
                 }
             } label: {
                 SettingsRowTitle(.windowManagementOptions, "Gap between windows")
-                Text("Points left between tiled windows and around the screen edge.")
+                Text("Between tiled windows and screen edges.")
             }
         } header: {
             SettingsSectionHeader(.windowManagementOptions)
@@ -114,7 +112,7 @@ private struct WindowCommandSettingsRow: View {
             Toggle("", isOn: visibilityBinding)
                 .labelsHidden()
                 .toggleStyle(.checkbox)
-                .help("Show in launcher")
+                .launcherVisibilityHelp()
                 .accessibilityLabel("Show \(command.name) in launcher")
         }
     }

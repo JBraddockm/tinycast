@@ -46,13 +46,15 @@ struct CalcResult: Equatable, Sendable {
 
 /// Raw query to answer, or nil when it isn't calculator input. See docs/features/calculator.md.
 enum CalcEngine {
-    /// `now`/`calendar`/`region` are injected so every path is deterministic under the harness.
+    /// Every environment fact is injected; the answer is canonical, for `format` to localize.
     static func evaluate(
         _ raw: String, now: Date, calendar: Calendar, rates: CurrencyRates? = nil,
-        region: String? = nil
+        region: String? = nil, format: CalcNumberFormat = .english
     ) -> CalcResult? {
-        let query = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty, query.count <= 256 else { return nil }
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, trimmed.count <= 256, let query = format.canonical(trimmed) else {
+            return nil
+        }
         guard !query.utf8.allSatisfy({ (65...90).contains($0) || (97...122).contains($0) }) else {
             return nil
         }

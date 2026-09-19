@@ -94,7 +94,7 @@ final class LauncherCoordinator {
         }
         if app.kind == .customCommand {
             guard let id = CustomCommand.id(fromEntryID: app.id) else { return }
-            customCommandCoordinator.runCustomCommand(id: id)
+            customCommandCoordinator.runCustomCommand(id: id, values: arguments)
             return
         }
         if app.kind == .systemAction {
@@ -183,6 +183,8 @@ final class LauncherCoordinator {
         case .openCamera:
             dismissPalette()
             Task { await core.cameraCoordinator.show() }
+        case .define:
+            core.dictionaryCoordinator.show()
         case .openInBrowser, .runShellCommand:
             break  // Query-driven: each runs where the typed text is, never through this funnel.
         case .joinNextMeeting:

@@ -40,13 +40,9 @@ struct MCPSettingsSection: View {
         } header: {
             SettingsSectionHeader(.aiMCPServers)
         } footer: {
-            Text(
-                "Tools from every enabled server are offered to the model; type @slug to address "
-                    + "one directly. The first call of a chat asks before it runs. Credentials "
-                    + "stay in your login Keychain."
-            )
-            .font(.caption)
-            .foregroundStyle(.secondary)
+            Text("Type @slug to address one server. A chat asks before its first tool call.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
         .settingsEditorPanel(item: $editor) { target in
             MCPServerEditor(target: target, onSave: save, onCancel: { editor = nil })

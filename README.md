@@ -50,6 +50,8 @@ keep it actively maintained. GitHub Sponsors isn't available in my country, so p
 - **Per-app hotkeys** — bind a key to an app; press it to toggle (focus/hide).
 - **Search Files** — open files and folders from the folders you choose, through Spotlight, with no
   index of our own.
+- **Dictionary** — look a word up with the Define Word command, or define whatever you typed from the
+  launcher's fallbacks, read from the Mac's own dictionaries.
 - **Clipboard history** — text and images, searchable, pasted back into the app you were using.
 - **Calculator** — do math, unit, live currency and crypto conversions inline, right in the palette.
 - **Quicklinks** — turn a URL, search, file or deeplink into a command, with placeholders for typed
@@ -66,7 +68,7 @@ keep it actively maintained. GitHub Sponsors isn't available in my country, so p
 - **Calendar and meetings** — your next meeting on the empty palette and in the menu bar, one key to
   join it, or let it join itself.
 - **Notes** — an unlimited collection of plain Markdown files in one floating editor, searchable from
-  the palette.
+  the palette and rendered as you write.
 - **Emoji picker** — a searchable emoji grid, one keystroke away.
 - **AI chat** — use your own key or an installed AI account, chat from the palette. Off out of the box, like every AI feature.
 - **Quick Actions** — fix grammar, rewrite, translate or summarize the selected text in any app.
@@ -138,6 +140,16 @@ in the **[pull request template](.github/PULL_REQUEST_TEMPLATE.md)**. Security i
 [SECURITY.md](SECURITY.md), not the issue tracker.
 
 Questions, ideas, or just want to follow along? **[Join the Discord](https://discord.gg/v2Eeb4QQy3)**.
+
+## Star History
+
+<a href="https://www.star-history.com/?repos=abue-ammar%2Ftinycast&type=date&legend=top-left">
+ <picture>
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=abue-ammar/tinycast&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=abue-ammar/tinycast&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=abue-ammar/tinycast&type=date&legend=top-left" />
+ </picture>
+</a>
 
 ## License
 

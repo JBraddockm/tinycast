@@ -54,6 +54,8 @@ final class PaletteState {
     var commandArguments: [String: String] = [:]
     /// Set when the palette opens to fill one row's fields; the header focuses the first empty one.
     var pendingArgumentEntryID: String?
+    /// The row a shortcut opened root search onto, listed alone while the query is its name.
+    var argumentEntryID: String?
     /// True once ⌘ has been *held*, which numbers the favorite rows. The panel is the only writer.
     private(set) var commandHeld = false
     /// A chord is a tap, so the numbering waits out the tap before it claims the trailing labels.
@@ -72,8 +74,9 @@ final class PaletteState {
     @ObservationIgnored private var hoverAnchor: CGPoint = .zero
     /// A containment test, because hit-testing a rebuilding hierarchy misses the field.
     @ObservationIgnored var searchFieldFrame: CGRect = .zero
-    /// True while a footer menu is open. See docs/features/palette.md#menu-open-input-freeze.
+    /// True while a palette menu is open. See docs/features/palette.md#menu-open-input-freeze.
     @ObservationIgnored var menuOpen = false { didSet { onMenuOpenChanged?(menuOpen) } }
+    var menuQuery = ""
     /// Fired when `menuOpen` flips, so the panel can hide the caret without a focus swap.
     @ObservationIgnored var onMenuOpenChanged: ((Bool) -> Void)?
     /// A fresh presentation resets a long popover to the row it opens with.
@@ -143,6 +146,7 @@ final class PaletteState {
         isControlListOpen = false
         commandArguments = [:]
         pendingArgumentEntryID = nil
+        argumentEntryID = nil
         clipboardFilter = .all
         fileSearchFilter = .all
         emojiCategoryFilter = .all
@@ -151,6 +155,7 @@ final class PaletteState {
         forceExpanded = false
         dropHoverHighlight()
         menuOpen = false
+        menuQuery = ""
         focusToken = UUID()
     }
 

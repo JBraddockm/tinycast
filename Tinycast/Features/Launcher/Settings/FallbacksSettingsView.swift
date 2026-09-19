@@ -11,19 +11,9 @@ struct FallbacksSettingsView: View {
     var body: some View {
         Form {
             Section {
-                Text(
-                    "Every search offers these below its results, under “Use … with”. "
-                        + "Each one takes what you typed as its input."
-                )
-                .foregroundStyle(.secondary)
-            } header: {
-                SettingsSectionHeader(.fallbacksFallbacks)
-            }
-
-            Section {
                 let fallbacks = fallbacks
                 if fallbacks.isEmpty {
-                    Text("Nothing to offer — the features these belong to are switched off.")
+                    Text("Nothing to offer — their features are off.")
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .center)
                 } else {
@@ -37,13 +27,12 @@ struct FallbacksSettingsView: View {
                     }
                     .padding(.vertical, -Self.rowPadding)
                 }
+            } header: {
+                SettingsSectionHeader(.fallbacksFallbacks)
             } footer: {
-                Text(
-                    "A quicklink appears here once its link contains an {argument}, "
-                        + "which the query fills in."
-                )
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                Text("Shown below every search as “Use … with”. Includes quicklinks with an {argument}.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
         .formStyle(.grouped)

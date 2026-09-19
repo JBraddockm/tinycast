@@ -22,7 +22,7 @@ struct ExtensionStorePanel: View {
     private var searchingSummary: String {
         let on = registries.filter(\.isEnabled)
         guard !on.isEmpty else {
-            return "No registries are enabled. Turn one on under Install → Where to search."
+            return "No registries are enabled. Turn one on under Install → Registries."
         }
         let names = on.map(\.name).joined(separator: ", ")
         return "Searching \(names). Store extensions install as they are; a repository is built first."

@@ -70,6 +70,11 @@ extension View {
     func settingsEditorPanelSurface() -> some View {
         modifier(SettingsEditorPanelSurface())
     }
+
+    /// The one place that says hiding a row from the launcher never unbinds its shortcut.
+    func launcherVisibilityHelp() -> some View {
+        help("Show in launcher. Its shortcut works either way.")
+    }
 }
 
 struct SettingsEditorHeader: View {
@@ -147,7 +152,7 @@ private struct SettingsEditorPanelSurface: ViewModifier {
         let shape = RoundedRectangle(cornerRadius: Theme.Radius.panel, style: .continuous)
         content
             .background(Theme.Colors.panelScrim, in: shape)
-            .frosted(in: shape)
+            .glassEffect(.regular, in: shape)
     }
 }
 
@@ -155,8 +160,7 @@ private struct SettingsEditorPanelSurface: ViewModifier {
 struct FeatureSwitchSection: View {
     let anchor: SettingsAnchor
     let enableTitle: String
-    let enableSubtitle: String
-    let launcherSubtitle: String
+    var enableSubtitle: String?
     @Binding var isEnabled: Bool
     @Binding var showsInLauncher: Bool
 
@@ -164,14 +168,11 @@ struct FeatureSwitchSection: View {
         Section {
             Toggle(isOn: $isEnabled) {
                 SettingsRowTitle(anchor, enableTitle)
-                Text(enableSubtitle)
+                if let enableSubtitle { Text(enableSubtitle) }
             }
-            Toggle(isOn: $showsInLauncher) {
-                Text("Show in launcher")
-                Text(launcherSubtitle)
-            }
-            // The switch above stays live so the feature can always be turned back on.
-            .settingsEnabled(isEnabled)
+            Toggle("Show in launcher", isOn: $showsInLauncher)
+                // The switch above stays live so the feature can always be turned back on.
+                .settingsEnabled(isEnabled)
         } header: {
             SettingsSectionHeader(anchor)
         }

@@ -10,8 +10,14 @@ in (see Currency below).
 
 - **`Model/` (including `CalcDateTime`) stays Foundation-only *and pure*** — no AppKit or SwiftUI, no
   clock read, no network, **no `Locale`**. `calc-test` compiles the real engine sources. Every
-  externally-sourced input is injected: the clock via `now`/`calendar`, the FX table via `rates`, and
-  the Mac's own currency via `region`, which `RegionCurrency` reads and `CalcMemo` passes down.
+  externally-sourced input is injected: the clock via `now`/`calendar`, the FX table via `rates`,
+  the Mac's own currency via `region`, which `RegionCurrency` reads and `CalcMemo` passes down, and
+  the number format via `format`, which `RegionNumberFormatMonitor` reads from Language & Region.
+- **The engine only ever reads and writes canonical English numbers.** `CalcNumberFormat.canonical`
+  rewrites a query before anything else sees it, and `CalcNumberFormat.localized` rewrites an answer
+  only at presentation — the card, the actions header, a history row, the pasteboard. No grammar,
+  tokenizer rule or formatter learns about locales, and `CalculatorHistoryStore` stores canonical
+  text, so history re-renders in whatever format is chosen later.
 - **`CalcEngine.evaluate` never fetches** — it takes a finished `CurrencyRates?`, nil meaning no
   snapshot has landed yet. `CurrencyRateStore` owns the fetch and the cacheless `.ephemeral` session,
   and `CurrencyFeed` — pure, so the harness covers it — turns the payloads into that snapshot.
@@ -279,11 +285,18 @@ still earns a card where a lone `100000` deliberately doesn't. A literal that ov
 
 ## Time zones
 
-`CalcTimeZone` answers `time in Tokyo`, `SF time`, `what time is it in London`, `5pm ldn in sf` and
-`9:30am in nyc`. It runs **before the tokenizer** — a zone phrase is words, and `5pm ldn in sf`
-is not calculator input. The `<place> time` form resolves the whole place through the existing
-city, alias and country tables, then uses the same path as `time in <place>`. Every other form needs
-a connector or a leading clock, so ordinary app searches stay outside the zone grammar.
+`CalcTimeZone` answers `time in Tokyo`, `SF time`, `time SF`, `Canada timezone`, `now in usa`,
+`what time is it in London`, `5pm ldn in sf` and `9:30am in nyc`. It runs **before the tokenizer** —
+a zone phrase is words, and `5pm ldn in sf` is not calculator input. The current-time forms resolve
+the whole place through the existing city, alias and country tables. `<place> time`, `time <place>`,
+`<place> timezone`, `<place> time zone`, `timezone <place>` and `timezone in <place>` use the same
+path as `time in <place>`. Unknown places and ordinary app searches stay outside this grammar.
+
+`Canada time to China`, `Canada timezone to China` and `Canada time zone to China` use the existing
+`time Canada to China` path: Toronto's current clock is the source expression and Shanghai's current
+clock is the result. Both places must resolve in full. `timezone` means the current clock, while
+`diff` remains the separate time-difference operation. `now in <place>` also requests the current
+clock; the `usa` alias continues to select New York.
 
 A clock followed by a recognized source, such as `5:30pm SF` or `5:30 pm SF`, converts to the
 Mac's own zone when no destination is supplied. The destination comes from the injected calendar;
@@ -413,7 +426,8 @@ and currency paths so a spelled-out word never outranks a measurement:
 
 `CalcToken.comma` separates these lists and function arguments. Outside function parentheses,
 a comma **between digits** remains a grouping separator, so `1,000 + 234` is unchanged and a bare
-`10,5` stays silent.
+`10,5` stays silent. Where the comma is the decimal, `;` takes its place — see
+[Number format](#number-format).
 
 Each of these badges what its number **is** — `Tip`, `Discounted`, `Percentage`, `Total`, `Ratio`,
 `Average`, `Sum`, `Minimum`, `Maximum`, `Rounded` — rather than the bare `Result` that says nothing
@@ -575,6 +589,44 @@ Date answers that display and copy identically also reuse their formatted text.
 When the launcher or Calculator History query evaluates to a result the card is pinned at the top of
 the list (flat selection index 0, shifting rows by one) and Enter copies the answer + records it to
 `CalculatorHistoryStore`.
+
+## Number format
+
+General ▸ Calculator ▸ Number format is `System` by default, reading the decimal and grouping
+separators from Language & Region, or `English`, which is the canonical syntax itself. A decimal
+separator other than `.` or `,` (the Arabic `٫`) falls back to English, and so does any grouping
+separator outside `. , ' ’` and the no-break spaces — an ordinary space is never grouping, so
+`1hr 30` and `5 feet 3 inches` keep their meaning. `RegionNumberFormatMonitor` re-reads on
+`NSLocale.currentLocaleDidChangeNotification`, so a change in System Settings applies without a relaunch.
+
+`CalcNumberFormat.canonical` scans each run of digits and the separators between them, and rewrites
+it to canonical spelling or rejects the whole query. Rejection means **no card**, never a guess:
+
+- **A decimal comma owns every comma between two digits.** `2,3 + 1,5` is `3,8` and `max(2,3)` is
+  `max(2.3)`. Function arguments and list items are separated by `;` instead — `max(2,5; 3)`,
+  `average of 10; 20; 30` — the convention every spreadsheet in those locales uses. `;` becomes a
+  spaced canonical comma, so it can never be re-read as grouping. A comma followed by a space cannot
+  be a decimal, so `max(2, 3)` still separates.
+- **Grouping must be valid grouping**: one to three digits, then groups of exactly three.
+  `1.234,56` is 1234.56. In Italian `1.5`, `12.34` and `1.2345` are rejected — each is either a
+  mistyped group or an English decimal, and there is no telling which.
+- **More than one decimal separator is rejected** (`1,2,3`), as is grouping after the decimal
+  (`1,234.5`, the English habit in an Italian format).
+- **Dotted dates survive.** Three or more dot-separated parts that are not valid grouping pass
+  through untouched, so `17.2.26 + 100 weekdays` and `25.8.27` read exactly as they do in English;
+  no valid grouping can be a date, since a date's year has two or four digits and a group has three.
+- **Clock fragments survive.** A run touching `:` is left alone, so the fractional seconds in
+  `1970-01-01T00:00:00.125Z` are never read as grouping.
+- **A trailing decimal separator is kept**, so `1 + 2,` still answers `3` while the fraction is typed.
+- A dot that is not the format's grouping separator (French, where grouping is a narrow no-break
+  space) is the canonical decimal, so `1.5 + 1` answers `2,5`.
+
+`CalcNumberFormat.localized` is the reverse, applied to canonical text: a run that is one valid
+canonical number takes the format's separators, and anything else — a dotted date, a version, a
+clock, a date formatter's `Friday, 24 July` — is left as written. Inside a function call every comma
+is an argument, as `CalcTokenizer` reads it, so a stored `max(1,234)` shows `max(1;234)`, never
+`max(1.234)`. The echoed expression additionally turns its canonical argument commas into `;`. `English` makes both directions the identity, so the
+English path is byte-for-byte what it was.
 
 ## Additional units and transfer rates
 

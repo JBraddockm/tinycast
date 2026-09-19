@@ -79,7 +79,9 @@ final class SnippetCoordinator {
     /// Either switch off means the feature reaches the launcher not at all — rows and commands.
     func applySnippetsLauncherPresence() {
         let visible = settings.snippetsEnabled && settings.snippetsShowInLauncher
-        appIndex.setCommandsVisible([.searchSnippets, .createSnippet], visible)
+        let commands: Set<CommandID> = [.searchSnippets, .createSnippet]
+        appIndex.setCommandsVisible(commands, settings.snippetsEnabled)
+        appIndex.setCommandsListed(commands, settings.snippetsShowInLauncher)
         appIndex.updateSnippets(visible ? store.snippets : [])
     }
 

@@ -84,22 +84,13 @@ enum AppLauncher {
     }
 
     /// Observes before it terminates, so an instance that exits at once can't outrun the wait.
-    /// Observes before it terminates, so an instance that exits at once can't outrun the wait.
     @MainActor
     private static func quitAwaitingExit(_ apps: [NSRunningApplication]) async -> Bool {
         let center = NSWorkspace.shared.notificationCenter
         let (exits, continuation) = AsyncStream.makeStream(of: pid_t.self)
         let observer = center.addObserver(
-            forName: NSWorkspace.didTerminateApplicationNotification,
-            object: nil,
-            queue: nil
-        ) { notification in
-            guard
-                let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey]
-                    as? NSRunningApplication
-            else { return }
-            continuation.yield(app.processIdentifier)
-        }
+            of: NSWorkspace.shared, for: NSWorkspace.DidTerminateApplicationMessage.self
+        ) { continuation.yield($0.application.processIdentifier) }
         defer { center.removeObserver(observer) }
 
         var pending = Set(apps.map(\.processIdentifier))

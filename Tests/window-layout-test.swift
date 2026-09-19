@@ -767,13 +767,14 @@ struct WindowLayoutTests {
     static func customSize(
         _ name: String = "Wide", width: CustomWindowSize.Dimension = .init(1200, .points),
         height: CustomWindowSize.Dimension = .init(800, .points),
-        anchor: WindowLayoutAnchor = .center
+        anchor: WindowLayoutAnchor = .center, offset: CustomWindowSize.Offset = .zero
     ) -> CustomWindowSize {
-        CustomWindowSize(name: name, width: width, height: height, anchor: anchor)
+        CustomWindowSize(
+            name: name, width: width, height: height, anchor: anchor, offset: offset)
     }
 
     static func customSizeRecord() {
-        let value = customSize()
+        let value = customSize(offset: .init(x: 12, y: -34))
         expect(value.entryID.hasPrefix("window-size:"), "a custom size's entry id is namespaced")
         expect(
             CustomWindowSize.id(fromEntryID: value.entryID) == value.id,
@@ -785,6 +786,10 @@ struct WindowLayoutTests {
             customSize(height: .init(60, .percent)).summary == "1200 pt × 60% · Center",
             "the summary names both lengths and the position")
         expect(
+            customSize(offset: .init(x: 20, y: -10)).summary
+                == "1200 pt × 800 pt · Center · Offset 20, -10 pt",
+            "a non-zero offset joins the summary")
+        expect(
             CustomWindowSize.precedes(customSize("alpha"), customSize("Beta")),
             "custom sizes order case-insensitively by name")
 
@@ -792,6 +797,14 @@ struct WindowLayoutTests {
             let decoded = try? JSONDecoder().decode(CustomWindowSize.self, from: data)
         else { return expect(false, "a custom size encodes and decodes") }
         expect(decoded == value, "every field survives a Codable round trip")
+
+        var legacy = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any]
+        legacy?["offset"] = nil
+        let legacyData = legacy.flatMap { try? JSONSerialization.data(withJSONObject: $0) }
+        expect(
+            legacyData.flatMap { try? JSONDecoder().decode(CustomWindowSize.self, from: $0) }?
+                .offset == .zero,
+            "a size stored before offsets decodes with none")
     }
 
     static func customSizeDimensions() {
@@ -851,6 +864,14 @@ struct WindowLayoutTests {
             customSize(anchor: .left).frame(in: leftScreen.visibleFrame, gap: 0),
             CGRect(x: -1920, y: 53, width: 1200, height: 800),
             "a negative-coordinate display places from its own origin")
+        expectRect(
+            customSize(offset: .init(x: 30, y: -20)).frame(in: visible, gap: 0),
+            CGRect(x: 150, y: 30, width: 1200, height: 800), "the offset nudges the anchored frame")
+        expectRect(
+            customSize(anchor: .topLeft, offset: .init(x: -50, y: 4000))
+                .frame(in: visible, gap: 0),
+            CGRect(x: 0, y: 100, width: 1200, height: 800),
+            "an offset past an edge is clamped onto the display")
         expect(
             customSize().frame(in: CGRect(x: 0, y: 0, width: 0, height: 900), gap: 0) == nil,
             "a display with no visible width yields nothing")
@@ -942,6 +963,7 @@ struct WindowLayoutTests {
             outOfRange.width.value = 0
             outOfRange.height.value = 400
             outOfRange.height.unit = .percent
+            outOfRange.offset.x = -99_999
             let duplicateID = CustomWindowSize(id: outOfRange.id, name: "Twin")
             let count = store.replace(with: [
                 outOfRange, duplicateID, customSize(""), customSize("imported")
@@ -949,6 +971,7 @@ struct WindowLayoutTests {
             expect(count == 1, "an import drops duplicate ids, empty names and duplicate names")
             expect(store.sizes.first?.width.value == 1, "an imported zero clamps up")
             expect(store.sizes.first?.height.value == 100, "an imported percent clamps down")
+            expect(store.sizes.first?.offset.x == -4000, "an imported offset clamps")
         }
     }
 

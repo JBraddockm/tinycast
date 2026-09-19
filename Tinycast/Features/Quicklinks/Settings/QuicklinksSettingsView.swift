@@ -15,9 +15,6 @@ struct QuicklinksSettingsView: View {
             FeatureSwitchSection(
                 anchor: .quicklinksQuicklinks,
                 enableTitle: "Enable quicklinks",
-                enableSubtitle:
-                    "Open saved destinations from the launcher, a shortcut, or Search Quicklinks.",
-                launcherSubtitle: "Find your quicklinks in launcher search.",
                 isEnabled: $settings.quicklinksEnabled,
                 showsInLauncher: $settings.quicklinksShowInLauncher)
 
@@ -58,8 +55,7 @@ struct QuicklinksSettingsView: View {
     private var storageNotice: some View {
         Section {
             Label(
-                "Quicklinks can't be saved: the database couldn't be opened, so nothing you change"
-                    + " here will stick. The existing file was left untouched.",
+                "Changes can't be saved: the database couldn't be opened. Its file is untouched.",
                 systemImage: "exclamationmark.triangle.fill"
             )
             .foregroundStyle(.orange)
@@ -75,7 +71,7 @@ struct QuicklinksSettingsView: View {
             if results.isEmpty {
                 Text(
                     store.quicklinks.isEmpty
-                        ? "Add one to make it searchable from the launcher."
+                        ? "No quicklinks yet."
                         : "No quicklink matches “\(query)”."
                 )
                 .foregroundStyle(.secondary)
@@ -97,10 +93,6 @@ struct QuicklinksSettingsView: View {
             } label: {
                 SettingsRowTitle(.quicklinksQuicklinks, "Add Quicklink")
             }
-        } footer: {
-            Text("Name it, paste a link, then add an alias or a shortcut if you want one.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
         }
     }
 
@@ -109,9 +101,7 @@ struct QuicklinksSettingsView: View {
         return Section {
             Toggle(isOn: $settings.quicklinkOpensNewWindow) {
                 SettingsRowTitle(.quicklinksBehaviour, "Open in a new window")
-                Text(
-                    "Ask the handler for a new window instead of reusing its frontmost tab. "
-                        + "Only apps that accept a new-window argument can honour this.")
+                Text("Where the app supports it.")
             }
             Picker(selection: $settings.quicklinkSelectionFallback) {
                 ForEach(QuicklinkSelectionFallback.allCases) { option in
@@ -119,11 +109,11 @@ struct QuicklinksSettingsView: View {
                 }
             } label: {
                 SettingsRowTitle(.quicklinksBehaviour, "When there's no selected text")
-                Text("What {selection} does when the app in front exposes nothing to read.")
+                Text("For links that use {selection}.")
             }
             Toggle(isOn: $settings.quicklinkConfirmsBeforeDelete) {
                 SettingsRowTitle(.quicklinksBehaviour, "Confirm before deleting")
-                Text("Ask first when deleting a quicklink from the launcher's Actions menu.")
+                Text("From the launcher's Actions menu.")
             }
         } header: {
             SettingsSectionHeader(.quicklinksBehaviour)
@@ -136,14 +126,14 @@ struct QuicklinksSettingsView: View {
                 Button("Import…") { Task { await core.quicklinkCoordinator.importQuicklinks() } }
             } label: {
                 SettingsRowTitle(.quicklinksImportExport, "Import quicklinks")
-                Text("Add quicklinks from a JSON file, skipping any you already have.")
+                Text("From a JSON file; duplicates are skipped.")
             }
             LabeledContent {
                 Button("Export…") { Task { await core.quicklinkCoordinator.exportQuicklinks() } }
                     .disabled(store.quicklinks.isEmpty)
             } label: {
                 SettingsRowTitle(.quicklinksImportExport, "Export quicklinks")
-                Text("Write your whole library to a JSON file.")
+                Text("To a JSON file.")
             }
         } header: {
             SettingsSectionHeader(.quicklinksImportExport)

@@ -22,8 +22,6 @@ struct CustomWindowSizesSection: View {
             }
         } header: {
             SettingsSectionHeader(.windowManagementCustomSizes)
-        } footer: {
-            Text("A custom size resizes and places the window you were last in, like any command.")
         }
     }
 
@@ -64,7 +62,7 @@ private struct CustomWindowSizeRow: View {
             Toggle("", isOn: visibilityBinding)
                 .labelsHidden()
                 .toggleStyle(.checkbox)
-                .help("Show in launcher")
+                .launcherVisibilityHelp()
                 .accessibilityLabel("Show \(size.name) in launcher")
         }
     }

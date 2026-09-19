@@ -108,11 +108,10 @@ enum SettingsSearchCatalog {
     // Pane order, then section order within a pane, so this reads as a table of contents.
 
     static let entries: [SettingsSearchEntry] =
-        general + applications + systemSettings
-        + systemActions + commands + quicklinks + appleShortcuts + fallbacks + ai + quickActions + fileSearch
-        + notes
-        + snippets + navigation + windowManagement + clipboard + emoji + calendar
-        + extensions + permissions + backup + about
+        general + applications + systemSettings + systemActions + commands + quicklinks
+        + appleShortcuts + fallbacks + clipboard + snippets + fileSearch + windowManagement
+        + navigation + notes + calendar + emoji + ai + quickActions + extensions + permissions
+        + backup + about
 
     private static let general: [SettingsSearchEntry] = [
         .init(pane: .general, keywords: ["preferences", "settings"]),
@@ -120,17 +119,20 @@ enum SettingsSearchCatalog {
             .generalGlobalShortcuts, "App Launcher",
             keywords: ["hotkey", "shortcut", "summon", "palette"]),
         .init(
-            .generalSearch, "Learned ranking",
-            keywords: ["reset", "history", "order", "privacy"]),
+            .generalGeneral, "Launch at login",
+            keywords: ["startup", "login item", "start", "boot"]),
         .init(
-            .generalHyperKey, "Hyper Key",
-            keywords: ["modifier", "remap", "caps lock", "capslock"]),
+            .generalGeneral, "Show in menu bar",
+            keywords: ["menubar", "status item", "icon", "hide"]),
         .init(
-            .generalHyperKey, "Quick Press",
-            keywords: ["tap", "escape", "single press"]),
+            .generalGeneral, "Pop to Root Search",
+            keywords: ["reset", "timeout", "back"]),
         .init(
-            .generalHyperKey, "Include Shift (⇧)",
-            keywords: ["modifier", "chord"]),
+            .generalGeneral, "Escape Key Behavior",
+            keywords: ["escape", "esc", "back", "close", "navigate"]),
+        .init(
+            .generalGeneral, "Auto-switch input source",
+            keywords: ["keyboard", "layout", "language", "abc"]),
         .init(
             .generalAppearance, "Theme",
             keywords: ["dark", "light", "mode", "appearance"]),
@@ -153,20 +155,20 @@ enum SettingsSearchCatalog {
             .generalAppearance, "Drag to reposition",
             keywords: ["move", "position", "window"]),
         .init(
-            .generalGeneral, "Launch at login",
-            keywords: ["startup", "login item", "start", "boot"]),
+            .generalHyperKey, "Hyper Key",
+            keywords: ["modifier", "remap", "caps lock", "capslock"]),
         .init(
-            .generalGeneral, "Show in menu bar",
-            keywords: ["menubar", "status item", "icon", "hide"]),
+            .generalHyperKey, "Quick Press",
+            keywords: ["tap", "escape", "single press"]),
         .init(
-            .generalGeneral, "Pop to Root Search",
-            keywords: ["reset", "timeout", "back"]),
+            .generalHyperKey, "Include Shift (⇧)",
+            keywords: ["modifier", "chord"]),
         .init(
-            .generalGeneral, "Escape Key Behavior",
-            keywords: ["escape", "esc", "back", "close", "navigate"]),
+            .generalCalculator, "Number format",
+            keywords: ["decimal", "comma", "separator", "locale", "region", "thousands"]),
         .init(
-            .generalGeneral, "Auto-switch input source",
-            keywords: ["keyboard", "layout", "language", "abc"])
+            .generalSearch, "Learned ranking",
+            keywords: ["reset", "history", "order", "privacy"])
     ]
 
     private static let applications: [SettingsSearchEntry] = [
@@ -268,10 +270,10 @@ enum SettingsSearchCatalog {
         .init(
             .aiProviders, "Providers",
             keywords: [
-                "sign in", "connect", "codex", "claude", "opencode", "api key", "connection",
-                "base url", "openai", "anthropic", "ollama"
+                "sign in", "connect", "codex", "claude", "grok", "xai", "opencode", "cursor", "agent",
+                "api key", "connection", "base url", "openai", "anthropic", "ollama"
             ]),
-        .init(.aiDefault, "Default model", keywords: ["llm", "gpt", "claude"]),
+        .init(.aiDefault, "Default model", keywords: ["llm", "gpt", "claude", "grok"]),
         .init(.aiDefault, "Reasoning effort", keywords: ["thinking", "effort", "deepseek"]),
         .init(.aiChat, "Web search", keywords: ["browse", "internet"]),
         .init(
@@ -341,6 +343,12 @@ enum SettingsSearchCatalog {
         .init(
             .notesNotes, "Enable Notes",
             keywords: ["markdown", "scratchpad"]),
+        .init(
+            .notesNotes, "Render Markdown",
+            keywords: ["markdown", "formatting", "preview", "raw", "source"]),
+        .init(
+            .notesNotes, "Show Formatting Bar",
+            keywords: ["toolbar", "format bar", "buttons", "bold", "heading", "markdown"]),
         .init(
             group: .notesCommands, "Notes commands",
             keywords: ["shortcut", "new note", "search notes"])
@@ -492,6 +500,9 @@ enum SettingsSearchCatalog {
             .calendarJoining, "Camera Preview",
             keywords: ["webcam", "mirror", "video", "check"]),
         .init(
+            .calendarJoining, "Open Meeting Links In",
+            keywords: ["browser", "chrome", "safari", "firefox", "meet", "web"]),
+        .init(
             .calendarMenuBar, "Calendar in Menu Bar",
             keywords: ["status item", "menubar", "date"]),
         .init(
@@ -519,12 +530,6 @@ enum SettingsSearchCatalog {
             .extensionsExtensions, "Enable extensions",
             keywords: ["raycast", "third party", "javascript"]),
         .init(
-            group: .extensionsCompatibility, "Compatibility",
-            keywords: ["supported", "unsupported", "raycast api"]),
-        .init(
-            group: .extensionsInstalled, "Installed extensions",
-            keywords: ["library", "uninstall", "preferences", "appearance", "alias", "shortcut"]),
-        .init(
             .extensionsInstall, "Search extensions",
             keywords: ["store", "browse", "install", "registry"]),
         .init(
@@ -536,6 +541,12 @@ enum SettingsSearchCatalog {
         .init(
             .extensionsInstall, "Add from folder",
             keywords: ["local", "develop", "sideload"]),
+        .init(
+            group: .extensionsInstalled, "Installed extensions",
+            keywords: ["library", "uninstall", "preferences", "appearance", "alias", "shortcut"]),
+        .init(
+            group: .extensionsCompatibility, "Compatibility",
+            keywords: ["supported", "unsupported", "raycast api"]),
         .init(
             .extensionsStorage, "Leftover files",
             keywords: ["clean up", "disk", "reclaim", "cache"])

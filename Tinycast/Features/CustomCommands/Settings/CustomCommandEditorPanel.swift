@@ -188,27 +188,18 @@ struct CustomCommandEditorPanel: View {
                 Spacer()
                 Button("Add") { arguments.append(ArgumentDraft(name: "", isOptional: false)) }
                     .controlSize(.small)
+                    .disabled(arguments.count >= CustomCommandArgument.limit)
             }
-            argumentRows
+            VStack(spacing: Theme.Spacing.sm) {
+                ForEach($arguments) { $argument in argumentRow($argument) }
+            }
             Text(
                 arguments.isEmpty
-                    ? "Add one to be asked for a value before the command runs."
-                    : "Asked for in order, then passed to the command as $1, $2 …"
+                    ? "Add up to three, filled in beside the search field before the command runs."
+                    : "Passed to the command in order as $1, $2 …"
             )
             .font(.caption)
             .foregroundStyle(.secondary)
-        }
-    }
-
-    @ViewBuilder private var argumentRows: some View {
-        let rows = VStack(spacing: Theme.Spacing.sm) {
-            ForEach($arguments) { $argument in argumentRow($argument) }
-        }
-        if arguments.count > Self.visibleArgumentRows {
-            ScrollView { rows }
-                .frame(height: Self.argumentRowsHeight)
-        } else {
-            rows
         }
     }
 
@@ -234,10 +225,6 @@ struct CustomCommandEditorPanel: View {
     }
 
     private static let positionWidth: CGFloat = 22
-    private static let visibleArgumentRows = 4
-    private static let argumentRowsHeight =
-        CGFloat(visibleArgumentRows) * Theme.Size.dialogButtonHeight
-        + CGFloat(visibleArgumentRows - 1) * Theme.Spacing.sm
 
     /// The shell variable the row's value lands in; blank names are dropped, but only on save.
     private func position(of id: UUID) -> Int {

@@ -246,6 +246,11 @@ private struct AppRow: View {
                             .offset(y: 3)
                     }
                 }
+            if app.kind == .meeting {
+                MeetingEntryContent(entryID: app.id) { meeting, _ in
+                    CalendarBar(color: meeting.calendarColor)
+                }
+            }
             Text(app.name)
                 .font(metrics.typography.rowTitle)
                 .lineLimit(1)
@@ -284,6 +289,8 @@ private struct AppRow: View {
                     KeyCapChip(text: "⌘", style: .outline)
                     KeyCapChip(text: String(slot), style: .outline)
                 }
+            } else if app.kind == .meeting {
+                MeetingEntryContent(entryID: app.id) { MeetingTiming(meeting: $0, now: $1) }
             } else {
                 Text(app.kindLabel)
                     .font(metrics.typography.rowTrailing)
