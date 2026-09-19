@@ -1,11 +1,11 @@
 import AppKit
 import SwiftUI
 
-/// Add / edit sheet for a single custom command, presented from the Commands pane.
-struct CustomCommandEditorSheet: View {
+/// Add / edit panel for a single custom command, presented from the Commands pane.
+struct CustomCommandEditorPanel: View {
     let command: CustomCommand?
 
-    @Environment(\.dismiss) private var dismiss
+    @Environment(\.settingsEditorDismiss) private var dismiss
     @Environment(AppCore.self) private var core
     @State private var name: String
     @State private var shellCommand: String
@@ -44,15 +44,15 @@ struct CustomCommandEditorSheet: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: Theme.Spacing.xl) {
-            Text(command == nil ? "Add Custom Command" : "Edit Custom Command")
-                .font(.title2.weight(.bold))
+            SettingsEditorHeader(
+                title: command == nil ? "Add Custom Command" : "Edit Custom Command")
 
             HStack(alignment: .bottom, spacing: Theme.Spacing.lg) {
                 VStack(alignment: .leading, spacing: Theme.Spacing.sm) {
                     Text("Name")
                         .font(.callout.weight(.medium))
                     TextField("Sleep Displays", text: $name)
-                        .textFieldStyle(.roundedBorder)
+                        .settingsEditorTextField()
                 }
                 iconField
             }
@@ -62,17 +62,7 @@ struct CustomCommandEditorSheet: View {
                     .font(.callout.weight(.medium))
                 TextEditor(text: $shellCommand)
                     .font(.body.monospaced())
-                    .scrollContentBackground(.hidden)
-                    .padding(Theme.Spacing.sm)
-                    .frame(height: Theme.Size.editorTextHeight)
-                    .background(
-                        RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous)
-                            .fill(Theme.Colors.cardFill)
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: Theme.Radius.row, style: .continuous)
-                            .strokeBorder(Theme.Colors.cardStroke, lineWidth: 1)
-                    )
+                    .settingsEditorTextArea(height: Theme.Size.editorTextHeight)
             }
 
             Text("Example: /usr/bin/pmset displaysleepnow")
@@ -104,19 +94,21 @@ struct CustomCommandEditorSheet: View {
                     .foregroundStyle(.orange)
             }
 
-            HStack {
-                Spacer()
+            HStack(spacing: Theme.Spacing.md) {
                 Button("Cancel") { dismiss() }
+                    .buttonStyle(.modalAction(.cancel))
                     .keyboardShortcut(.cancelAction)
                 Button("Save", action: save)
+                    .buttonStyle(.modalAction(.primary))
                     .keyboardShortcut(.defaultAction)
                     .disabled(
                         name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                             || shellCommand.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }
         }
-        .padding(Theme.Spacing.xxl)
+        .padding(Theme.Spacing.dialogInset)
         .frame(width: Theme.Size.editorSheetWidth)
+        .settingsEditorPanelSurface()
     }
 
     private static let iconSymbols = [
@@ -162,7 +154,7 @@ struct CustomCommandEditorSheet: View {
                 .font(.callout.weight(.medium))
             HStack(spacing: Theme.Spacing.sm) {
                 TextField("Home folder", text: $workingDirectory)
-                    .textFieldStyle(.roundedBorder)
+                    .settingsEditorTextField()
                 Button("Choose…", action: chooseWorkingDirectory)
             }
             Text("The folder the command starts in. Leave empty for your home folder.")
@@ -197,25 +189,7 @@ struct CustomCommandEditorSheet: View {
                 Button("Add") { arguments.append(ArgumentDraft(name: "", isOptional: false)) }
                     .controlSize(.small)
             }
-            ForEach($arguments) { $argument in
-                HStack(spacing: Theme.Spacing.sm) {
-                    Text("$\(position(of: argument.id))")
-                        .font(.callout.monospaced())
-                        .foregroundStyle(.secondary)
-                        .frame(width: Self.positionWidth, alignment: .leading)
-                    TextField("Argument name", text: $argument.name)
-                        .textFieldStyle(.roundedBorder)
-                    Toggle("Optional", isOn: $argument.isOptional)
-                        .toggleStyle(.checkbox)
-                    Button {
-                        arguments.removeAll { $0.id == argument.id }
-                    } label: {
-                        Image(systemName: "minus.circle")
-                    }
-                    .buttonStyle(.borderless)
-                    .help("Remove this argument")
-                }
-            }
+            argumentRows
             Text(
                 arguments.isEmpty
                     ? "Add one to be asked for a value before the command runs."
@@ -226,7 +200,44 @@ struct CustomCommandEditorSheet: View {
         }
     }
 
+    @ViewBuilder private var argumentRows: some View {
+        let rows = VStack(spacing: Theme.Spacing.sm) {
+            ForEach($arguments) { $argument in argumentRow($argument) }
+        }
+        if arguments.count > Self.visibleArgumentRows {
+            ScrollView { rows }
+                .frame(height: Self.argumentRowsHeight)
+        } else {
+            rows
+        }
+    }
+
+    private func argumentRow(_ argument: Binding<ArgumentDraft>) -> some View {
+        let id = argument.wrappedValue.id
+        return HStack(spacing: Theme.Spacing.sm) {
+            Text("$\(position(of: id))")
+                .font(.callout.monospaced())
+                .foregroundStyle(.secondary)
+                .frame(width: Self.positionWidth, alignment: .leading)
+            TextField("Argument name", text: argument.name)
+                .settingsEditorTextField()
+            Toggle("Optional", isOn: argument.isOptional)
+                .toggleStyle(.checkbox)
+            Button {
+                arguments.removeAll { $0.id == id }
+            } label: {
+                Image(systemName: "minus.circle")
+            }
+            .buttonStyle(.borderless)
+            .help("Remove this argument")
+        }
+    }
+
     private static let positionWidth: CGFloat = 22
+    private static let visibleArgumentRows = 4
+    private static let argumentRowsHeight =
+        CGFloat(visibleArgumentRows) * Theme.Size.dialogButtonHeight
+        + CGFloat(visibleArgumentRows - 1) * Theme.Spacing.sm
 
     /// The shell variable the row's value lands in; blank names are dropped, but only on save.
     private func position(of id: UUID) -> Int {
