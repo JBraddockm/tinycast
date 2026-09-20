@@ -106,9 +106,9 @@ final class ClipboardCoordinator {
     func deleteAllClips() async {
         guard
             await core.confirm(
-                title: "Clear clipboard history?",
-                message: "Every entry goes, pinned ones included. This can't be undone.",
-                symbol: PaletteMode.clipboard.systemImage, confirmTitle: "Clear History")
+                title: "Delete All Entries",
+                message: "Are you sure you want to proceed with deleting all clipboard history entries?",
+                symbol: PaletteMode.clipboard.systemImage, confirmTitle: "Delete All")
         else { return }
         clearHistory()
     }

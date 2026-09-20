@@ -494,7 +494,11 @@ struct ClipboardTests {
             expect(texts(reopened) == ["first", "third", "second"], "unpin after a reload")
 
             reopened.clearAll()
-            expect(reopened.items.isEmpty, "Clear History takes pins too")
+            expect(texts(reopened) == ["first"], "Clear History spares the pin")
+
+            let afterClear = ClipboardStore(directory: dir)
+            afterClear.load()
+            expect(texts(afterClear) == ["first"], "and the unpinned rows are gone from disk")
         }
     }
 

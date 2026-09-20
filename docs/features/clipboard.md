@@ -72,7 +72,7 @@ itself no longer drains the pasteboard into history either.
 
 Existing clips survive being switched off, since a history is captured rather than authored and
 nothing else can put it back. **Clear history stays live with the feature off** —
-`ClipboardCoordinator.clearHistory()` reopens the file, empties it and closes it again — so a reader
+`ClipboardCoordinator.clearHistory()` reopens the file, clears the unpinned rows and closes it again — so a reader
 who turns the feature off can still erase what it kept.
 
 ## Store
@@ -300,7 +300,7 @@ Pins change four things:
   the same) rather than dropping back into the date bucket it came from, which would scroll the list
   out from under the selection. It uses the same atomic timestamp and rowid update as `promote`.
 - **Retention.** Pruning skips pinned rows (`AND pinned_at IS NULL`), so a pin outlives the retention
-  window. "Clear History" still deletes everything.
+  window — and "Clear History" skips them on the same condition, so only `remove` drops a pin.
 - **Selection.** Pinning lifts a row out of its date bucket, so `ClipboardCoordinator.togglePinnedClip` moves the
   palette selection to the row's new index in the _current_ results and bumps `palette.followToken`,
   which is what makes the list scroll the highlight back into view.
