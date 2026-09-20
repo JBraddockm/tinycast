@@ -1,8 +1,8 @@
 import SwiftUI
 
-/// Stock `.sidebar` styling throughout: headers, capsule and tint are all system-supplied.
 struct SettingsSidebarView: View {
     @Environment(SettingsNavigationState.self) private var navigation
+    @Environment(\.appearsActive) private var appearsActive
     @State private var query = ""
     @State private var highlighted: SettingsSearchEntry.ID?
     @FocusState private var searchFocused: Bool
@@ -31,12 +31,24 @@ struct SettingsSidebarView: View {
             ForEach(SettingsSection.allCases) { section in
                 Section(section.title) {
                     ForEach(section.tabs) { tab in
-                        Label(tab.title, systemImage: tab.systemImage).tag(tab)
+                        Label {
+                            Text(tab.title)
+                        } icon: {
+                            Image(systemName: tab.systemImage)
+                                .imageScale(.large)
+                                .foregroundStyle(
+                                    appearsActive
+                                        ? (navigation.tab == tab ? Color.primary : Color.accentColor)
+                                        : Color.secondary)
+                        }
+                        .tag(tab)
                     }
                 }
             }
         }
         .listStyle(.sidebar)
+        // Pin the style before mounting; the implicit sidebar style paints icons a frame late.
+        .labelStyle(.titleAndIcon)
     }
 
     @ViewBuilder private var found: some View {
