@@ -10,12 +10,12 @@ struct SettingsSidebarView: View {
     private var results: [SettingsSearchEntry] { SettingsSearchCatalog.results(for: query) }
 
     var body: some View {
-        VStack(spacing: 0) {
-            if query.isEmpty {
-                browse
-            } else {
-                found
-            }
+        ZStack {
+            browse
+                .activeState(query.isEmpty)
+
+            found
+                .activeState(!query.isEmpty)
         }
         .searchable(text: $query, isPresented: $searching, placement: .sidebar, prompt: "Search")
         .onExitCommand { query = "" }
@@ -48,9 +48,11 @@ struct SettingsSidebarView: View {
 
     @ViewBuilder private var found: some View {
         if results.isEmpty {
-            // Greedy: a finite max height here becomes a constraint that shrinks the whole window.
-            ContentUnavailableView.search(text: query)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            List {
+                ContentUnavailableView.search(text: query)
+                    .listRowBackground(Color.clear)
+            }
+            .listStyle(.sidebar)
         } else {
             // A second `List`, so result IDs and `SettingsTab` never share a selection namespace.
             List(selection: $highlighted) {
@@ -85,6 +87,16 @@ struct SettingsSidebarView: View {
             get: { navigation.tab },
             set: { if let tab = $0 { navigation.select(tab) } }
         )
+    }
+}
+
+private extension View {
+    /// Syncs view visibility, interaction, and accessibility in one place.
+    func activeState(_ isActive: Bool) -> some View {
+        self
+            .opacity(isActive ? 1 : 0)
+            .allowsHitTesting(isActive)
+            .accessibilityHidden(!isActive)
     }
 }
 
