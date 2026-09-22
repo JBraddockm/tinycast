@@ -357,9 +357,7 @@ struct RootPaletteView: View {
                 searchFocused = !screen.hidesSearchField
             }
             // A preserved screen re-summons as it was left, so a menu must end with the palette.
-            .onChange(of: vm.isVisible) {
-                if !vm.isVisible, menuOpen { closeMenus() }
-            }
+            .modifier(PaletteHideObserver { if menuOpen { closeMenus() } })
             .onChange(of: vm.query) {
                 if vm.collapseQueryLineBreaks() { return }
                 vm.selection = 0
@@ -1367,6 +1365,18 @@ private enum OpenMenu {
     case emojiCategory
     case aiModel
     case aiReasoning
+}
+
+/// Reads visibility in its own body, so a summon never re-renders the palette's.
+private struct PaletteHideObserver: ViewModifier {
+    @Environment(PaletteState.self) private var vm
+    let onHide: () -> Void
+
+    func body(content: Content) -> some View {
+        content.onChange(of: vm.isVisible) { _, visible in
+            if !visible { onHide() }
+        }
+    }
 }
 
 /// Its own modifier: the palette's body is already at the type-checker's limit.

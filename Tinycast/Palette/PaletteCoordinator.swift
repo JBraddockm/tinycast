@@ -80,8 +80,11 @@ final class PaletteCoordinator {
         mode: PaletteMode, restoreAnyMode: Bool = false, seeding query: String? = nil
     ) {
         let preserved = windowController.consumePreservedState()
+        let restoring = preserved && (restoreAnyMode || palette.mode == mode)
+        // Resetting a screen the pop to root already reset would only re-render the whole palette.
+        let alreadyFresh = windowController.isPoppedToRoot && palette.mode == mode
         // A carried query always opens the screen fresh: restoring the previous one would drop it.
-        if query != nil || !(preserved && (restoreAnyMode || palette.mode == mode)) {
+        if query != nil || !(restoring || alreadyFresh) {
             navigate(to: mode)
         }
         if let query { palette.query = query }
