@@ -400,6 +400,7 @@ enum Theme {
         /// The preview's plate: a display is dark in both appearances, so `adaptive`, not `ramp`.
         static let layoutPreviewGround = adaptive(
             dark: .srgbInk(0, alpha: 0.55), light: .srgbInk(0, alpha: 0.50))
+        static let glassFrost = adaptive(dark: .srgbInk(1, alpha: 0.05), light: .srgbInk(1, alpha: 0.25))
         /// The pill behind the header of the section a Settings search jumped to.
         static let searchFlash = Color.accentColor.opacity(0.35)
         /// The two squares of a checkerboard, behind a colour with alpha to show.
