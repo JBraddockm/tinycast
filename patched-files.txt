@@ -3,6 +3,7 @@ Tinycast/DesignSystem/PopoverMenu.swift
 Tinycast/DesignSystem/Scrolling/OverflowFade.swift
 Tinycast/DesignSystem/SettingsComponents.swift
 Tinycast/DesignSystem/Theme.swift
+Tinycast/DesignSystem/GlassEffectView
 Tinycast/Features/AI/AIGuardrailsPolicy.swift
 Tinycast/Features/AI/Service/AIProviderFactory.swift
 Tinycast/Features/AI/Service/AppleIntelligenceProvider.swift
@@ -17,6 +18,7 @@ Tinycast/Features/Notes/UI/NoteHeadingMenuView.swift
 Tinycast/Features/Notes/UI/NoteSwitcherView.swift
 Tinycast/Features/QuickActions/Service/TextTranslator.swift
 Tinycast/Features/Settings/Panes/GeneralSettingsView.swift
+Tinycast/Features/Settings/SettingsSidebarView.swift
+Tinycast/Features/MCP/Service/MCPOAuthListener.swift
 Tinycast/Platform/PseudoTerminal.swift
 Tinycast/Windows/Dialog/DialogView.swift
-Tinycast/Features/Settings/SettingsSidebarView.swift

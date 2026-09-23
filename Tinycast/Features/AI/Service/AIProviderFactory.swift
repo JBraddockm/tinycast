@@ -27,7 +27,8 @@ enum AIProviderFactory {
         subscription: ChatGPTSubscriptionManager,
         installedAI: InstalledAIManager,
         keyStore: KeychainSecretStore = .aiAPIKeys,
-        guardrails: AIGuardrailsPolicy = .default
+        guardrails: AIGuardrailsPolicy = .default,
+        toolServers: AIToolServerSession? = nil
     ) throws -> any AIProvider {
         switch selection {
         case .appleIntelligence:
