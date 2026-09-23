@@ -607,6 +607,7 @@ struct AIProviderTests {
         var events = (try? openAI.feed(openAIData)) ?? []
         events += (try? openAI.finish()) ?? []
         expect(events.contains(.thinking), "reasoning is surfaced as state, not answer text")
+        expect(events.contains(.reasoning("working")), "and its text reaches the reasoning fold")
         expect(events.contains(.text("Hello")), "OpenAI-compatible text is decoded")
         expect(
             events.contains(.usage(AIUsage(inputTokens: 3, outputTokens: 2))),
@@ -618,6 +619,8 @@ struct AIProviderTests {
             """
             data: {"type":"message_start","message":{"usage":{"input_tokens":4}}}
 
+            data: {"type":"content_block_delta","delta":{"type":"thinking_delta","thinking":"Hmm"}}
+
             data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"Hi"}}
 
             data: {"type":"message_delta","usage":{"output_tokens":1}}
@@ -628,6 +631,9 @@ struct AIProviderTests {
         var anthropicEvents = (try? anthropic.feed(anthropicData)) ?? []
         anthropicEvents += (try? anthropic.finish()) ?? []
         expect(anthropicEvents.contains(.text("Hi")), "Anthropic text is decoded")
+        expect(
+            anthropicEvents.contains(.reasoning("Hmm")) && !anthropicEvents.contains(.text("Hmm")),
+            "Anthropic thinking is reasoning, never answer text")
         expect(
             anthropicEvents.contains(.usage(AIUsage(inputTokens: 4, outputTokens: 1))),
             "Anthropic usage accumulates across events")
@@ -1051,6 +1057,19 @@ struct AIProviderTests {
             grokFrame.events == [.usage(AIUsage(inputTokens: 5, outputTokens: 1))]
                 && grokFrame.completed && grokFrame.sessionID == "ses_g",
             "Grok result usage ends the stream and names the session to delete")
+        let grokError = Data(
+            #"{"type":"result","subtype":"error_during_execution","is_error":true,"errors":["Not signed in."],"session_id":""}"#
+                .utf8)
+        let grokErrorFrame = InstalledAIStreamDecoder.decode(grokError, kind: .grok)
+        expect(
+            grokErrorFrame.error == "Not signed in." && grokErrorFrame.sessionID == nil
+                && !grokErrorFrame.completed,
+            "Grok execution errors name the cause, not Claude, and ignore an empty session id")
+        let grokBare = Data(#"{"type":"result","is_error":true}"#.utf8)
+        expect(
+            InstalledAIStreamDecoder.decode(grokBare, kind: .grok).error
+                == "Grok could not finish the response.",
+            "a Grok error with no cause still names Grok")
     }
 
     /// A secret on argv is in `ps`, and a key Codex does not know is a server that never starts.

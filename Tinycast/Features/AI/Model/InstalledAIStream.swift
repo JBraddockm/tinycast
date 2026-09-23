@@ -23,11 +23,7 @@ enum InstalledAIStreamDecoder {
         case .openCode: return openCode(object, type: type)
         case .claude: return claude(object, type: type, servers: servers)
         case .cursor: return cursor(object, type: type)
-        case .grok:
-            // Grok shares the frame shape but never the tools: `--deny *` refuses every call.
-            var frame = claude(object, type: type, servers: [])
-            frame.sessionID = object["session_id"] as? String
-            return frame
+        case .grok: return grok(object, type: type)
         case .codex: return InstalledAIStreamFrame()
         }
     }
@@ -72,6 +68,14 @@ enum InstalledAIStreamDecoder {
             frame.events = toolEvents(in: object, servers: servers)
             return frame
         }
+        // Summaries arrive as several thinking blocks; a break keeps them from running together.
+        if type == "stream_event", let event = object["event"] as? [String: Any],
+            event["type"] as? String == "content_block_start",
+            (event["content_block"] as? [String: Any])?["type"] as? String == "thinking"
+        {
+            frame.events = [.thinking, .reasoning("\n\n")]
+            return frame
+        }
         if type == "stream_event", let event = object["event"] as? [String: Any],
             let delta = event["delta"] as? [String: Any]
         {
@@ -81,7 +85,8 @@ enum InstalledAIStreamDecoder {
                     frame.events = [.text(text)]
                 }
             case "thinking_delta":
-                frame.events = [.thinking]
+                let thinking = delta["thinking"] as? String ?? ""
+                frame.events = thinking.isEmpty ? [.thinking] : [.thinking, .reasoning(thinking)]
             default:
                 break
             }
@@ -98,11 +103,7 @@ enum InstalledAIStreamDecoder {
             return frame
         }
         if let usage = object["usage"] as? [String: Any] {
-            frame.events.append(
-                .usage(
-                    AIUsage(
-                        inputTokens: integer(usage["input_tokens"]),
-                        outputTokens: integer(usage["output_tokens"]))))
+            frame.events.append(.usage(claudeUsage(usage, result: object)))
         }
         frame.completed = true
         return frame
@@ -131,6 +132,61 @@ enum InstalledAIStreamDecoder {
                 return nil
             }
         }
+    }
+
+    /// Cached prompt tokens sit outside `input_tokens`, and only `modelUsage` names the window.
+    private static func claudeUsage(_ usage: [String: Any], result: [String: Any]) -> AIUsage {
+        let cached = [usage["cache_read_input_tokens"], usage["cache_creation_input_tokens"]]
+            .compactMap(integer)
+        let details = usage["output_tokens_details"] as? [String: Any]
+        // A side model (Haiku) may share the turn; the conversation's read the largest prompt.
+        let model = (result["modelUsage"] as? [String: Any])?.values
+            .compactMap { $0 as? [String: Any] }
+            .max { rank($0) < rank($1) }
+        return AIUsage(
+            inputTokens: integer(usage["input_tokens"]),
+            outputTokens: integer(usage["output_tokens"]),
+            cachedInputTokens: cached.isEmpty ? nil : cached.reduce(0, +),
+            reasoningTokens: integer(details?["thinking_tokens"]),
+            contextWindow: integer(model?["contextWindow"]),
+            costUSD: (result["total_cost_usd"] as? NSNumber)?.doubleValue)
+    }
+
+    private static func rank(_ model: [String: Any]) -> (prompt: Int, window: Int) {
+        let prompt = ["inputTokens", "cacheReadInputTokens", "cacheCreationInputTokens"]
+            .compactMap { integer(model[$0]) }.reduce(0, +)
+        return (prompt, integer(model["contextWindow"]) ?? 0)
+    }
+
+    /// Grok's error result omits `result` and names the cause in `errors`.
+    private static func grok(
+        _ object: [String: Any], type: String
+    ) -> InstalledAIStreamFrame {
+        // Grok shares the frame shape but never the tools: `--deny *` refuses every call.
+        var frame = claude(object, type: type, servers: [])
+        if let sessionID = object["session_id"] as? String, !sessionID.isEmpty {
+            frame.sessionID = sessionID
+        }
+        if type == "result", object["is_error"] as? Bool == true {
+            frame.error = grokFailure(object)
+        }
+        return frame
+    }
+
+    private static func grokFailure(_ object: [String: Any]) -> String {
+        if let errors = object["errors"] as? [Any] {
+            let lines = errors.compactMap { item -> String? in
+                guard let text = item as? String else { return nil }
+                let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                return trimmed.isEmpty ? nil : trimmed
+            }
+            if !lines.isEmpty { return lines.joined(separator: "\n") }
+        }
+        if let result = object["result"] as? String {
+            let trimmed = result.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !trimmed.isEmpty { return trimmed }
+        }
+        return "Grok could not finish the response."
     }
 
     private static func cursor(
