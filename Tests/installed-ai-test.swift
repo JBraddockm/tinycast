@@ -33,6 +33,13 @@ struct InstalledAITests {
         await cursorDiscoveryRequiresLoginAndListsModels(fixture)
         await oversizedCompleteFrameFailsTheTurn(fixture)
         claudeMCPConfigNamesNoServers(fixture)
+        await claudeRunsTinycastsServersAndAnswersTheirConsent(fixture)
+        await aDeclinedCallComesBackAsAnErrorResult(fixture)
+        await theRoundCapEndsTheTurnTheWayTheLoopDoes(fixture)
+        await unlimitedPassesNoTurnCap(fixture)
+        await concurrentCallsAreAskedOneAtATime(fixture)
+        await aCrashedTurnsFilesAreRemovedAtLaunch(fixture)
+        await aManagedMCPPolicyLeavesBothFlagsOff(fixture)
 
         print("\(passes) passed, \(failures) failed")
         if failures > 0 { exit(1) }
@@ -162,6 +169,10 @@ struct InstalledAITests {
         expect(
             arguments.contains("--effort") && arguments.contains("xhigh"),
             "Claude receives the chosen reasoning effort")
+        let argv = fixture.arguments("claude-args.log")
+        expect(
+            argv.firstIndex(of: "--max-turns").map { argv[$0 + 1] } == "1",
+            "a turn with nothing to call is held to one request")
         fixture.expectPrompt("claude-prompt.log")
     }
 
@@ -200,6 +211,34 @@ struct InstalledAITests {
         expect(
             error?.contains("oversized response") == true,
             "a complete NDJSON frame over the byte limit fails the turn")
+    }
+
+    /// A crash mid-turn leaves the turn's files, secrets included; the next launch removes them.
+    private static func aCrashedTurnsFilesAreRemovedAtLaunch(_ fixture: Fixture) async {
+        let support = fixture.root.appending(path: "relaunch", directoryHint: .isDirectory)
+        let workspace = support.appending(
+            path: "InstalledAI/Workspace", directoryHint: .isDirectory)
+        try? FileManager.default.createDirectory(at: workspace, withIntermediateDirectories: true)
+        func file(_ name: String, age: TimeInterval) -> URL {
+            let url = workspace.appending(path: name)
+            FileManager.default.createFile(atPath: url.path, contents: Data("secret".utf8))
+            try? FileManager.default.setAttributes(
+                [.modificationDate: Date().addingTimeInterval(-age)], ofItemAtPath: url.path)
+            return url
+        }
+        let config = file("tinycast-mcp-\(UUID().uuidString).json", age: 60)
+        let prompt = file("tinycast-prompt-\(UUID().uuidString).txt", age: 60)
+        let live = file("tinycast-mcp-\(UUID().uuidString).json", age: -60)
+        let other = file("notes.txt", age: 60)
+        _ = InstalledAIManager(supportDirectory: support)
+        let removed = await fixture.awaitMissing(config)
+        expect(
+            removed && !FileManager.default.fileExists(atPath: prompt.path),
+            "a configuration and a prompt left by a turn that never ended are deleted at launch")
+        expect(
+            FileManager.default.fileExists(atPath: live.path)
+                && FileManager.default.fileExists(atPath: other.path),
+            "and nothing written since, nor anything that is not a turn's own file, is touched")
     }
 
     private static func cursorDiscoveryRequiresLoginAndListsModels(_ fixture: Fixture) async {
@@ -258,6 +297,212 @@ struct InstalledAITests {
             object.count == 1 && object["mcpServers"] is [String: Any],
             "Claude's --mcp-config declares an empty mcpServers record")
     }
+
+    /// The whole route: Tinycast's servers go in, the CLI runs the loop, consent comes back here.
+    private static func claudeRunsTinycastsServersAndAnswersTheirConsent(_ fixture: Fixture) async {
+        let asked = Box()
+        let events = await fixture.events(
+            kind: .claude, model: "sonnet", effort: nil,
+            toolServers: fixture.session(allowing: true, asked: asked))
+        expect(
+            events.contains(.toolCall(id: "toolu_stub", origin: "Probe", title: "safe_echo")),
+            "a tool_use block becomes the transcript row the BYOK loop would have written")
+        expect(
+            events.contains(.toolResult(id: "toolu_stub", isError: false)),
+            "and its tool_result settles the same row")
+        expect(events.contains(.text("Claude reply")), "the reply still streams after the call")
+        expect(events.last == .finished, "and the turn finishes on the CLI's own result frame")
+        expect(
+            asked.calls == [AIToolServerCall(handle: "probe", tool: "safe_echo")],
+            "consent was asked for the call the CLI named, addressed by Tinycast's own handle")
+
+        let argv = fixture.lastArguments("claude-args.log")
+        for flag in ["--strict-mcp-config", "--mcp-config", "--permission-prompt-tool", "stdio"] {
+            expect(argv.contains(flag), "Claude runs with \(flag) when servers are armed")
+        }
+        expect(
+            !argv.contains("--disallowedTools"),
+            "and without the deny-all that would take the MCP tools with it")
+        let mode = argv.firstIndex(of: "--permission-mode").map { argv[$0 + 1] }
+        let settings = argv.firstIndex(of: "--settings").map { argv[$0 + 1] }
+        expect(
+            mode == "default" && settings == #"{"permissions":{"ask":["mcp__probe"]}}"#,
+            "its mode is pinned, and the server has an ask rule no rule of the reader's outranks")
+        expect(
+            argv.contains("--input-format")
+                && argv[(argv.firstIndex(of: "--input-format") ?? 0) + 1] == "stream-json",
+            "stream-json input is what the consent channel answers on")
+        expect(
+            argv.firstIndex(of: "--max-turns").map { argv[$0 + 1] } == "25",
+            "and the turn is capped at the setting's rounds rather than one")
+        guard let index = argv.firstIndex(of: "--mcp-config"), index + 1 < argv.count else {
+            expect(false, "Claude is given a configuration path")
+            return
+        }
+        let configured = URL(fileURLWithPath: argv[index + 1])
+        expect(
+            configured.deletingLastPathComponent().path == fixture.workspace.path,
+            "the configuration lives inside Tinycast's own workspace, never a CLI's settings")
+        expect(
+            configured.lastPathComponent.hasPrefix("tinycast-mcp-")
+                && configured.lastPathComponent != "tinycast-mcp-.json",
+            "under a name of its own, so a second turn never deletes a live turn's file")
+        expect(
+            await fixture.awaitMissing(configured),
+            "and is deleted once the turn is over")
+        expect(
+            fixture.read("claude-mcp-mode.log").contains("600"),
+            "while it existed it was readable by nobody else")
+        let written = fixture.read("claude-mcp-config.log")
+        expect(
+            written.contains("\"probe\"") && written.contains("s3cret"),
+            "it carried the server and the secret the CLI needs to start it")
+        expect(
+            !argv.contains(where: { $0.contains("s3cret") }),
+            "which never appears on argv, where `ps` would show it")
+        fixture.expectPrompt("claude-prompt.log")
+    }
+
+    private static func aDeclinedCallComesBackAsAnErrorResult(_ fixture: Fixture) async {
+        let asked = Box()
+        let events = await fixture.events(
+            kind: .claude, model: "sonnet", effort: nil,
+            toolServers: fixture.session(allowing: false, asked: asked))
+        expect(
+            events.contains(.toolResult(id: "toolu_stub", isError: true)),
+            "a refused call settles as a failed row rather than a failed turn")
+        expect(events.last == .finished, "and the reply still ends honestly")
+        let control = fixture.read("claude-control.log")
+        expect(
+            control.contains("\"behavior\":\"deny\""),
+            "the CLI was told no through its own control channel")
+        expect(
+            !control.contains("updatedPermissions"),
+            "and never handed a permission update, which it would write to its own settings")
+        let unknown = fixture.read("claude-unknown.log")
+        expect(
+            unknown.contains(#""subtype":"error""#)
+                && unknown.contains(#""request_id":"req_unknown""#),
+            "a control request Tinycast does not know is answered with an error, not left waiting")
+    }
+
+    /// The dialog shows one question at a time, and the second must see what the first granted.
+    private static func concurrentCallsAreAskedOneAtATime(_ fixture: Fixture) async {
+        let reader = GrantingReader()
+        let session = AIToolServerSession(rounds: 25) {
+            await fixture.session(allowing: true, asked: Box()).servers()
+        } consent: { call in
+            await reader.answer(call)
+        }
+        let events = await fixture.events(
+            kind: .claude, model: "pair", effort: nil, toolServers: session)
+        expect(
+            reader.calls.map(\.tool) == ["first_tool", "second_tool"] && reader.mostAtOnce == 1,
+            "two calls held open together are asked about one after the other, in order")
+        expect(
+            reader.dialogs == 1,
+            "and the second is decided after the first dialog closes, so its grant is seen")
+        let answers = fixture.read("claude-control.log").split(separator: "\n").suffix(2)
+        expect(
+            answers.count == 2 && answers.allSatisfy { $0.contains(#""behavior":"allow""#) }
+                && events.last == .finished,
+            "both calls are allowed on the one channel and the turn finishes")
+    }
+
+    private static func theRoundCapEndsTheTurnTheWayTheLoopDoes(_ fixture: Fixture) async {
+        let error = await fixture.streamError(
+            kind: .claude, model: "round-cap", effort: nil,
+            toolServers: fixture.session(allowing: true, asked: Box()))
+        expect(
+            error?.contains("Stopped after 25 rounds of tool calls.") == true,
+            "the CLI's own cap is reported in the sentence the BYOK loop uses")
+    }
+
+    /// Claude has no turn cap unless one is passed, so Unlimited is the flag's absence.
+    private static func unlimitedPassesNoTurnCap(_ fixture: Fixture) async {
+        let events = await fixture.events(
+            kind: .claude, model: "sonnet", effort: nil,
+            toolServers: fixture.session(allowing: true, asked: Box(), rounds: nil))
+        let argv = fixture.lastArguments("claude-args.log")
+        expect(
+            argv.contains("--mcp-config") && !argv.contains("--max-turns"),
+            "an armed turn on Unlimited passes no --max-turns at all")
+        expect(events.last == .finished, "and ends on the CLI's own result")
+
+        let error = await fixture.streamError(
+            kind: .claude, model: "round-cap", effort: nil,
+            toolServers: fixture.session(allowing: true, asked: Box(), rounds: nil))
+        expect(
+            error?.contains("Claude could not finish the response.") == true
+                && error?.contains("Stopped after") == false,
+            "a max-turns result under no cap names no number, since Tinycast set none")
+
+        let nothingToCall = AIToolServerSession(rounds: nil) {
+            []
+        } consent: { _ in
+            false
+        }
+        _ = await fixture.events(
+            kind: .claude, model: "sonnet", effort: nil, toolServers: nothingToCall)
+        let bare = fixture.lastArguments("claude-args.log")
+        expect(
+            bare.firstIndex(of: "--max-turns").map { bare[$0 + 1] } == "1"
+                && bare.contains("--disallowedTools"),
+            "while one on Unlimited with no server to run is still a single request")
+    }
+
+    /// An admin's policy makes the CLI reject both flags, so the route passes neither.
+    private static func aManagedMCPPolicyLeavesBothFlagsOff(_ fixture: Fixture) async {
+        let policy = fixture.root.appending(path: "managed-mcp.json")
+        FileManager.default.createFile(atPath: policy.path, contents: Data("{}".utf8))
+        setenv("TC_CLAUDE_MANAGED_MCP", policy.path, 1)
+        defer { unsetenv("TC_CLAUDE_MANAGED_MCP") }
+        _ = await fixture.events(
+            kind: .claude, model: "sonnet", effort: nil,
+            toolServers: fixture.session(allowing: true, asked: Box()))
+        let argv = fixture.lastArguments("claude-args.log")
+        expect(
+            !argv.contains("--strict-mcp-config") && !argv.contains("--mcp-config"),
+            "neither MCP flag is passed while a managed policy is installed")
+        expect(
+            argv.contains("--max-turns") && argv.contains("1"),
+            "and the turn goes back to the single request a route with no tools makes")
+        expect(
+            InstalledAIKind.claude.isolationCaveat(hasManagedMCPPolicy: true)?
+                .contains("managed by your organization") == true,
+            "the Providers row says whose decision that is")
+        expect(
+            InstalledAIKind.claude.isolationCaveat(hasManagedMCPPolicy: false) == nil,
+            "and says nothing when it is Tinycast's")
+    }
+}
+
+/// What the runner asked about, collected across the actor hop the consent closure makes.
+@MainActor
+private final class Box {
+    var calls: [AIToolServerCall] = []
+}
+
+/// A reader who is asked once, takes a moment over it, and grants the server for the chat.
+@MainActor
+private final class GrantingReader {
+    var calls: [AIToolServerCall] = []
+    var dialogs = 0
+    var mostAtOnce = 0
+    private var atOnce = 0
+    private var granted = false
+
+    func answer(_ call: AIToolServerCall) async -> Bool {
+        calls.append(call)
+        atOnce += 1
+        mostAtOnce = max(mostAtOnce, atOnce)
+        defer { atOnce -= 1 }
+        guard !granted else { return true }
+        dialogs += 1
+        try? await Task.sleep(for: .milliseconds(150))
+        granted = true
+        return true
+    }
 }
 
 @MainActor
@@ -297,11 +542,14 @@ private final class Fixture {
         }
     }
 
-    func events(kind: InstalledAIKind, model: String, effort: String?) async -> [AIStreamEvent] {
+    func events(
+        kind: InstalledAIKind, model: String, effort: String?,
+        toolServers: AIToolServerSession? = nil
+    ) async -> [AIStreamEvent] {
         guard let executable = executables[kind] else { return [] }
         let provider = InstalledCLIProvider(
             kind: kind, executable: kind == .openCode ? nil : executable,
-            model: model, effort: effort, workspace: workspace)
+            model: model, effort: effort, workspace: workspace, toolServers: toolServers)
         do {
             var events: [AIStreamEvent] = []
             for try await event in provider.stream(request) { events.append(event) }
@@ -312,16 +560,35 @@ private final class Fixture {
         }
     }
 
-    func streamError(kind: InstalledAIKind, model: String, effort: String?) async -> String? {
+    func streamError(
+        kind: InstalledAIKind, model: String, effort: String?,
+        toolServers: AIToolServerSession? = nil
+    ) async -> String? {
         guard let executable = executables[kind] else { return nil }
         let provider = InstalledCLIProvider(
             kind: kind, executable: kind == .openCode ? nil : executable,
-            model: model, effort: effort, workspace: workspace)
+            model: model, effort: effort, workspace: workspace, toolServers: toolServers)
         do {
             for try await _ in provider.stream(request) {}
             return nil
         } catch {
             return String(describing: error)
+        }
+    }
+
+    /// One local server, and a reader who answers every call the same way.
+    func session(allowing: Bool, asked: Box, rounds: Int? = 25) -> AIToolServerSession {
+        AIToolServerSession(rounds: rounds) {
+            [
+                AIToolServer(
+                    handle: "probe", title: "Probe",
+                    transport: .command(
+                        path: "/bin/echo", arguments: ["probe"],
+                        environment: ["API_KEY": "s3cret"]))
+            ]
+        } consent: { call in
+            await MainActor.run { asked.calls.append(call) }
+            return allowing
         }
     }
 
@@ -345,8 +612,16 @@ private final class Fixture {
     }
 
     func arguments(_ name: String) -> [String] {
-        guard let line = read(name).split(separator: "\n").first,
-            let data = line.data(using: .utf8),
+        decodeArguments(read(name).split(separator: "\n").first)
+    }
+
+    /// The log is appended to, so the newest turn is the last line rather than the first.
+    func lastArguments(_ name: String) -> [String] {
+        decodeArguments(read(name).split(separator: "\n").last)
+    }
+
+    private func decodeArguments(_ line: Substring?) -> [String] {
+        guard let data = line?.data(using: .utf8),
             let argv = try? JSONDecoder().decode([String].self, from: data)
         else { return [] }
         return argv

@@ -87,6 +87,8 @@ enum Theme {
         static let headerHeight: CGFloat = 44
         /// Fixed slot for the header glyph, so the field starts at one x in every mode.
         static let headerIconSlot: CGFloat = 22
+        /// The narrowest a strip squeezes the search field to: the caret and a few characters.
+        static let searchFieldMinWidth: CGFloat = 60
         /// Room above the search row, constant so typing never shifts the bar.
         static let headerPadding: CGFloat = 10
         /// Collapsed compact bar: the search row centered in symmetric `headerPadding` slack.
@@ -172,8 +174,6 @@ enum Theme {
         static let chatAttachmentGlyph: CGFloat = 16
         /// A staged file's preview in its pill, kept under the pill's height so it reads inside it.
         static let chatAttachmentThumb: CGFloat = 18
-        /// The pill's remove button; small, but the whole reason a mispaste is recoverable.
-        static let chatAttachmentRemove: CGFloat = 14
         /// Tighter than the gap inside the pill, so the thumbnail reads as filling it.
         static let chatAttachmentInset: CGFloat = 3
         /// The clipboard preview's player; `VideoPlayer` expands unbounded without a height.

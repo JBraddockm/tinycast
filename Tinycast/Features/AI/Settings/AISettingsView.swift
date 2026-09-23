@@ -132,6 +132,14 @@ struct AISettingsView: View {
                 SettingsRowTitle(.aiChat, "Web search")
                 Text("Codex and OpenRouter only. Prompts go to a search engine.")
             }
+            Picker(selection: $settings.toolRounds) {
+                ForEach(AIToolRounds.allCases) { Text($0.title).tag($0) }
+            } label: {
+                SettingsRowTitle(.aiChat, "Tool call rounds")
+                Text(
+                    "A reply stops after this many; Unlimited runs until Stop. "
+                        + "API connections, Codex and Claude.")
+            }
         } header: {
             SettingsSectionHeader(.aiChat)
         }
@@ -572,7 +580,11 @@ struct AISettingsView: View {
         var parts: [String] = []
         if let version = status.version { parts.append("Version " + version) }
         parts.append(modelCount(status.models))
-        if let caveat = kind.isolationCaveat { parts.append(caveat) }
+        if let caveat = kind.isolationCaveat(
+            hasManagedMCPPolicy: InstalledAIManager.hasManagedMCPPolicy)
+        {
+            parts.append(caveat)
+        }
         return parts.joined(separator: " · ")
     }
 

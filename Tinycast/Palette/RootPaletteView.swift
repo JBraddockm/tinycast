@@ -90,7 +90,7 @@ struct RootPaletteView: View {
         case .ai:
             return AIScreen(
                 vm: vm, metrics: metrics, chat: core.aiChat, settings: core.aiSettings,
-                coordinator: core.aiChatCoordinator)
+                coordinator: core.aiChatCoordinator, openAttachments: toggleAIAttachments)
         case .aiHistory:
             return ChatHistoryScreen(
                 history: core.chatHistory, chat: core.aiChat, coordinator: core.aiChatCoordinator,
@@ -241,6 +241,11 @@ struct RootPaletteView: View {
             return headerMenu(
                 AIModelMenu.reasoning(
                     coordinator: core.aiChatCoordinator, settings: core.aiSettings),
+                width: metrics.size.menuWidth)
+        case .aiAttachments:
+            guard !core.aiChat.pendingAttachments.isEmpty else { return nil }
+            return headerMenu(
+                AIModelMenu.attachments(chat: core.aiChat, coordinator: core.aiChatCoordinator),
                 width: metrics.size.menuWidth)
         case .argumentOptions:
             guard let field = argumentOptionsField,
@@ -641,7 +646,8 @@ struct RootPaletteView: View {
             headerField
             if let accessory = headerAccessory {
                 accessory.view
-                Spacer(minLength: 0)
+                // Given room last: at the default priority it would split it with the field.
+                Spacer(minLength: 0).layoutPriority(-1)
             }
             if tabOpensChat {
                 headerGutter(width: metrics.spacing.md)
@@ -716,6 +722,7 @@ struct RootPaletteView: View {
         .frame(maxWidth: .infinity)
         // Set after the show, so the field it names is focused rather than the search field.
         .onChange(of: vm.pendingArgumentEntryID) { focusPendingArgument() }
+        .onChange(of: core.aiChat.pendingAttachments.map(\.id)) { refreshAttachmentsMenu() }
     }
 
     /// Mode-gated ahead of the cast, which would otherwise cost every other mode a list build.
@@ -758,7 +765,8 @@ struct RootPaletteView: View {
     /// The field, kept mounted and hidden rather than swapped: a branch would tear its editor down.
     private var headerField: some View {
         searchField
-            .frame(width: searchFieldWidth)
+            // A ceiling, not a size, so the row squeezes a long query before the strip overruns.
+            .frame(minWidth: searchFieldFloor, maxWidth: searchFieldWidth)
             .opacity(hidesSearchField ? 0 : 1)
             .allowsHitTesting(!hidesSearchField)
             .accessibilityHidden(hidesSearchField)
@@ -774,6 +782,10 @@ struct RootPaletteView: View {
         return headerAccessory.map(searchFieldWidth)
     }
 
+    private var searchFieldFloor: CGFloat? {
+        searchFieldWidth.map { min($0, metrics.size.searchFieldMinWidth) }
+    }
+
     /// The field's own text, floored for the caret and capped so the strip stays on screen.
     /// Empty, that is the prompt where one is drawn — which is what seats the strip right after it.
     private func searchFieldWidth(for accessory: PaletteHeaderAccessory) -> CGFloat {
@@ -781,10 +793,11 @@ struct RootPaletteView: View {
         let text = vm.query.isEmpty ? searchPrompt : vm.query
         let typed = (text as NSString).size(withAttributes: [.font: font]).width
         let chrome = metrics.size.headerIconSlot + metrics.spacing.md * 4
+        let room = metrics.size.panelWidth - accessory.width - chrome
         // +3pt so the caret sits after the last glyph rather than on top of it.
         return min(
             max(typed + metrics.scaled(3), metrics.scaled(18)),
-            max(metrics.size.panelWidth - accessory.width - chrome, metrics.scaled(60)))
+            max(room, metrics.size.searchFieldMinWidth))
     }
 
     private var searchPrompt: String {
@@ -995,6 +1008,14 @@ struct RootPaletteView: View {
         AIModelMenu.modelHighlight(coordinator: core.aiChatCoordinator, settings: core.aiSettings)
     }
 
+    private func toggleAIAttachments() {
+        if openMenu == .aiAttachments {
+            closeMenus()
+            return
+        }
+        open(.aiAttachments, highlighting: 0)
+    }
+
     private func toggleAIReasoning() {
         if openMenu == .aiReasoning {
             closeMenus()
@@ -1150,13 +1171,24 @@ struct RootPaletteView: View {
         syncMenuPanel(presenting: false)
     }
 
+    /// A row is addressed by index, so a file staged or dropped under the open menu re-lays it.
+    private func refreshAttachmentsMenu() {
+        guard openMenu == .aiAttachments else { return }
+        guard let content = menuContent else {
+            closeMenus()
+            return
+        }
+        menuSelection = min(menuSelection, max(content.rowCount - 1, 0))
+        syncMenuPanel(presenting: false)
+    }
+
     private var menuCorner: MenuPanelCorner? {
         switch openMenu {
         case .app: .bottomLeading
         case .actions: .bottomTrailing
         case .argumentOptions: .belowHeaderTrailing
         case .clipboardFilter, .fileSearchFilter, .emojiCategory, .aiModel, .aiReasoning,
-            .extensionAccessory:
+            .aiAttachments, .extensionAccessory:
             .belowHeaderTrailing
         case nil: nil
         }
@@ -1366,6 +1398,7 @@ private enum OpenMenu {
     case emojiCategory
     case aiModel
     case aiReasoning
+    case aiAttachments
 }
 
 /// Reads visibility in its own body, so a summon never re-renders the palette's.
