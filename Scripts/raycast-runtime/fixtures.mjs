@@ -475,6 +475,46 @@ export default async function Command() {
 }
 `;
 
+// A member `__toESM` cannot see lands as an opaque `The superclass is not a constructor`.
+const namespaceImportSource = `
+import * as net from "node:net";
+import * as vm from "node:vm";
+import { AsyncResource } from "node:async_hooks";
+import { Socket } from "node:net";
+
+class Tracked extends AsyncResource {
+  constructor() {
+    super("tracked");
+    this.seen = [];
+  }
+  record(value) {
+    return this.runInAsyncScope(() => {
+      this.seen.push(value);
+      return this.seen.length;
+    });
+  }
+}
+
+export default async function Command() {
+  const refusal = (fn) => {
+    try {
+      fn();
+      return "none";
+    } catch (error) {
+      return error.message;
+    }
+  };
+  const tracked = new Tracked();
+  globalThis.__namespaceImport = {
+    kinds: [typeof net.Socket, typeof Socket, typeof vm.Script, typeof AsyncResource],
+    keys: Object.keys(net).filter((key) => key !== "default"),
+    refusals: [refusal(() => new net.Socket()), refusal(() => vm.runInNewContext("1"))],
+    scope: [tracked.record("a"), tracked.record("b"), tracked.seen.join("")],
+    type: tracked.type,
+  };
+}
+`;
+
 const cookieAgentSource = `
 import * as http from "node:http";
 import * as url from "node:url";
@@ -1033,6 +1073,17 @@ export async function runFixtures() {
 
   const cookieSpecs = [];
   const cookies = ["a=1; Expires=Wed, 21 Oct 2037 07:28:00 GMT; Path=/", "b=2; Path=/"];
+  await run("a namespace import keeps the shim's named members", namespaceImportSource, "no-view", async (harness) => {
+    const result = harness.call("globalThis.__namespaceImport");
+    const kinds = JSON.stringify(result?.kinds);
+    check("every member survives the own-key snapshot", kinds === JSON.stringify(["function", "function", "function", "function"]), kinds);
+    check("net enumerates its exports", result?.keys?.includes("Socket") && result.keys.includes("createConnection"), JSON.stringify(result?.keys));
+    check("an unsupported member still refuses by name", result?.refusals?.[0]?.startsWith("net.Socket is not supported"), JSON.stringify(result?.refusals));
+    check("a refusal names the member that was called", result?.refusals?.[1]?.startsWith("vm.runInNewContext is not supported"), JSON.stringify(result?.refusals));
+    check("AsyncResource runs the callback in place", JSON.stringify(result?.scope) === JSON.stringify([1, 2, "ab"]), JSON.stringify(result?.scope));
+    check("AsyncResource keeps its type", result?.type === "tracked", String(result?.type));
+  });
+
   await run(
     "an http.Agent subclass carries cookies between requests",
     cookieAgentSource,

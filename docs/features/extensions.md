@@ -571,6 +571,10 @@ so rather than failing silently. `ExtensionDeepLink` owns the claimed schemes an
 covered by `Tests/ext-test.swift`; an extension's own `open("raycast://…")` resolves through the same
 `ExtensionManager.resolve(_:)` instead of launching Raycast.
 
+For view commands, nonempty `fallbackText` also prefills the search field: lists and grids filter
+locally or receive it through `onSearchTextChange` when their handler mounts. It remains available
+in the view command's launch props as well.
+
 ## Background refresh
 
 A `no-view` command declaring `interval` (`"90s"`, `"1m"`, `"12h"`, `"1d"`) re-runs headlessly on that
@@ -656,7 +660,13 @@ directions), `http`/`https` (`request`, `get` and `Agent`, buffered over the sam
 as `fetch`), `stream` (`Readable`, `Writable`, `Duplex`, `Transform`, `PassThrough`, `pipeline`,
 `finished`, plus `stream/promises` and `stream/web`), `util`, `events`, `buffer`, `url`, `querystring`, `punycode`, `assert`,
 `string_decoder`, `timers`. Every other built-in resolves to a stub that throws only when used, so a
-bundle that merely references `http2` or `domain` still loads.
+bundle that merely references `http2` or `domain` still loads. Those stubs are manufactured lazily,
+but each module still has to enumerate its members as own keys: esbuild's `__toESM` — what every
+namespace or named import compiles to — snapshots own keys instead of reading through the proxy, and
+a member it cannot see arrives as `undefined`, which `class … extends` reports as
+`TypeError: The superclass is not a constructor` at import time, naming nothing. `async_hooks` hands
+out a real `AsyncLocalStorage` and `AsyncResource` rather than a stub for the same reason: undici
+extends the latter at module scope, and running the callback in place is the whole of it here.
 
 **Streams** — the stream core is Node's real contract, not a stand-in: an extension that ships
 `stream-chain` and `stream-json` to walk a package index builds object-mode pipelines out of it, and

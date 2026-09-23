@@ -185,8 +185,9 @@ final class ExtensionManager: ExtensionRuntimeDelegate, ExtensionHostContext {
             backgroundRefresh: ExtensionRefreshPolicy.indicator(
                 schedulable: schedulable, backgroundEnabled: metadata.backgroundEnabled,
                 lastError: metadata.lastError),
+            keywords: command.keywords,
             iconOverride: icon(for: command, in: owner, appearance: appearance),
-            ownerName: owner.title)
+            ownerName: owner.title, installedAt: owner.installedAt)
     }
 
     /// Persist and re-publish, so rows change under the user rather than on the next scan.
@@ -915,11 +916,9 @@ final class ExtensionManager: ExtensionRuntimeDelegate, ExtensionHostContext {
         guard let (owner, command) = resolve(link) else {
             throw ExtensionLaunchError.unknownCommand(link.commandName)
         }
-        Task {
-            await run(
-                owner, command: command, arguments: link.arguments,
-                fallbackText: link.fallbackText, launchType: link.launchType)
-        }
+        coordinator?.runExtensionCommand(
+            entry(for: command, in: owner), arguments: link.arguments,
+            fallbackText: link.fallbackText, launchType: link.launchType)
     }
 
     func authorizeOAuth(options: ExtensionOAuthAuthorizeOptions) async throws -> ExtensionOAuthAuthorizeResult

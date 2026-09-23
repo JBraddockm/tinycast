@@ -18,10 +18,11 @@ enum SettingsBackupCoverage {
         "appearance": .appearance,
         "calcNumberStyle": .calcNumberStyle,
         "interfaceSize": .interfaceSize,
-        "paletteTransparency": .paletteTransparency,
         "compactMode": .compactMode,
         "showFavoritesInCompactMode": .showFavoritesInCompactMode,
         "searchScopes": .searchScopes,
+        "launcherShowsSuggestions": .launcherShowsSuggestions,
+        "rootSearchSensitivity": .rootSearchSensitivity,
         "openOnCursorScreen": .openOnCursorScreen,
         "paletteDraggable": .paletteDraggable,
         "fileSearchEnabled": .fileSearchEnabled,
@@ -56,6 +57,7 @@ enum SettingsBackupCoverage {
         "menuBarEvents": .menuBarEvents,
         "calendarMenuBarDisplay": .calendarMenuBarDisplay,
         "menuBarLinkedEventsOnly": .menuBarLinkedEventsOnly,
+        "calendarMenuBarHidesWhenEmpty": .calendarMenuBarHidesWhenEmpty,
         "hideCurrentEvent": .hideCurrentEvent,
         "supportReminders": .supportReminders
     ]

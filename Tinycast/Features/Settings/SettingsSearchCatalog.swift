@@ -140,11 +140,8 @@ enum SettingsSearchCatalog {
             .generalAppearance, "Interface size",
             keywords: ["text size", "font size", "scale", "zoom", "bigger", "larger", "legible"]),
         .init(
-            .generalAppearance, "Background transparency",
-            keywords: ["glass", "opacity", "blur", "translucency", "reset"]),
-        .init(
-            .generalAppearance, "Compact mode",
-            keywords: ["slim", "search bar", "small"]),
+            .generalAppearance, "Window mode",
+            keywords: ["compact", "expanded", "slim", "search bar", "small"]),
         .init(
             .generalAppearance, "Show favorites in compact mode",
             keywords: ["pinned", "apps", "compact"]),
@@ -166,6 +163,12 @@ enum SettingsSearchCatalog {
         .init(
             .generalCalculator, "Number format",
             keywords: ["decimal", "comma", "separator", "locale", "region", "thousands"]),
+        .init(
+            .generalSearch, "Show suggestions",
+            keywords: ["frequent", "recent", "recommended", "empty", "root search"]),
+        .init(
+            .generalSearch, "Search sensitivity",
+            keywords: ["fuzzy", "strict", "loose", "matching", "typo", "root search"]),
         .init(
             .generalSearch, "Learned ranking",
             keywords: ["reset", "history", "order", "privacy"])
@@ -511,6 +514,9 @@ enum SettingsSearchCatalog {
         .init(
             .calendarMenuBar, "Only show events with meetings",
             keywords: ["links", "filter", "menubar"]),
+        .init(
+            .calendarMenuBar, "Hide when there are no upcoming events",
+            keywords: ["empty", "idle", "menubar", "space"]),
         .init(
             .calendarMenuBar, "Hide Current Event",
             keywords: ["started", "time left", "menubar"]),

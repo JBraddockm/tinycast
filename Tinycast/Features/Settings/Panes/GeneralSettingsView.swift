@@ -79,11 +79,7 @@ struct GeneralSettingsView: View {
                     SettingsRowTitle(.generalAppearance, "Theme")
                 }
                 InterfaceSizeRow()
-                PaletteTransparencyRow()
-                Toggle(isOn: $settings.compactMode) {
-                    SettingsRowTitle(.generalAppearance, "Compact mode")
-                    Text("A slim search bar that expands as you type.")
-                }
+                WindowModeRow()
                 Toggle(isOn: $settings.showFavoritesInCompactMode) {
                     SettingsRowTitle(.generalAppearance, "Show favorites in compact mode")
                     Text("Launch them with ⌘1–⌘5.")
@@ -164,6 +160,18 @@ struct GeneralSettingsView: View {
             }
 
             Section {
+                Toggle(isOn: $settings.launcherShowsSuggestions) {
+                    SettingsRowTitle(.generalSearch, "Show suggestions")
+                    Text("What you open most, while the search field is empty.")
+                }
+                Picker(selection: $settings.rootSearchSensitivity) {
+                    ForEach(SearchSensitivity.allCases) { sensitivity in
+                        Text(sensitivity.title).tag(sensitivity)
+                    }
+                } label: {
+                    SettingsRowTitle(.generalSearch, "Search sensitivity")
+                    Text("Lower finds names from scattered letters.")
+                }
                 LabeledContent {
                     Button("Reset…", role: .destructive) {
                         confirmingRankingReset = true
@@ -202,6 +210,75 @@ struct GeneralSettingsView: View {
 
     private func refreshInputSources() {
         inputSources = core.inputSourceSwitcher.options(selecting: settings.autoSwitchInputSourceID)
+    }
+}
+
+private struct WindowModeRow: View {
+    @Environment(AppSettings.self) private var settings
+
+    private static let preview = CGSize(width: 135, height: 80)
+
+    var body: some View {
+        SettingsRow(
+            title: "Window mode", subtitle: "Choose how the launcher opens.",
+            subtitleLineLimit: 2, alignment: .top, anchor: .generalAppearance
+        ) {
+            HStack(spacing: Theme.Spacing.md) {
+                option("Compact", image: "WindowModeCompact", compact: true)
+                option("Expanded", image: "WindowModeExpanded", compact: false)
+            }
+        }
+    }
+
+    private func option(_ title: String, image: String, compact: Bool) -> some View {
+        let selected = settings.compactMode == compact
+        return Button {
+            settings.compactMode = compact
+        } label: {
+            VStack(spacing: Theme.Spacing.xs) {
+                Image(image)
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: Self.preview.width, height: Self.preview.height)
+                    .clipShape(
+                        RoundedRectangle(cornerRadius: Theme.Radius.barControl, style: .continuous)
+                    )
+                    .saturation(selected ? 1 : 0)
+                Text(title)
+                    .font(.caption)
+                    .fontWeight(selected ? .semibold : .regular)
+                    .foregroundStyle(selected ? Color.primary : Color.secondary)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(WindowModeButtonStyle())
+        .accessibilityLabel(title)
+        .accessibilityAddTraits(selected ? [.isSelected] : [])
+    }
+}
+
+private struct WindowModeButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        PressedLabel(configuration: configuration)
+    }
+
+    private struct PressedLabel: View {
+        let configuration: ButtonStyle.Configuration
+        @State private var showsPressed = false
+
+        var body: some View {
+            configuration.label
+                .opacity(showsPressed ? 0.7 : 1)
+                .task(id: configuration.isPressed) {
+                    if configuration.isPressed {
+                        try? await Task.sleep(for: .milliseconds(20))
+                        guard !Task.isCancelled else { return }
+                        showsPressed = true
+                    } else {
+                        showsPressed = false
+                    }
+                }
+        }
     }
 }
 

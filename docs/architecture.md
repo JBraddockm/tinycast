@@ -14,8 +14,9 @@ Independently of the folder tree, every mature subsystem has converged on the sa
 │ environment fact is an injected parameter.                                 │
 │ ⇒ Compiled verbatim by a harness, so it cannot drift.                      │
 │                                                                            │
-│ SearchRelevance · EntryNaming · ScriptRomanization · LauncherOrder ·       │
-│ SearchScopes · LauncherRankingStore · FileSearch{Query,Result,Scope} ·      │
+│ SearchRelevance · LauncherMatch · EntryNaming · ScriptRomanization ·       │
+│ LauncherOrder · LauncherSuggestions · LauncherRankingStore · SearchScopes · │
+│ FileSearch{Query,Result,Scope} ·                                           │
 │ Calculator/* · EmojiCatalog · EmojiGridGeometry · SystemAction ·            │
 │ VolumeLevel ·                                                              │
 │ WindowCommand · WindowPlacementEngine · WindowActionMemory · WindowLayout/* ·      │
@@ -34,12 +35,12 @@ Independently of the folder tree, every mature subsystem has converged on the sa
                                    │ consumed by
 ┌─ EFFECT ─────────────────────────▼─────────────────────────────────────────┐
 │ All platform I/O, one folder per feature.                                  │
-│ AppIndex · SpotlightNames · FileSearchService · SettingsPaneScanner ·      │
+│ AppIndex · FileSearchService · SettingsPaneScanner ·                       │
 │ AXWindowAccess · AXScreens · WindowInventory · WindowLayoutRunner ·        │
 │ IconCache · WindowMover · UninstallScanner · UninstallRunner ·             │
 │ SystemActionRunner · QuicklinkLauncher · TextInjector ·             │
 │ SnippetKeywordListener · NotesRepository · CurrencyRateStore · Paster ·    │
-│ HotKeyCenter · HyperKeyTap · DoubleTapMonitor · RunningAppsMonitor ·       │
+│ HotKeyCenter · HyperKeyTap · ModifierTapMonitor · RunningAppsMonitor ·     │
 │ CalendarStore · MeetingLauncher · MeetingClock · CameraSession ·           │
 │ SupportReminderStore · AXMenuAccess · WindowZOrder · WindowSwitchSweep ·   │
 │ AppleShortcutRunner                                                        │
@@ -207,7 +208,7 @@ everything that feature owns.
 Tinycast/
   App/              @main, AppDelegate, AppCore — the composition root
   DesignSystem/     Theme (the token source), KeyCapChip, Tooltip, SymbolImage,
-                    VisualEffectView, PopoverMenu, SettingsComponents, Scrolling/, Interaction/
+                    GlassEffectView, PopoverMenu, SettingsComponents, Scrolling/, Interaction/
   Platform/         system shims: Permissions, LaunchAtLogin, InputSourceSwitcher, ScreenTarget,
                     AppDisplayName,
                     NotificationToken, AppPaths, Signposts, HealthTicker, Memo, ActivationPolicy,
