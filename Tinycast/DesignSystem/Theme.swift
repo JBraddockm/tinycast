@@ -484,3 +484,28 @@ extension View {
         }
     }
 }
+
+extension Theme {
+    struct FrostedButtonStyle: ButtonStyle {
+        var shape: AnyShape = AnyShape(Capsule())
+
+        func makeBody(configuration: Configuration) -> some View {
+            configuration.label
+                .padding(.vertical, 4)
+                .frosted(in: shape)
+                .opacity(configuration.isPressed ? 0.6 : 1)
+                .scaleEffect(configuration.isPressed ? 0.97 : 1)
+                .animation(.easeOut(duration: 0.12), value: configuration.isPressed)
+        }
+    }
+}
+
+extension ButtonStyle where Self == Theme.FrostedButtonStyle {
+    static var frosted: Theme.FrostedButtonStyle {
+        Theme.FrostedButtonStyle()
+    }
+
+    static func frosted(in shape: some Shape) -> Theme.FrostedButtonStyle {
+        Theme.FrostedButtonStyle(shape: AnyShape(shape))
+    }
+}
