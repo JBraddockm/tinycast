@@ -206,11 +206,19 @@ minute tick. SwiftUI writes
 `false` back through `isInserted` when it removes the item itself, so the insertion setter ignores a
 removal while the item is hidden for being empty: only a drag-out turns the display to `.disabled`.
 
-`CalendarMenuBarMenu` lists calendar actions only — `Join <title>` and `Open in Calendar...` for the
-displayed event, then `My Schedule` and `Calendar Settings...` — so the two menus never repeat each
-other. `Join` is absent for a linkless appointment rather than opening Calendar under a name that
+`CalendarMenuBarMenu` lists calendar actions only — `Join <title>`, `Open in Calendar...` and
+`Dismiss` for the displayed event, then `My Schedule` and `Calendar Settings...` — so the two menus
+never repeat each other. `Join` is absent for a linkless appointment rather than opening Calendar under a name that
 lies. **A bare click never joins**: the menu bar is not a button, and a mis-click there would open a
 call.
+
+`Dismiss` takes the displayed occurrence out of the menu bar, and `MenuBarSummary.event` filters it
+out exactly as it filters a lapsed one — so the next event inside its own lead takes the space with
+no second rule, and with nothing behind it the item falls back to the glyph or leaves under **Hide
+when there are no upcoming events**. The set lives on `CalendarCoordinator` and lasts the launch, the
+way `autoJoined` does: a dismissal is a reaction to what is on screen now, not a preference worth
+persisting, and the ids are pruned against the store so the set cannot grow. It is deliberately per
+occurrence rather than per series — dismissing today's standup says nothing about tomorrow's.
 
 ## Auto join and the preview
 

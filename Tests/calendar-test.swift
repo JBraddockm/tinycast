@@ -29,6 +29,7 @@ struct CalendarTests {
         dayBuckets()
         readSpan()
         menuBarWindow()
+        menuBarDismissal()
         menuBarFiltering()
         menuBarToday()
         menuBarTitles()
@@ -378,6 +379,32 @@ struct CalendarTests {
         expect(
             automatic.event(from: [meeting, next], now: start)?.id == "next",
             "when the current one hides, the next inside its lead time takes the space")
+    }
+
+    static func menuBarDismissal() {
+        let meeting = event(id: "standup", start: 60, minutes: 30)
+        let next = event(id: "next", start: 62)
+        let now = at(60).addingTimeInterval(-60)
+        expect(
+            automatic.event(from: [meeting, next], now: now, dismissed: [])?.id == "standup",
+            "nothing dismissed leaves the earliest event in the menu bar")
+        expect(
+            automatic.event(from: [meeting, next], now: now, dismissed: ["standup"])?.id == "next",
+            "dismissing the displayed event hands the space to the next one inside its lead")
+        expect(
+            automatic.event(from: [meeting], now: now, dismissed: ["standup"]) == nil,
+            "with nothing behind it the menu bar clears instead")
+        expect(
+            automatic.event(from: [meeting, next], now: now, dismissed: ["next"])?.id == "standup",
+            "dismissing an event that is not displayed leaves the displayed one alone")
+        expect(
+            automatic.event(from: [meeting, next], now: now, dismissed: ["standup", "next"]) == nil,
+            "dismissing both clears the menu bar")
+
+        let later = at(62).addingTimeInterval(-60)
+        expect(
+            automatic.event(from: [meeting, next], now: later, dismissed: ["standup"])?.id == "next",
+            "a dismissal is per occurrence, so the next event still arrives on its own lead")
     }
 
     static func menuBarFiltering() {

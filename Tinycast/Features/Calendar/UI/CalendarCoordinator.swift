@@ -23,6 +23,8 @@ final class CalendarCoordinator {
 
     /// Stored and written only on a flip: the menu-bar scene reads it, and must not re-run per tick.
     private(set) var hasMenuBarEvent = false
+    /// Dismissed from the menu bar this launch, the way `autoJoined` remembers what it opened.
+    private var dismissedFromMenuBar: Set<MeetingEvent.ID> = []
 
     init(
         store: CalendarStore,
@@ -71,7 +73,14 @@ final class CalendarCoordinator {
             hideAfterMinutes: settings.hideCurrentEvent.minutes,
             linkedOnly: settings.menuBarLinkedEventsOnly,
             hideCurrentAtStart: settings.hideCurrentEvent.hidesAtStart)
-        return summary.event(from: store.events, now: clock.now)
+        return summary.event(
+            from: store.events, now: clock.now, dismissed: dismissedFromMenuBar)
+    }
+
+    /// Dismisses what the menu drew: a handover mid-click must not eat the arriving event.
+    func dismissMenuBarEvent(_ meeting: MeetingEvent) {
+        dismissedFromMenuBar.insert(meeting.id)
+        refreshMenuBarEvent()
     }
 
     // MARK: - Feature switch
@@ -169,9 +178,18 @@ final class CalendarCoordinator {
     }
 
     private func refreshMenuBarEvent() {
+        forgetStaleDismissals()
         let hasEvent = menuBarEvent != nil
         guard hasEvent != hasMenuBarEvent else { return }
         hasMenuBarEvent = hasEvent
+    }
+
+    /// Assigned only on a change: a write every tick would re-run the label for nothing.
+    private func forgetStaleDismissals() {
+        guard !dismissedFromMenuBar.isEmpty else { return }
+        let live = dismissedFromMenuBar.intersection(store.events.map(\.id))
+        guard live != dismissedFromMenuBar else { return }
+        dismissedFromMenuBar = live
     }
 
     private func autoJoinIfDue() {
