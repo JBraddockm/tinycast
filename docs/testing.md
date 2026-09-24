@@ -380,6 +380,8 @@ caches, TCC grants and login item, so this cannot disturb an installed copy.
 - The type filter searches from its top band, retains its active checkmark when matched, and shows
   centred **No Results** without changing the clipboard query; its native field supports selection
 - ⌘. pins and the highlight follows the row into Pinned; ⌘⌫ deletes; ⌘↵ copies without pasting
+- With enough pins to fill the list, opening it — the first show after launch too — highlights the
+  newest clip, centred with pins above; clearing a query or the filter lands there again
 - ⌃X deletes the selected entry and ⌃⇧X clears the history, from the list and from an open ⌘K menu
 - ⌃⇧X asks first, through Tinycast's own dialog; Cancel and Esc both leave every entry in place
 - ↵ pastes into the previous app; ⌥↵ pastes without closing the palette
@@ -583,6 +585,8 @@ caches, TCC grants and login item, so this cannot disturb an installed copy.
 - ↵ joins: a Zoom link opens the Zoom app, and the browser where no app claims the scheme
 - Typing a character swaps the card for the calculator's; ↑/↓ never lands on a phantom row
 - Unchecking a calendar drops its events from the launcher and My Schedule, and survives a relaunch
+- `Show in launcher` off drops the meeting entries from the launcher, yet typing `My Schedule`
+  still finds the command, and it still lists the meetings
 - Adding or deleting an event in Calendar.app updates an open palette without a reopen
 - A meeting with no link is listed and searchable, and answers Open in Calendar rather than Join
 - Import a backup taken with Calendar on: it comes back **off**, and no calendar toggle travels

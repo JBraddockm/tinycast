@@ -78,7 +78,8 @@ refreshes collapse into a single trailing scan.
 | keywords | the declared Info.plist name, an extension command's `keywords`, a meeting's calendar, and the title and subtitle joined both ways | the query read into Latin | no — they only make an entry appear |
 
 An entry appears when the user's alias is an exact or prefix hit, or when any field passes the
-sensitivity. Bundle identifiers and executable names are not matched.
+sensitivity — an alias that is neither counts as one more alternate title. Bundle identifiers and
+executable names are not matched.
 
 ## Ranking
 
@@ -96,9 +97,11 @@ sensitivity. Bundle identifiers and executable names are not matched.
 | a separator on a different one, like a space on `-` | 1 |
 | not adjacent to the previous match | −1 |
 
-Separators are space, tab, newline and `- . / ( ) [ ]`; camelCase is not a boundary. A query separator
-with nothing to land on is skipped. An equal text is `exact`, above every score. The alignment keeps a
-running maximum, so a row costs O(text).
+Separators are space, tab, newline and `- . / ( ) [ ]`. In an ASCII name a word also starts at a capital
+after a lowercase letter (`OrbStack`), at a letter after a digit (`1Password`), and at the last capital
+of a run that a lowercase letter follows (`BBEdit`), so `stack` finds OrbStack while `code` stays
+mid-word in Xcode. A query separator with nothing to land on is skipped. An equal text is `exact`, above
+every score. The alignment keeps a running maximum, so a row costs O(text).
 
 ### Sensitivity
 
@@ -108,11 +111,13 @@ length less its skipped separators:
 | Setting | A hit shows when |
 | --- | --- |
 | Low | it aligns at all |
-| Medium | `score ≥ 1.5·(L−2)+4` |
-| High, the default | `score > 2·L` |
+| Medium, the default | `score ≥ 1.5·(L−2)+4` |
+| High | `score > 2·L` |
 
-High is the default: it keeps letter soup (`olu` for Set Volume) and mid-word hits (`code` for
-Xcode) out, while initials (`vsc`) and later words (`chrome`) still land.
+Medium is the default: a run inside a word (`code` for Xcode, `pec` for Accessibility Inspector) shows,
+and so does a gapped hit that starts on a word (`pec` for Previous Track), each ranked below the
+stronger hits. High keeps both out while initials (`vsc`) and later words (`chrome`) still land; Low
+shows anything that aligns.
 
 ### The comparator
 
@@ -129,8 +134,10 @@ The first rule that separates two entries decides:
 9. The best score over the title, alternate titles and subtitle.
 10. Frecency.
 11. The title's own score.
-12. Kind priority.
-13. The name, compared numerically.
+12. A title or alternate title that starts with the query, so `ap` puts App Store above AirPort
+    Utility, which reaches the same score by skipping to `Port`.
+13. Kind priority.
+14. The name, compared numerically.
 
 Two entries that both meet rule 3 go by search-term strength, then frecency; both meeting rule 4 go by
 frecency; both meeting rule 5 go by frecency, then the title's own score. The tiebreak settles the rest —
@@ -166,6 +173,11 @@ matches, and is learned, under the same key. ASCII text skips ICU entirely on a 
 `InfoPlist.strings`, and every app under `/System/Applications` translates in the loctable alone — so
 all 65 of them read English on every Mac, whatever language it is set to.
 
+A tag carrying a script is read under two more codes, because no one folder name covers it: a
+`zh-Hans-CN` Mac also reads `zh-Hans`, the folder most third-party apps ship, then `zh_CN`, the key
+Apple's own loctables use. A script-only `zh-Hans` maximizes to reach the same region. A tag without a
+script, every English one included, produces exactly the codes it always did.
+
 The user's own language wins the **display name**, so a row reads the way Finder reads it. The rest,
 English included, ride along as alternate titles, matched as typed and never transliterated.
 
@@ -174,16 +186,17 @@ places its untranslated name — an app's file name, a pane's `Info.plist` — i
 language's own position.** Apple omits a loctable's `en` key exactly when the base name already says
 it in English: `Tips.app`, `Calculator.app` and `AppleIDSettings.appex` all do, and without this the
 walk fell straight past English into whatever *second* language the Mac listed, so an English Mac
-with Russian under it labelled them `Советы` and `Аккаунт Apple`. The base name still loses to a real
-table for that same language — `VoiceMemos.app` does ship `en`, and `Voice Memos` beats the file name
-it was written for. Reading the `en_GB` those bundles *do* carry is the wrong repair: it relabels
-`Print Center` as `Print Centre`. Below the development region the walk carries on, so every language
-under it stays indexed as an alternate title. The region is canonicalized before it is matched, because
-`CFBundleDevelopmentRegion` still ships its pre-BCP-47 spelling — Safari's and Terminal's read
-`English`. `AppDisplayName.inInfo` reads the `-macos` variant of
-each key before the bare one, the way `CFBundle` does: Image Playground's loctable spells the bare
-`CFBundleDisplayName` `Playground` and only the suffixed key `Image Playground`. A non-English user finds their app by the name they
-see *and* by the English name the vendor advertises.
+with Russian under it labelled them `Советы` and `Аккаунт Apple`. A real table for that same language
+replaces the base name outright — `VoiceMemos.app` does ship `en`, so `Voice Memos` is its English
+name, and a pane's `TrackpadExtension` is never indexed for `text` to find. The app scan still adds
+every file name as an alternate title. Reading the `en_GB` those bundles *do* carry is the wrong
+repair: it relabels `Print Center` as `Print Centre`. Below the development region the walk carries on,
+so every language under it stays indexed as an alternate title. The region is canonicalized before it is
+matched, because `CFBundleDevelopmentRegion` still ships its pre-BCP-47 spelling — Safari's and
+Terminal's read `English`. `AppDisplayName.inInfo` reads the `-macos` variant of each key before the
+bare one, the way `CFBundle` does: Image Playground's loctable spells the bare `CFBundleDisplayName`
+`Playground` and only the suffixed key `Image Playground`. A non-English user finds their app by the
+name they see *and* by the English name the vendor advertises.
 
 ### Non-Latin names
 
@@ -322,8 +335,9 @@ revealed: `activate` routes to `FallbackCoordinator.run` instead of `LauncherCoo
 `AliasStore` (`Launcher/Service/`) keeps one user-chosen alias per entry, keyed by `preferenceKey`
 like favorites and learned ranking, so every entry kind — apps, commands, quicklinks, snippets —
 can carry one. An alias is deliberate in a way no vendor field is, so an exact hit is rule 1 and a
-prefix hit rule 6. Only a hit **from its start** counts: `term` inside `iterm` finds
-nothing, so it never beats Terminal's own prefix. `AppIndex` reads the alias at rank time, keying its
+prefix hit rule 6. Only a hit **from its start** earns those rules; anywhere else the alias ranks as
+an alternate title by score, so `dark` finds an alias `toggle light / dark`, while `term` inside
+`iterm` never beats Terminal's own prefix. `AppIndex` reads the alias at rank time, keying its
 memos on the store's revision.
 
 A launcher row shows its entry's alias as a small chip after the name, so what a badge-bearing
@@ -375,6 +389,8 @@ date moves. Each pass is seeded from the last and keeps only what it looked at, 
 fall out instead of accumulating; a changed system language drops the whole table, because the names
 in it are in the old one. `SettingsPaneScanner` runs the same `BundleLocalization` walk for the
 `.appex` panes, and retires its cache when either the extensions folder or the language list moves.
+Headphones and Battery are named junk or nothing in every table, so their `nameOverrides` entry
+replaces the walk.
 
 ## Learned ranking
 

@@ -4,6 +4,8 @@ import Foundation
 struct SearchText: Sendable, Hashable {
     /// UTF-16, because the scorer walks it by index on every keystroke.
     let units: [UInt16]
+    /// Word starts no separator marks, such as a capital after a lowercase letter.
+    let humps: [Int]
 
     var isEmpty: Bool { units.isEmpty }
     var string: String { String(decoding: units, as: UTF16.self) }
@@ -12,13 +14,43 @@ struct SearchText: Sendable, Hashable {
     init(_ raw: String, transliterated: Bool) {
         let latin = transliterated ? ScriptRomanization.latin(raw) : nil
         units = Array((latin ?? FuzzyMatch.normalized(raw)).utf16)
+        humps = latin == nil ? Self.humps(in: raw) : []
     }
 
-    init(units: [UInt16]) { self.units = units }
+    init(units: [UInt16], humps: [Int] = []) {
+        self.units = units
+        self.humps = humps
+    }
 
     /// Two texts as one phrase, so `brew search` reaches `Search` under `Brew`.
     func joined(with other: SearchText) -> SearchText {
-        SearchText(units: units + [LauncherMatch.space] + other.units)
+        SearchText(
+            units: units + [LauncherMatch.space] + other.units,
+            humps: humps + other.humps.map { $0 + units.count + 1 })
+    }
+
+    private static let lowercase = UInt8(ascii: "a")...UInt8(ascii: "z")
+    private static let uppercase = UInt8(ascii: "A")...UInt8(ascii: "Z")
+    private static let digit = UInt8(ascii: "0")...UInt8(ascii: "9")
+
+    /// ASCII only: its fold keeps every index, where a non-ASCII fold can shift them.
+    private static func humps(in raw: String) -> [Int] {
+        var humps: [Int] = []
+        var (beforePrevious, previous): (UInt8, UInt8) = (0, 0)
+        for (offset, byte) in raw.utf8.enumerated() {
+            guard byte < 0x80 else { return [] }
+            switch (beforePrevious, previous, byte) {
+            case (_, lowercase, uppercase), (_, digit, lowercase), (_, digit, uppercase):
+                humps.append(offset)
+            // The capital before this lowercase letter ends an acronym and starts a word.
+            case (uppercase, uppercase, lowercase):
+                humps.append(offset - 1)
+            default:
+                break
+            }
+            (beforePrevious, previous) = (previous, byte)
+        }
+        return humps
     }
 }
 
@@ -50,7 +82,7 @@ enum LauncherMatch {
         let letters = q.reduce(0) { isSeparator($1) ? $0 : $0 + 1 }
         guard letters <= t.count else { return nil }
         if letters > precheckThreshold, !isRoughSubsequence(q, of: t) { return nil }
-        return align(q, t, letters: letters)
+        return align(q, t, humps: target.humps, letters: letters)
     }
 
     static func isSeparator(_ unit: UInt16) -> Bool {
@@ -75,7 +107,7 @@ enum LauncherMatch {
     }
 
     /// One row per query character; a running maximum keeps a row linear in the text.
-    private static func align(_ q: [UInt16], _ t: [UInt16], letters: Int) -> Outcome? {
+    private static func align(_ q: [UInt16], _ t: [UInt16], humps: [Int], letters: Int) -> Outcome? {
         let width = t.count
         var previous = [Int](repeating: .min, count: width)
         var current = [Int](repeating: .min, count: width)
@@ -104,7 +136,8 @@ enum LauncherMatch {
                         continue
                     }
                     let points =
-                        bothSeparators ? 1 : (anchor < 0 && column == 0 ? 4 : wordPoints(t, column))
+                        bothSeparators
+                        ? 1 : (anchor < 0 && column == 0 ? 4 : wordPoints(t, column, humps: humps))
                     if anchor < 0 {
                         current[column] = points
                     } else {
@@ -134,9 +167,8 @@ enum LauncherMatch {
         return best == .min ? nil : .scored(score: best, skipped: skipped)
     }
 
-    /// A word start earns 3; camelCase is no boundary.
-    private static func wordPoints(_ t: [UInt16], _ column: Int) -> Int {
-        isSeparator(t[column - 1]) && !isSeparator(t[column]) ? 3 : 2
+    private static func wordPoints(_ t: [UInt16], _ column: Int, humps: [Int]) -> Int {
+        (isSeparator(t[column - 1]) && !isSeparator(t[column])) || humps.contains(column) ? 3 : 2
     }
 }
 
@@ -145,6 +177,8 @@ enum SearchSensitivity: String, CaseIterable, Identifiable, Sendable {
     case low
     case medium
     case high
+
+    static let `default`: Self = .medium
 
     var id: String { rawValue }
 

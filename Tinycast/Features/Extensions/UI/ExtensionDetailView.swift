@@ -39,7 +39,8 @@ struct ExtensionDetailBody: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(
-                .horizontal, stacksMetadata ? metrics.scaled(Self.stackedInset) : metrics.spacing.lg)
+                .horizontal, stacksMetadata ? metrics.scaled(Self.stackedInset) : metrics.spacing.lg
+            )
             .padding(.vertical, metrics.spacing.md)
             .hideNativeScrollers()
         }
@@ -247,7 +248,7 @@ struct ExtensionMarkdownView: View {
     @Environment(\.metrics) private var metrics
     let markdown: String
 
-    private enum Block: Identifiable {
+    private enum Block {
         case heading(level: Int, text: String)
         case paragraph(String)
         case bullet(String)
@@ -257,25 +258,12 @@ struct ExtensionMarkdownView: View {
         case rule
         case image(URL)
         case table([[String]])
-
-        var id: String {
-            switch self {
-            case .heading(let level, let text): return "h\(level):\(text)"
-            case .paragraph(let text): return "p:\(text)"
-            case .bullet(let text): return "b:\(text)"
-            case .numbered(let index, let text): return "n\(index):\(text)"
-            case .quote(let text): return "q:\(text)"
-            case .code(let text): return "c:\(text)"
-            case .rule: return "rule:\(UUID().uuidString)"
-            case .image(let url): return "img:\(url.absoluteString)"
-            case .table(let rows): return "t:\(rows)"
-            }
-        }
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: metrics.spacing.sm) {
-            ForEach(Self.parse(markdown)) { block in
+            // Positional, so a live image keeps its last frame while the next one decodes.
+            ForEach(Array(Self.parse(markdown).enumerated()), id: \.offset) { _, block in
                 switch block {
                 case .heading(let level, let text):
                     Text(inline(text))
@@ -405,7 +393,9 @@ struct ExtensionMarkdownView: View {
                     of: #"(?<!\\)((?:\\\\)*)\\\|"#, with: "$1\u{0}", options: .regularExpression)
                 let cells = row.split(separator: "|", omittingEmptySubsequences: false).dropFirst()
                     .dropLast(row.hasSuffix("|") ? 1 : 0)
-                    .map { $0.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: "\u{0}", with: "|") }
+                    .map {
+                        $0.trimmingCharacters(in: .whitespaces).replacingOccurrences(of: "\u{0}", with: "|")
+                    }
                 if cells.allSatisfy({ $0.contains("-") && $0.allSatisfy(":-".contains) }) { continue }
                 table.append(cells)
                 continue
@@ -470,7 +460,7 @@ extension String {
     }
 }
 
-/// An image inside a Detail's markdown, capped so a large asset can't push the layout around.
+/// An image inside a Detail's markdown, at its own size or the one its URL asks for.
 private struct ExtensionMarkdownImage: View {
     @Environment(\.metrics) private var metrics
     @Environment(\.isDarkAppearance) private var isDark
@@ -487,7 +477,7 @@ private struct ExtensionMarkdownImage: View {
                         Image(nsImage: image).resizable().aspectRatio(contentMode: .fit)
                     }
                 }
-                .frame(maxWidth: maxWidth, maxHeight: maxHeight)
+                .frame(maxWidth: maxWidth ?? (size == nil ? image.size.width : .infinity), maxHeight: maxHeight)
                 .clipShape(RoundedRectangle(cornerRadius: metrics.radius.menu, style: .continuous))
                 .frame(maxWidth: .infinity)
             } else {
@@ -498,11 +488,14 @@ private struct ExtensionMarkdownImage: View {
         }
         // Keyed on the appearance too: an inline SVG's palette resolves at decode, not in the URL.
         .task(id: ExtensionImage.LoadKey(source: source, isDark: isDark)) {
-            image =
+            // A slow remote load must not show the previous row's image meanwhile.
+            if url.scheme != "data" { image = nil }
+            let loaded =
                 url.scheme == "data"
                 ? await ExtensionIconCache.loadInlineAsync(
                     url, palette: ExtensionImage.svgPalette(isDark: isDark))
                 : await ExtensionIconCache.loadRemoteAsync(url, asIcon: false)
+            if !Task.isCancelled { image = loaded }
         }
     }
 
@@ -512,7 +505,7 @@ private struct ExtensionMarkdownImage: View {
 
     private var size: ExtensionImageSize? { ExtensionImageSize(url: url) }
 
-    private var maxWidth: CGFloat { size?.width.map { CGFloat($0) } ?? .infinity }
+    private var maxWidth: CGFloat? { size?.width.map { CGFloat($0) } }
 
-    private var maxHeight: CGFloat { CGFloat(ExtensionImageSize.maxHeight(for: size)) }
+    private var maxHeight: CGFloat { size?.height.map { CGFloat($0) } ?? .infinity }
 }

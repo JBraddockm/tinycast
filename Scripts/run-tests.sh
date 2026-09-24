@@ -251,6 +251,7 @@ run palette-filter-test    Tinycast/Palette/PaletteMode.swift \
 run action-menu-search-test Tinycast/Palette/ActionMenuSearchQuery.swift \
                             Tinycast/Features/Launcher/Model/SearchRelevance.swift
 run palette-shortcut-test  Tinycast/Palette/PaletteShortcut.swift
+run ascii-layout-test      Tinycast/Platform/ASCIIKeyboardLayout.swift
 run palette-tab-test       Tinycast/Palette/PaletteMode.swift \
                            Tinycast/Palette/PaletteTabAction.swift \
                            Tinycast/Features/Quicklinks/Model/Quicklink.swift \

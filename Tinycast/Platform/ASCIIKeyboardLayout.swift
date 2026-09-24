@@ -45,11 +45,22 @@ enum ASCIIKeyboardLayout {
     /// SwiftUI exposes the input-source character; recover the logical ASCII key from AppKit.
     @MainActor static func keyEquivalent(fallingBackTo key: KeyEquivalent) -> KeyEquivalent {
         guard let event = NSApp.currentEvent,
-            !event.modifierFlags.isDisjoint(with: [.command, .control]),
-            let character = character(for: event)?.lowercased().first,
-            character.unicodeScalars.allSatisfy(\.isASCII)
+            !event.modifierFlags.isDisjoint(with: [.command, .control])
         else { return lowercased(key) }
-        return KeyEquivalent(character)
+        return recovered(key, layoutCharacter: character(for: event)?.lowercased().first)
+    }
+
+    /// The recovery itself, over a layout character the caller already translated.
+    static func recovered(_ key: KeyEquivalent, layoutCharacter: Character?) -> KeyEquivalent {
+        guard !isNamedKey(key), let layoutCharacter,
+            layoutCharacter.unicodeScalars.allSatisfy(\.isASCII)
+        else { return lowercased(key) }
+        return KeyEquivalent(layoutCharacter)
+    }
+
+    /// Arrows and page keys: `UCKeyTranslate` answers these with ASCII controls the test admits.
+    private static func isNamedKey(_ key: KeyEquivalent) -> Bool {
+        key.character.unicodeScalars.contains { (0xF700...0xF8FF).contains($0.value) }
     }
 
     /// Shift uppercases SwiftUI's key, but every chord spells its letter in lower case.

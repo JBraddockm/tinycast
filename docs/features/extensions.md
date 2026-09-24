@@ -272,8 +272,8 @@ screens hold (see [palette.md](palette.md)).
 - **Detail** — markdown rendered block-by-block (headings, lists, code fences, quotes, rules, tables, fetched
   and inline images) with `AttributedString` handling inline styling, plus `Detail.Metadata` — a
   sidebar on a Detail screen, appended below the markdown in a `List`'s detail pane. An image
-  is full-width and at most 220pt tall; `?raycast-width=` / `?raycast-height=` on its URL, read by
-  `ExtensionImageSize`, can only shrink it within that, never lift the cap. A rowless Detail's screen
+  draws at its own size, shrunk to fit the pane and never enlarged, unless `?raycast-width=` /
+  `?raycast-height=` on its URL, read by `ExtensionImageSize`, size it. A rowless Detail's screen
   actions remain available through the primary ⏎ action and the ⌘K Actions panel.
 - **Appearance** — `environment.appearance` reports the real one, so an extension that branches on it
   is told the truth. It is an injected field on `ExtensionLaunchContext` (a `Model/` type owns no
@@ -389,15 +389,16 @@ screens hold (see [palette.md](palette.md)).
   extension icon and keeps its `tintColor` — which is what makes a palette of `{Icon.Circle, tintColor}`
   rows read as colours rather than a column of grey circles. Untinted symbols use the extension's
   14pt Medium monochrome treatment; a destructive action with no tint of its own falls back to red.
-  Section boundaries add 6pt above and below their separator without moving ordinary rows. The
-  title shares the elastic scroller with the actions. A native, row-height search field below it
-  filters titles through the launcher's fuzzy matcher, preserves section boundaries and centres
-  **No Results** in one row when empty; the scrolling edge beside that field has no dissolve. The
-  8pt resting inset scrolls with the actions, so rows can reach the panel edge without shifting their
-  initial position; hover keeps the shared 10pt menu-row corner. The panel opens and closes from its
-  bottom-right attachment with extension-owned opacity and scale timing, briefly reaching 1.003;
-  its attached corner matches the footer button. The first action is the primary ↵ action; an
-  action's own `shortcut` is matched against modified keystrokes.
+  Section boundaries add the list inset (8pt) above and below their separator without moving
+  ordinary rows; a capped panel ends mid-row, so its edge never lands on a separator, and every
+  hairline is one device pixel. The title shares the elastic scroller with the actions. A native,
+  row-height search field below it filters titles through the launcher's fuzzy matcher, preserves
+  section boundaries and centres **No Results** in one row when empty; the scrolling edge beside that
+  field has no dissolve. The 8pt resting inset scrolls with the actions, so rows can reach the panel
+  edge without shifting their initial position; hover keeps the shared 10pt menu-row corner. The
+  panel opens and closes from its bottom-right attachment with extension-owned opacity and scale
+  timing, briefly reaching 1.003; its attached corner matches the footer button. The first action is
+  the primary ↵ action; an action's own `shortcut` is matched against modified keystrokes.
   `ExtensionCommandScreen.menuContent` hands the whole panel to the palette as a
   `PaletteMenuContent`, so the palette never learns the row type — and a row's handler is taken from
   the flattened `ExtensionAction` list rather than the drawn rows, so ↵ and the panel fire the same
@@ -654,7 +655,7 @@ would launch Raycast itself.
 
 **Node built-ins** — `path`, `fs` (+ `fs/promises`, `createReadStream`/`createWriteStream`, a snapshot-backed `opendir`, and
 the descriptor calls `tar` unpacks through), `os`,
-`child_process` (`exec`, `execFile`, `execSync`, `execFileSync`, `spawnSync`, and a buffered `spawn`,
+`child_process` (`exec`, `execFile`, `execSync`, `execFileSync`, `spawnSync`, and a streaming `spawn`,
 each async form reporting the child's real `pid` for `process.kill` — Timers pauses that way),
 `crypto` (hashes, HMAC, PBKDF2, AES-CBC/ECB, random, UUID), `zlib` (gzip/zlib/raw deflate, both
 directions), `http`/`https` (`request`, `get` and `Agent`, buffered over the same URLSession bridge
@@ -729,8 +730,8 @@ address question and nothing else: a service enumeration, or anything sent to an
 **Bundled helpers** — compiled Mach-O files and shebang scripts live in `assets/`. GitHub's raw-file
 downloads and some store zips lose their executable mode, so installation preserves Git tree mode
 `100755`; discovery also repairs known executable payloads already installed as `644`. That covers
-both generated wrappers and extensions that call a helper directly with `execFile`. The buffered
-`spawn` covers the rest of a Swift wrapper. Color Picker is the reference case.
+both generated wrappers and extensions that call a helper directly with `execFile`. `spawn` covers
+the rest of a Swift wrapper. Color Picker is the reference case.
 
 **Command modes** — `view` renders into the palette; `no-view` runs headless with the palette closed.
 Both receive `props.arguments` and `props.launchType`. A `no-view` command declaring `interval`
@@ -751,7 +752,7 @@ OAuth extensions it excluded are not counted yet — re-measure before quoting t
 | **`AI`, `BrowserExtension`, `WindowManagement`** | Raycast services with no local equivalent. Importing them works; calling one throws with a clear reason. |
 | **A WebSocket to a host with a certificate macOS distrusts** | `ws`'s `rejectUnauthorized: false` is ignored — URLSession validates the chain either way. |
 | **Aborting a `fetch` already in flight** | `AbortSignal` is complete — `timeout`, `abort` and `any` included — and `fetch` checks it on both sides of the host call, so a caller gets its `AbortError`. The request itself still runs to completion: the signal isn't carried across the bridge, so nothing cancels the `URLSessionTask`. A timeout bounds the caller, not the network. |
-| **Streaming `child_process.spawn`** | `spawn` runs the child to completion and emits its output as one chunk (async-iterable, which is what `get-stream`/`execa` consume). True duplex streaming would need a bidirectional channel across the bridge. Extensions built on `execa`'s deeper stream API can still fail. |
+| **Interactive `spawn` stdin** | stdout and stderr stream, but stdin is sent once as the child starts: whatever was written in the same tick. A later `stdin.write` is dropped. |
 | **`net` / `tls`** | Resolve but throw on use. Nothing bridges a raw socket; a bundled `ws` reaches the network through the WebSocket bridge instead. `tls.TLSSocket` is the one exception: `http2-wrapper`, inside `got`, derives a class from one at import time, so it constructs as an inert duplex. |
 | **Streaming HTTP** | The bridge answers a request with the whole body at once, so `http.request` delivers one chunk and `Response.body` replays bytes that already arrived. Server-sent events, network-level progress and backpressure onto the socket are all out of reach; `stream` itself is real enough to carry them the day the bridge is. |
 | **Tool/AI-extension entry points (`tools/`)** | Not surfaced. |
