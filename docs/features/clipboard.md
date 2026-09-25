@@ -40,7 +40,10 @@
   about what counts as a colour or what it converts to.
 - **Recognized text is search metadata and nothing else.** It lives in its own `item_text` table,
   never on `ClipboardItem` and never in the resident window, so no surface can paste it, copy it,
-  or classify an entry by it. What an entry *is* still comes from the content that was captured.
+  or classify an entry by it. The one exception is Copy Text, which the reader invokes explicitly:
+  it extracts fresh in the helper and puts the text on the pasteboard — the `item_text` table
+  itself is still never copied from. What an entry *is* still comes from the content that was
+  captured.
 - **No recognition ever runs in the app process.** `ClipboardTextWorker` spawns one bundled
   `ClipboardTextHelper` per item and reaps it, which is the whole reason Vision's and PDFKit's
   allocations do not accumulate in Tinycast. The helper is handed a path and answers with text.
@@ -155,12 +158,14 @@ Recognition runs in a bundled `ClipboardTextHelper`, one item at a time, and Vis
 state leaves with it. The parent accepts at most 32 KB from the helper's output pipe, propagates
 cancellation, and terminates and reaps a helper that runs past 60 seconds. `ClipboardTextWorker`
 does its blocking read and wait on its own `DispatchQueue`, never the cooperative pool. No helper
-exists while text search is off or the queue is empty.
+exists while text search is off or the queue is empty — a Copy Text trigger is the exception: the
+helper is bundled either way, so an explicit extraction spawns one with the search switch off.
 
 Images include owned clipboard PNGs and referenced image files. Referenced PDFs use PDFKit's embedded
 text page by page, with Vision OCR for pages without text. Mixed text-and-scan documents therefore
 remain searchable; images embedded on a page that already has text are not separately OCR'd. All
-processing stays on this Mac. Extracted text is search metadata, never the value pasted or copied.
+processing stays on this Mac. Extracted text is search metadata, never the value pasted or
+copied — Copy Text below is the deliberate exception, a copy the reader asks for.
 
 The derived `item_text` table and its trigram FTS index persist metadata without adding extracted
 strings to `ClipboardItem` or loading them into the resident history. Original text/path search returns
@@ -185,11 +190,42 @@ is a completed attempt. Failed recognition, a locked or unreadable input and a h
 `item_text_failures` instead: up to three attempts 30 seconds apart, which never block another item.
 Success and deletion clear that state. Enabling text search resets failures and earlier empty
 attempts so they can be tried again, keeping recognized text that is not empty — so an empty input
-may be reprocessed on a later launch, but nothing retries forever inside one session. Long bitmaps
-are recognized in overlapping 2048-pixel tiles, with Vision's relative minimum text-height cutoff
-disabled so it cannot discard small text on a tall screenshot or page. A referenced file is read once
+may be reprocessed on a later launch, but nothing retries forever inside one session. Tall bitmaps
+are recognized in full-width 2048-pixel strips overlapping by 256 pixels, with Vision's relative
+minimum text-height cutoff disabled so it cannot discard small text on a tall screenshot or page.
+Strips never split a line across columns, and each keeps only the lines centred in its half of an
+overlap, so a line is read once and the text keeps its reading order. A referenced file is read once
 when it is indexed; editing it later does not refresh the historical search text. Backups carry the
 original content and references, and a restored entry is recognized again.
+
+## Copy Text from an image
+
+**Copy Text** extracts the text in the selected image entry and puts it on the pasteboard. One
+coordinator entry point, `ClipboardCoordinator.copyImageText(_:)`, sits behind both surfaces: the
+⌘K Actions-menu row and the **⇧⌘T** chord (which requires the expanded list, like the other row
+chords, and closes an open menu). `ClipboardItem.offersTextExtraction` is the one eligibility
+answer — a captured `.image` entry, or a `.file` entry whose kind is an image (a screenshot copied
+in Finder) — and it is never a PDF, which stays a background-indexing capability.
+
+The action closes the palette and shows a "Reading text…" progress pill, then stats the file off
+the main actor, since a stat on an unmounted volume can stall: a vanished referenced file raises the
+HUD every action on that row uses, and a pruned blob says "That image is no longer available." —
+the palette is already down, so a HUD is the only thing that can speak. `ClipboardTextWorker` then
+spawns the bundled helper: no Vision runs in the app process, nothing reads the `item_text` table,
+and nothing depends on the text-search switch, whose helper is bundled either way. The extracted
+text is written with `Paster.copyPlainText`, **unmarked**, so the copy enters history like Copy
+Path does, and the pill is replaced by the outcome — **Copied text**, **No text found** when the
+helper succeeded but recognized nothing, or **Couldn’t read the text** when it failed.
+
+Only one extraction is in flight: a second trigger cancels the first, whose helper is terminated
+and which reports nothing. A result never overwrites a newer copy — when the pasteboard's
+`changeCount` moved while the helper ran, the text is dropped and the pill says **Clipboard
+changed, text not copied**.
+
+The bounds are the indexer's, stated precisely: the helper truncates its output at 32,000 UTF-8
+bytes, so a text-dense scan can copy *partial* text under a success HUD, and an input over 32 MB
+extracts as empty and lands in **No text found**. The source row is not promoted — a copy is not a
+paste.
 
 ## Type filter
 
