@@ -22,8 +22,9 @@ struct AISettingsView: View {
         return Form {
             Section {
                 Toggle(isOn: $appSettings.aiEnabled) {
-                    SettingsRowTitle(.aiAI, "Enable AI")
-                    Text("Nothing is loaded or sent while it is off.")
+                    SettingsFeatureToggleLabel(
+                        anchor: .aiAI, title: "Enable AI",
+                        subtitle: "Nothing is loaded or sent while it is off.")
                 }
                 SettingsRow(
                     title: "Providers", subtitle: providerSummary, anchor: .aiProviders
