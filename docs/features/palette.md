@@ -229,7 +229,7 @@ fact as a parameter, so `palette-placement-test` drives the shipped rules rather
 The panel's width and height are not constants: they come from `InterfaceMetrics`, so Interface Size
 changes them. A change re-enters through `AppCore.track` → `applyInterfaceSize()`, which **drops the
 cached anchor** and re-resolves it — one rule, the summon's. An untouched palette re-centres at the new
-width; a dragged one keeps its stored top-left unless the wider bar no longer leaves
+width; a dragged one keeps its stored horizontal centre unless the wider bar no longer leaves
 `paletteMinimumVisible` on the display it opens on, in which case it falls home.
 
 ### Drag to reposition
@@ -277,6 +277,8 @@ A drop that isn't a snap writes the panel's top-left to `AppSettings.palettePosi
 display**, keyed by `NSScreen.displayKey` and held **relative to that display's visible top-left**. Per
 display stops a drop made on one screen pulling the palette back there when it is summoned on another;
 relative survives rearranging that display or rescaling it, so no key goes stale.
+Changing Interface Size shifts each saved left edge by half the width difference, preserving the
+launcher's horizontal centre on every display.
 
 **The display is chosen first, by the setting below.** `PalettePlacement.restored` drops the corner once
 that display shows less than `Theme.Size.paletteMinimumVisible` of the compact bar, and snapping onto

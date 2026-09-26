@@ -217,7 +217,16 @@ final class AppSettings {
 
     /// Scales the palette and its floating siblings only. Read through `InterfaceSize.metrics`.
     var interfaceSize: InterfaceSize {
-        didSet { defaults.set(interfaceSize.rawValue, forKey: Key.interfaceSize.rawValue) }
+        didSet {
+            defaults.set(interfaceSize.rawValue, forKey: Key.interfaceSize.rawValue)
+            let shift = Double(
+                (oldValue.metrics.size.panelWidth - interfaceSize.metrics.size.panelWidth) / 2)
+            if shift != 0 {
+                palettePositions = palettePositions.mapValues { offset in
+                    offset.count == 2 ? [offset[0] + shift, offset[1]] : offset
+                }
+            }
+        }
     }
 
     /// Summon the launcher as a slim search bar that expands into the full list on typing.
