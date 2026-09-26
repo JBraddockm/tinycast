@@ -173,12 +173,16 @@ never shifts them; a wrapped item keeps normal line spacing. A restyle writes st
 `beginEditing` and `endEditing`, then invalidates layout for those lines. It never calls
 `shouldChangeText`, which is what keeps styling off the undo stack.
 
+A bullet or numbered marker becomes a list only after a space or tab; a lone `-` or `1.` stays literal.
+
 `NoteRevealPolicy` picks the lines that show raw Markdown: every line under the selection, plus both
 fences of a code block the selection is in. Nothing is revealed unless the editor is first responder in
 the key window. Revealed markers use `textTertiary`. During a drag selection the reveal waits for
-mouse-up, because revealing moves text under the pointer. A revealed list or quote line hangs its
-marker left of the content indent, so its text stays where the rendered line had it. Since the caret's line is always raw, the
-caret never sits inside hidden text and the arrow keys need no special handling.
+mouse-up, because revealing moves text under the pointer. Bullets keep their dot under the caret;
+other revealed list markers keep the rendered marker's `textSecondary` colour. Revealed non-bullet list
+and quote lines hang their source marker left of the content indent, so text stays where the rendered
+line had it. Empty list items keep body-sized invisible markers so their line height does not collapse.
+Other caret lines are raw, keeping the caret out of hidden text.
 
 ### Block drawing
 

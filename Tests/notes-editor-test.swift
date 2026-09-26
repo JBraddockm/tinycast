@@ -20,6 +20,7 @@ struct NotesEditorTests {
         testRenderingOffIsLiteral()
         testTaskSpacing()
         testBlockDecorationsAndFragments()
+        testListMarkersWaitForSpace()
         testListKeysAndChords()
         testFormattingReports()
         testTaskRuleCheckboxesAndLinks()
@@ -316,8 +317,28 @@ struct NotesEditorTests {
         check(
             "bullets and numbered items get the same spacing as tasks",
             [0, 6, 12].allSatisfy { style(at: $0)?.paragraphSpacing == Theme.Spacing.md })
+        let emptyBullet = "- first\n- \n- third"
         editor.coordinator.update(
-            NoteEditorInput(id: NoteID(rawValue: "Spacing.md"), source: source, epoch: 3))
+            NoteEditorInput(id: NoteID(rawValue: "EmptyBullet.md"), source: emptyBullet, epoch: 3))
+        editor.textView.setSelectedRange(NSRange(location: 14, length: 0))
+        let bulletFragments = layoutFragments(in: editor.textView)
+        check(
+            "an empty bullet keeps the filled bullet's line height",
+            bulletFragments[8]?.textLineFragments.first?.typographicBounds.height
+                == bulletFragments[0]?.textLineFragments.first?.typographicBounds.height)
+        check(
+            "an empty bullet keeps its dot",
+            decoration(in: editor.textView, at: 8)?.shape == .bullet(level: 0))
+        check(
+            "an empty bullet keeps normal text metrics",
+            font(in: editor.textView, at: 8) == NoteMarkdownTypography.body)
+        check("an empty bullet keeps list spacing", style(at: 8)?.paragraphSpacing == Theme.Spacing.md)
+        editor.textView.setSelectedRange(NSRange(location: 10, length: 0))
+        check(
+            "an active empty bullet keeps its dot",
+            decoration(in: editor.textView, at: 8)?.shape == .bullet(level: 0))
+        editor.coordinator.update(
+            NoteEditorInput(id: NoteID(rawValue: "Spacing.md"), source: source, epoch: 4))
         editor.textView.setSelectedRange(NSRange(location: text.length, length: 0))
         check(
             "non-list paragraphs retain native spacing",
@@ -359,15 +380,29 @@ struct NotesEditorTests {
         check(
             "list markers are a neutral gray",
             decoration(in: editor.textView, at: bullet)?.fill.cgColor == gray)
+        let ordered = text.range(of: "1. first").location
+        editor.textView.setSelectedRange(NSRange(location: ordered + 4, length: 0))
+        check(
+            "a number keeps the same gray under the caret",
+            color(in: editor.textView, at: ordered)?.cgColor == gray)
+        let task = text.range(of: "- [ ] open").location
+        editor.textView.setSelectedRange(NSRange(location: task + 6, length: 0))
+        check(
+            "a task marker keeps the same gray under the caret",
+            color(in: editor.textView, at: task)?.cgColor == gray)
         let renderedIndent = paragraphStyle(in: editor.textView, at: bullet)?.headIndent
         editor.textView.setSelectedRange(NSRange(location: bullet + 3, length: 0))
-        check("a revealed list line carries none", shape("- bullet") == nil)
+        check("a bullet keeps its dot under the caret", shape("- bullet") == .bullet(level: 0))
         let revealed = paragraphStyle(in: editor.textView, at: bullet)
-        let markerWidth = ("- " as NSString).size(withAttributes: [.font: NoteMarkdownTypography.body]).width
         check(
-            "a revealed list line hangs its marker so the text stays in place",
+            "a bullet keeps its rendered indent under the caret",
             revealed?.headIndent == renderedIndent
-                && abs((revealed?.firstLineHeadIndent ?? 0) + markerWidth - (renderedIndent ?? 0)) < 0.5)
+                && revealed?.firstLineHeadIndent == renderedIndent)
+        editor.textView.setSelectedRange(NSRange(location: text.range(of: "nested").location, length: 0))
+        check(
+            "moving the caret between bullets keeps both dots",
+            shape("- bullet") == .bullet(level: 0)
+                && shape("    - nested") == .bullet(level: 1))
         editor.textView.setSelectedRange(NSRange(location: 0, length: 0))
 
         let fragments = layoutFragments(in: editor.textView)
@@ -403,6 +438,29 @@ struct NotesEditorTests {
         }
     }
 
+    private static func testListMarkersWaitForSpace() {
+        let editor = makeEditor(
+            input: NoteEditorInput(id: NoteID(rawValue: "ListMarkers.md"), source: "", epoch: 1),
+            rendersMarkdown: true)
+        editor.textView.insertText("-", replacementRange: editor.textView.selectedRange())
+        check("a lone dash stays literal", editor.coordinator.renderer.markdown.lines[0].kind == .paragraph)
+        editor.textView.insertText(" ", replacementRange: editor.textView.selectedRange())
+        check(
+            "space turns a dash into a bullet",
+            editor.coordinator.renderer.markdown.lines[0].kind == .bullet
+                && decoration(in: editor.textView, at: 0)?.shape == .bullet(level: 0))
+
+        editor.coordinator.update(NoteEditorInput(id: NoteID(rawValue: "Numbered.md"), source: "", epoch: 2))
+        editor.textView.insertText("1.", replacementRange: editor.textView.selectedRange())
+        check(
+            "a lone number marker stays literal",
+            editor.coordinator.renderer.markdown.lines[0].kind == .paragraph)
+        editor.textView.insertText(" ", replacementRange: editor.textView.selectedRange())
+        check(
+            "space turns a number marker into a list",
+            editor.coordinator.renderer.markdown.lines[0].kind == .ordered(number: 1))
+    }
+
     private static func testListKeysAndChords() {
         var changes: [String] = []
         let input = NoteEditorInput(id: NoteID(rawValue: "Keys.md"), source: "- item", epoch: 1)
@@ -414,6 +472,9 @@ struct NotesEditorTests {
             "Return continues a list in one published edit",
             editor.textView.string == "- item\n- " && changes == ["- item\n- "]
                 && editor.textView.selectedRange() == NSRange(location: 9, length: 0))
+        check(
+            "a new empty bullet is drawn at the end of a note",
+            decoration(in: editor.textView, at: 7)?.shape == .bullet(level: 0))
         undo.undo()
         check("one Undo step removes the continuation", editor.textView.string == "- item")
         undo.redo()

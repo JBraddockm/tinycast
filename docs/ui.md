@@ -270,9 +270,11 @@ Markdown styles it in place with no new tokens. Notes type sits one system text 
 of the app, because a note is for reading: body text is the title3 size in `noteText`, and headings 1
 to 3 use the largeTitle, title1 and title2 sizes (bold, bold, semibold). Interface Size does not scale
 it. Inline code is monospaced on `controlSurface`, and links use the system link colour. Quotes and
-checked tasks dim to `textSecondary`, and a checked task is struck through. Markers on the caret's line
-show in `textTertiary`; everywhere else they are hidden. A revealed list or quote marker hangs left of
-its text, so the text does not move when the caret arrives, unless the marker is wider than the slot.
+checked tasks dim to `textSecondary`, and a checked task is struck through. Most markers show in
+`textTertiary` on the caret's line and are hidden elsewhere. Bullets keep their rendered dot even under
+the caret; revealed list markers stay `textSecondary`. Revealed non-bullet list and quote markers hang
+left of their text, so the text does not move when the caret arrives, unless the marker is wider than
+the slot. Empty list items keep body-sized invisible markers so their rows match filled items' height.
 
 A layout fragment draws the block chrome. A code band fills `cardFill` with `menu` corners at its ends
 and a `textTertiary` language label, inset by `lg`. A quote bar is `markdownQuoteBar` wide in `border`,

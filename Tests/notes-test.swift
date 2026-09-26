@@ -448,7 +448,14 @@ struct NotesTests {
         check(
             "rules win over lists, and hashtags stay paragraphs",
             kinds("- - -\n***\n___\n#hashtag\n####### seven\n3.14 pi\n-\n#")
-                == [.rule, .rule, .rule, .paragraph, .paragraph, .paragraph, .bullet, .heading(level: 1)])
+                == [.rule, .rule, .rule, .paragraph, .paragraph, .paragraph, .paragraph, .heading(level: 1)])
+        check(
+            "list markers become lists only after a separator",
+            kinds("-\n- \n*\n* \n+\n+ \n1.\n1. \n12)\n12) ")
+                == [
+                    .paragraph, .bullet, .paragraph, .bullet, .paragraph, .bullet,
+                    .paragraph, .ordered(number: 1), .paragraph, .ordered(number: 12)
+                ])
         check(
             "four spaces keep a rule literal, as they already do a heading and a quote",
             kinds("   ---\n    ---\n    # not a heading\n    > not a quote")
