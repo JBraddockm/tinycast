@@ -18,11 +18,14 @@ struct SettingsRootView: View {
         }
         .navigationTitle(navigation.tab.title)
         .toolbar {
-            ToolbarItemGroup(placement: .navigation) {
-                Button("Back", systemImage: "chevron.backward") { navigation.goBack() }
-                    .disabled(!navigation.canGoBack)
-                Button("Forward", systemImage: "chevron.forward") { navigation.goForward() }
-                    .disabled(!navigation.canGoForward)
+            ToolbarItem(placement: .navigation) {
+                ControlGroup {
+                    Button("Back", systemImage: "chevron.backward") { navigation.goBack() }
+                        .disabled(!navigation.canGoBack)
+                    Button("Forward", systemImage: "chevron.forward") { navigation.goForward() }
+                        .disabled(!navigation.canGoForward)
+                }
+                .controlGroupStyle(.navigation)
             }
         }
     }
