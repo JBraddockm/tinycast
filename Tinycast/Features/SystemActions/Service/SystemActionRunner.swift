@@ -605,12 +605,11 @@ enum SystemActionRunner {
             process.standardInput = FileHandle.nullDevice
             process.standardOutput = stdout
             process.standardError = stderr
-            do { try process.run() } catch {
+            do { try process.runObservingExit().wait() } catch {
                 throw SystemActionFailure(
                     "\(URL(fileURLWithPath: executable).lastPathComponent) could not start: \(error.localizedDescription)"
                 )
             }
-            process.waitUntilExit()
             let outData = stdout.fileHandleForReading.readDataToEndOfFile()
             let errorData = stderr.fileHandleForReading.readDataToEndOfFile()
             return ProcessOutput(

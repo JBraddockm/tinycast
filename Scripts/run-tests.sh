@@ -155,7 +155,8 @@ run clipboard-search-test  Tinycast/Features/Clipboard/Model/*.swift $Q
 run clipboard-text-test    Tinycast/Features/Clipboard/Model/*.swift $Q \
                            Tinycast/Features/Clipboard/Service/ClipboardTextExtractor.swift \
                            Tinycast/Features/Clipboard/Service/ClipboardTextIndexer.swift \
-                           Tinycast/Features/Clipboard/Service/ClipboardTextWorker.swift
+                           Tinycast/Features/Clipboard/Service/ClipboardTextWorker.swift \
+                           Tinycast/Platform/ProcessExit.swift
 run pasteboard-test        Tinycast/Platform/PasteboardFiles.swift \
                            Tinycast/Features/Clipboard/Model/ClipboardStore.swift \
                            Tinycast/Features/Clipboard/Model/ClipboardFilter.swift \
@@ -313,6 +314,7 @@ run ext-icon-test          Tinycast/Platform/Appearance.swift \
                            Tinycast/Features/Extensions/Model/RenderNode.swift \
                            Tinycast/Features/Extensions/Service/ExtensionCatalog.swift \
                            Tinycast/Features/Extensions/Service/ExtensionFetcher.swift \
+                           Tinycast/Platform/ProcessExit.swift \
                            Tinycast/Features/Extensions/Service/ExtensionNodeShims.swift \
                            Tinycast/Features/Extensions/Service/ExtensionOAuthKeychain.swift \
                            Tinycast/Features/Extensions/Service/ExtensionOAuthSession.swift \
@@ -378,6 +380,7 @@ run window-file-test       Tinycast/Features/WindowManagement/Model/WindowComman
                            Tinycast/Features/Settings/Model/SettingsFileJSON.swift \
                            Tinycast/Features/Settings/Model/SettingsFileIdentity.swift
 run custom-command-test    Tinycast/Platform/PseudoTerminal.swift \
+                           Tinycast/Platform/ProcessExit.swift \
                            Tinycast/Features/CustomCommands/Model/CustomCommand.swift \
                            Tinycast/Features/CustomCommands/Model/RaycastScriptImport.swift \
                            Tinycast/Features/CustomCommands/Service/ShellCommandRunner.swift
@@ -529,6 +532,7 @@ run slow ext-test          -parse-as-library \
                            $E/Model/ExtensionSearchAccessory.swift \
                            $E/Service/ExtensionCatalog.swift \
                            $E/Service/ExtensionFetcher.swift \
+                           Tinycast/Platform/ProcessExit.swift \
                            $E/Service/ExtensionIconCache.swift \
                            $E/Service/ExtensionNodeShims.swift \
                            $E/Service/ExtensionOAuthKeychain.swift \
@@ -614,6 +618,7 @@ run apple-intelligence-test Tinycast/Features/Settings/AppSettingsKey.swift \
                            Tinycast/Features/AI/Service/AIProvider.swift \
                            Tinycast/Features/AI/Service/AppleIntelligenceProvider.swift
 run mcp-oauth-test         Tinycast/Platform/ExecutableLocator.swift \
+                           Tinycast/Platform/ProcessExit.swift \
                            Tinycast/Platform/KeychainSecretStore.swift \
                            Tinycast/Features/Settings/AppSettingsKey.swift \
                            Tinycast/Features/AI/Model/AIConnection.swift \
@@ -626,6 +631,7 @@ run mcp-oauth-test         Tinycast/Platform/ExecutableLocator.swift \
                            Tinycast/Features/MCP/Model/*.swift \
                            Tinycast/Features/MCP/Service/*.swift
 run slow mcp-stdio-test    Tinycast/Platform/ExecutableLocator.swift \
+                           Tinycast/Platform/ProcessExit.swift \
                            Tinycast/Platform/KeychainSecretStore.swift \
                            Tinycast/Features/Settings/AppSettingsKey.swift \
                            Tinycast/Features/AI/Model/AIConnection.swift \
@@ -644,11 +650,13 @@ run slow codex-turn-test   Tinycast/Platform/AppPaths.swift \
                            Tinycast/Features/AI/Service/CodexAppServerClient.swift \
                            Tinycast/Features/AI/Service/InstalledAIProbe.swift \
                            Tinycast/Platform/ExecutableLocator.swift \
+                           Tinycast/Platform/ProcessExit.swift \
                            Tinycast/Features/AI/Service/CodexTurnRunner.swift
 run installed-ai-test     Tinycast/Features/AI/Model/*.swift \
                           Tinycast/Features/AI/Service/AIProvider.swift \
                           Tinycast/Platform/AppPaths.swift \
                           Tinycast/Platform/ExecutableLocator.swift \
+                          Tinycast/Platform/ProcessExit.swift \
                           Tinycast/Features/AI/Service/InstalledCLIProvider.swift \
                           Tinycast/Features/AI/Service/InstalledAIProbe.swift \
                           Tinycast/Features/AI/Service/InstalledAIManager.swift
