@@ -355,6 +355,10 @@ Pasting a pinned entry deliberately does **not** promote it: it holds its place 
 section, so `promote` skips pinned rows instead of rewriting the row and its FTS entry for no
 visible change.
 
+Paste and Keep Window Open (⌥↵) does not promote any entry. The rows hold still under the
+selection, so ↓ then ⌥↵ pastes a run of entries in order. `Paster.write` therefore only writes the
+pasteboard; `paste` and `copy` promote after it, and `pasteInPlace` does not.
+
 The ten palette slots shared with launcher favorites address this visible Pinned block too. A slot
 uses the current query and type filter, so its first entry is the first visible pin; a missing slot is
 a no-op. They are fixed to the physical number row, with ⌘1…⌘9 then ⌘0 as their labels.

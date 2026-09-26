@@ -5,13 +5,24 @@ struct GeneralSettingsView: View {
     @Environment(AppSettings.self) private var settings
     private var hyperTap: HyperKeyTap { core.hyperKeyTap }
     private var launcherRanking: LauncherRankingStore { core.launcherRanking }
-    // The same key `MenuBarExtra(isInserted:)` binds, so this updates the icon live.
-    @AppStorage(SettingsKey.showInMenuBar) private var showInMenuBar = true
     @State private var confirmingRankingReset = false
     @State private var inputSources: [InputSourceSwitcher.Option] = []
 
     /// The Hyper modifier chord as prose glyphs, tracking the Include Shift toggle.
     private var hyperGlyphs: String { settings.hyperKeyIncludesShift ? "⌃⌥⇧⌘" : "⌃⌥⌘" }
+
+    /// Only a choice made here resets Quick Press: settings.json may set both keys at once.
+    private var hyperKeySelection: Binding<HyperKeyPhysicalKey> {
+        Binding(
+            get: { settings.hyperKey },
+            set: { key in
+                guard key != settings.hyperKey else { return }
+                settings.hyperKey = key
+                // A Quick Press choice is meaningless for a different key.
+                settings.hyperKeyQuickPress = .none
+                if key != .none { Permissions.ensureAccessibility() }
+            })
+    }
 
     /// The missing-permission half is its own row, so it can carry the button that fixes it.
     private var hyperSubtitle: String {
@@ -34,7 +45,7 @@ struct GeneralSettingsView: View {
                 Toggle(isOn: $settings.launchAtLogin) {
                     SettingsRowTitle(.generalGeneral, "Launch at login")
                 }
-                Toggle(isOn: $showInMenuBar) {
+                Toggle(isOn: $settings.showInMenuBar) {
                     SettingsRowTitle(.generalGeneral, "Show in menu bar")
                     Text("Shortcuts still work when hidden.")
                 }
@@ -97,7 +108,7 @@ struct GeneralSettingsView: View {
             }
 
             Section {
-                Picker(selection: $settings.hyperKey) {
+                Picker(selection: hyperKeySelection) {
                     ForEach(HyperKeyPhysicalKey.allCases) { key in
                         Text(key.title).tag(key)
                     }
@@ -105,21 +116,16 @@ struct GeneralSettingsView: View {
                     SettingsRowTitle(.generalHyperKey, "Hyper Key")
                     Text(hyperSubtitle)
                 }
-                .onChange(of: settings.hyperKey) { _, newKey in
-                    // A Quick Press choice is meaningless for a different key.
-                    settings.hyperKeyQuickPress = .none
-                    if newKey != .none { Permissions.ensureAccessibility() }
-                }
 
                 if hyperTap.status == .needsAccessibility {
-                    LabeledContent {
+                    HStack(alignment: .center, spacing: Theme.Spacing.lg) {
+                        Image(systemName: "exclamationmark.triangle")
+                            .foregroundStyle(.orange)
+                            .frame(width: Theme.Size.settingsRowIcon)
+                        Text("Remapping needs Accessibility access.")
+                            .foregroundStyle(.orange)
+                        Spacer(minLength: Theme.Spacing.lg)
                         Button("Grant Access…") { Permissions.openAccessibilitySettings() }
-                    } label: {
-                        Label(
-                            "Remapping needs Accessibility access.",
-                            systemImage: "exclamationmark.triangle"
-                        )
-                        .foregroundStyle(.orange)
                     }
                 }
 
@@ -296,7 +302,7 @@ private struct InterfaceSizeRow: View {
             subtitle: "Scales the launcher and its panels, not Settings.",
             anchor: .generalAppearance
         ) {
-            HStack(spacing: Theme.Spacing.xxs) {
+            HStack(spacing: Theme.Spacing.xs) {
                 ForEach(InterfaceSize.allCases) { size in
                     segment(size)
                 }
@@ -306,17 +312,13 @@ private struct InterfaceSizeRow: View {
 
     private func segment(_ size: InterfaceSize) -> some View {
         let selected = settings.interfaceSize == size
-        let shape = RoundedRectangle(cornerRadius: Theme.Radius.barControl, style: .continuous)
         return Button {
             settings.interfaceSize = size
         } label: {
             Text("Aa")
                 .font(.system(size: Self.glyph[size] ?? 13, weight: .medium))
                 .foregroundStyle(selected ? Color.primary : Color.secondary)
-                .frame(width: Theme.Size.interfaceSizeSegment, height: Theme.Size.settingsControlHeight)
-                // Without this only the glyphs take the click, not the segment around them.
-                .contentShape(shape)
-                .background(shape.fill(selected ? Theme.Colors.controlSurface : Color.clear))
+                .settingsOptionSegment(isSelected: selected)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(size.title)

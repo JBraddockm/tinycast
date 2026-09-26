@@ -34,6 +34,24 @@ final class NoteTextView: NSTextView, InjectableTextView {
         perform(action)
     }
 
+    func find(_ action: NSTextFinder.Action) {
+        let item = NSMenuItem()
+        item.tag = action.rawValue
+        performTextFinderAction(item)
+    }
+
+    override func draw(_ dirtyRect: NSRect) {
+        super.draw(dirtyRect)
+        guard textStorage?.length == 0 else { return }
+        NSAttributedString(
+            string: "Start writing…",
+            attributes: [
+                .font: NoteMarkdownTypography.body,
+                .foregroundColor: NSColor(Theme.Colors.textTertiary)
+            ]
+        ).draw(at: textContainerOrigin)
+    }
+
     // MARK: - Keys
 
     override func insertNewline(_ sender: Any?) {

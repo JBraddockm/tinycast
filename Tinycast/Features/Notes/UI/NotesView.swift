@@ -59,7 +59,6 @@ struct NotesView: View {
                 onFormattingChange: notes.updateFormatting,
                 onReady: notes.editorReady
             )
-            .overlay(alignment: .topLeading) { placeholder }
             if notes.showsFormattingBar {
                 formattingBand
             } else {
@@ -83,20 +82,6 @@ struct NotesView: View {
         .padding(.trailing, Theme.Spacing.md)
         .frame(minWidth: 0, maxWidth: .infinity, alignment: .trailing)
         .frame(height: Theme.Size.bottomBarHeight)
-    }
-
-    @ViewBuilder
-    private var placeholder: some View {
-        if notes.isActiveNoteEmpty {
-            Text("Start writing…")
-                .font(.title3)
-                .foregroundStyle(Theme.Colors.textTertiary)
-                // Matches the text container inset exactly, so the caret sits on the placeholder.
-                .padding(.horizontal, Theme.Size.noteEditorInset)
-                .padding(.vertical, Theme.Size.noteEditorTopInset)
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
-        }
     }
 
     private var emptyState: some View {

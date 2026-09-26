@@ -67,7 +67,6 @@ final class NotesCoordinator {
     }
 
     var hasActiveNote: Bool { store.activeID != nil }
-    var isActiveNoteEmpty: Bool { store.activeID != nil && store.source.isEmpty }
     /// UTF-16 units, straight off the text storage: the only length TextKit hands back in O(1).
     var characterCountLabel: String {
         characterCount == 1 ? "1 character" : "\(characterCount) characters"
@@ -299,6 +298,20 @@ final class NotesCoordinator {
             guard permitsCompletion(generation) else { return }
             windowController.show(focusEditor: !isSwitcherPresented)
         }
+    }
+
+    /// Points Notes at a folder as it is; nothing is moved out of the old one.
+    func chooseNotesFolder() {
+        guard
+            let url = FolderPicker.choose(
+                message: "Choose the folder your notes are kept in.",
+                startingAt: store.notesDirectory)
+        else { return }
+        settings.notesFolder = AppPaths.contentFolderSetting(for: url, named: "Notes")
+    }
+
+    func resetNotesFolder() {
+        settings.notesFolder = nil
     }
 
     func openNotesFolder() {

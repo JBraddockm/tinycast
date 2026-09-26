@@ -19,8 +19,8 @@ struct SnippetRepository: Sendable {
         private let lock = NSLock()
         private var locks: [String: DirectoryLock] = [:]
 
-        func directoryLock(for channelDirectory: URL) -> DirectoryLock {
-            let identity = canonicalIdentity(for: channelDirectory)
+        func directoryLock(for directory: URL) -> DirectoryLock {
+            let identity = canonicalIdentity(for: directory)
             return lock.withLock {
                 if let existing = locks[identity] { return existing }
                 let directoryLock = DirectoryLock()
@@ -110,6 +110,7 @@ struct SnippetRepository: Sendable {
             for: .applicationSupportDirectory,
             in: .userDomainMask
         )[0],
+        snippetsDirectory: URL? = nil,
         mutationHooks: MutationHooks = MutationHooks()
     ) {
         self.bundleIdentifier = bundleIdentifier
@@ -117,9 +118,11 @@ struct SnippetRepository: Sendable {
             bundleIdentifier,
             isDirectory: true)
         self.channelDirectory = channelDirectory
-        directoryLock = Self.directoryLocks.directoryLock(for: channelDirectory)
+        let snippetsDirectory =
+            snippetsDirectory ?? channelDirectory.appendingPathComponent("Snippets", isDirectory: true)
+        self.snippetsDirectory = snippetsDirectory
+        directoryLock = Self.directoryLocks.directoryLock(for: snippetsDirectory)
         self.mutationHooks = mutationHooks
-        snippetsDirectory = channelDirectory.appendingPathComponent("Snippets", isDirectory: true)
     }
 
     func load() throws(RepositoryError) -> Snapshot {

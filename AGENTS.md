@@ -77,8 +77,8 @@ feature's doc, under its own `## Invariants`.
 - **A networked feature fetches on a private `.ephemeral`, `urlCache = nil` session**, never
   `URLSession.shared`, so its own cache file stays the only copy on disk. `CurrencyRateStore` is the
   reference — copy it rather than inventing a second shape. A flag that grants a capability is never
-  carried by a backup: `snippetsEnabled` is excluded from settings backups so an import cannot grant
-  keystroke listening.
+  carried by a backup or by `settings.json`: `snippetsEnabled` is excluded from settings backups so an
+  import cannot grant keystroke listening.
 - **Extensions stay inside `Features/Extensions/`.** Every view, row, menu, geometry and sizing
   constant an extension needs is written and owned there — never added to `DesignSystem/`, never bolted
   onto `Theme`, and never lifted somewhere another feature can build on it. Another surface may render
@@ -105,6 +105,9 @@ feature's doc, under its own `## Invariants`.
 
 ## Conventions worth knowing up front
 
+- **A new preference also gets a `SettingsFileKey`** and its binding in `SettingsFileSchema`, so the
+  opt-in `settings.json` mirror carries it; the exhaustive switch fails the build until it is bound.
+  See [settings-file.md](docs/features/settings-file.md).
 - **A type's suffix says what it *is*** — `Store`, `Coordinator`, `Controller`, `Manager`, `Engine`,
   `Policy` and the rest each name a specific responsibility. **Semantic correctness always wins over
   suffix consistency:** pick the suffix that describes the type honestly, add a new one when none fits,

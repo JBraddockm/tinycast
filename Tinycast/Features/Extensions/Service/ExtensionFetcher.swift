@@ -72,6 +72,7 @@ enum ExtensionAsyncProcess {
 
     struct Child: Sendable {
         let task: Process
+        let exit: ProcessExit
         let stdout: Pipe
         let stderr: Pipe
 
@@ -81,7 +82,7 @@ enum ExtensionAsyncProcess {
             if let timeout, timeout > 0 { watchdog = terminationWatchdog(after: timeout / 1000) }
             let outData = stdout.fileHandleForReading.readDataToEndOfFile()
             let errData = stderr.fileHandleForReading.readDataToEndOfFile()
-            task.waitUntilExit()
+            exit.wait()
             watchdog?.cancel()
 
             return [

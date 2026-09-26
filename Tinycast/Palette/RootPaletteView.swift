@@ -651,6 +651,7 @@ struct RootPaletteView: View {
                     .symbolRenderingMode(.hierarchical)
                     .foregroundStyle(.secondary)
                     .frame(width: metrics.size.headerIconSlot)
+                    .windowDraggable(settings.paletteDraggable, onBegan: beginDrag, onEnded: endDrag)
             }
             headerGutter(width: metrics.spacing.md)
             // One structural position: a field inside a branch loses first responder when it flips.

@@ -223,6 +223,19 @@ struct SnippetsTests {
         let secondLoad = try stable.load()
         check("a repeated load of an empty library stays empty", secondLoad.records.isEmpty)
 
+        let chosenFolder = root.appendingPathComponent("dotfiles/snippets", isDirectory: true)
+        let chosen = SnippetRepository(
+            bundleIdentifier: "com.tinycast.app", applicationSupportRoot: channelRoot,
+            snippetsDirectory: chosenFolder)
+        let signOff = try chosen.create(Snippet(name: "Sign-off", text: "Thanks"))
+        let stableAfter = try stable.load()
+        let chosenAfter = try chosen.load()
+        check(
+            "a chosen folder holds the library instead of the channel's",
+            signOff.fileURL.deletingLastPathComponent().standardizedFileURL.path
+                == chosenFolder.standardizedFileURL.path
+                && stableAfter.records.isEmpty && chosenAfter.records.count == 1)
+
         let corruptRoot = root.appendingPathComponent("partial-load", isDirectory: true)
         let corruptRepository = SnippetRepository(
             bundleIdentifier: "com.example.partial",

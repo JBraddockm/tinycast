@@ -26,14 +26,18 @@ struct QuickActionsSettingsView: View {
                 }
                 if appSettings.quickActionsEnabled, !isTrusted {
                     // Every shortcut fails without it; better said here than found one press later.
-                    SettingsRow(
-                        title: "Accessibility permission required",
-                        subtitle: "Needed to read your selection."
-                    ) {
+                    HStack(alignment: .center, spacing: Theme.Spacing.lg) {
                         Image(systemName: "exclamationmark.triangle.fill")
-                            .foregroundStyle(Theme.Colors.destructive)
+                            .foregroundStyle(.orange)
                             .frame(width: Theme.Size.settingsRowIcon)
-                    } trailing: {
+                        VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
+                            Text("Accessibility permission required")
+                                .foregroundStyle(.orange)
+                            Text("Needed to read your selection.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer(minLength: Theme.Spacing.lg)
                         Button("Open System Settings") { Permissions.openAccessibilitySettings() }
                     }
                 }

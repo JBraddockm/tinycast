@@ -28,12 +28,17 @@ struct SnippetsSettingsView: View {
                     LabeledContent {
                         Button("Grant Access…") { Permissions.openAccessibilitySettings() }
                     } label: {
-                        Label(
-                            "Keyword expansion needs Accessibility access.",
-                            systemImage: "exclamationmark.triangle"
-                        )
-                        .foregroundStyle(.orange)
-                        Text("Launcher search still works.")
+                        HStack(alignment: .center, spacing: Theme.Spacing.lg) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.orange)
+                                .frame(width: SettingsListMetrics.iconSize)
+                            VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
+                                Text("Keyword expansion needs Accessibility access")
+                                    .foregroundStyle(.orange)
+                                Text("Launcher search still works.")
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
                     }
                 }
             }
@@ -88,11 +93,15 @@ struct SnippetsSettingsView: View {
             }
 
             LabeledContent {
+                if settings.snippetsFolder != nil {
+                    Button("Use Default", action: core.snippetCoordinator.resetSnippetsFolder)
+                }
+                Button("Choose…", action: core.snippetCoordinator.chooseSnippetsFolder)
                 Button("Open Folder", action: core.snippetCoordinator.revealSnippetsInFinder)
-                    .accessibilityHint("Reveals this Tinycast channel’s snippets folder in Finder.")
+                    .accessibilityHint("Reveals the snippets folder in Finder.")
             } label: {
                 SettingsRowTitle(.snippetsLibrary, "Snippets Folder")
-                Text("Plain Markdown files.")
+                Text((snippetsStore.snippetsDirectory.path as NSString).abbreviatingWithTildeInPath)
             }
         } header: {
             SettingsSectionHeader(.snippetsLibrary)
@@ -178,6 +187,8 @@ private struct SnippetSettingsRow: View {
     var body: some View {
         SettingsRow(title: record.snippet.name, subtitle: metadata) {
             Image(systemName: "doc.text")
+                .font(.system(size: Theme.Size.settingsRowIcon - Theme.Spacing.xs))
+                .frame(width: SettingsListMetrics.iconSize, height: SettingsListMetrics.iconSize)
         } trailing: {
             Button(action: onEdit) {
                 Image(systemName: "pencil")

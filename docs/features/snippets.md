@@ -7,8 +7,8 @@ another app.
 ## Invariants
 
 - **Snippets are channel-isolated and path-identified.** They persist under
-  `~/Library/Application Support/<bundle-id>/Snippets/`; `StoredSnippet.ID` is the standardized source
-  path, and an external rename is a delete plus a create.
+  `~/Library/Application Support/<bundle-id>/Snippets/` unless the user chooses a folder;
+  `StoredSnippet.ID` is the standardized source path, and an external rename is a delete plus a create.
 - **The feature ships off, and its enable switch doubles as keyword-expansion consent.**
   `snippetsEnabled` is excluded from settings backups, and Accessibility — the only permission it needs,
   since the listen-only tap needs nothing more — may be requested **only** from that explicit Settings
@@ -32,6 +32,12 @@ Each app channel owns a separate library:
 ```text
 ~/Library/Application Support/<bundle-id>/Snippets/
 ```
+
+**Snippets Folder** in the Snippets pane, or `snippets.folder` in the [settings file](settings-file.md),
+points the library at another folder, absolute or under `~/`, as it is: nothing moves out of the old one.
+`AppPaths.contentFolder` resolves it once, so a folder that is a symlink lists like any other, and
+`SnippetsStore.relocate` stops, swaps and reloads. The folder is excluded from backups, since it names
+a place on this Mac.
 
 Debug (`com.tinycast.app.dev`), beta, and stable therefore never share snippet files. The storage
 root and bundle identifier are injectable in the standalone harness so tests cannot touch a real

@@ -112,13 +112,20 @@ final class NotesWindowController: NSObject, NSWindowDelegate {
         panel.titlebarSeparatorStyle = .none
         panel.contentMinSize = Theme.Size.noteWindow
         panel.delegate = self
-        panel.onEscape = { [weak coordinator] in coordinator?.handleEscape() }
+        panel.onEscape = { [weak self, weak coordinator] in
+            if self?.editor?.enclosingScrollView?.isFindBarVisible == true {
+                self?.editor?.find(.hideFindInterface)
+            } else {
+                coordinator?.handleEscape()
+            }
+        }
         panel.onMouseDown = { [weak coordinator] in coordinator?.noteWindowMouseDown() }
         panel.onDeleteChord = { [weak coordinator] in coordinator?.handleDeleteShortcut() ?? false }
         panel.commandChords = [
             "n": { [weak coordinator] in coordinator?.createNote() },
             "p": { [weak coordinator] in coordinator?.searchNotes() },
             "o": { [weak coordinator] in coordinator?.openNotesFolder() },
+            "f": { [weak self] in self?.editor?.find(.showFindInterface) },
             "w": { [weak panel] in panel?.performClose(nil) }
         ]
         panel.optionCommandChords = [

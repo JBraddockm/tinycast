@@ -783,6 +783,20 @@ struct WindowRoomTests {
         expect(
             [older, never, newer].sorted(by: Room.enteredMoreRecently).map(\.name) == ["A", "B", "0"],
             "most recent first")
+
+        let learned = Room(
+            name: "Design", windows: [window("figma", id: 12), window("notes", id: 13)],
+            lastEnteredAt: Date(timeIntervalSince1970: 30))
+        let edited = Room(
+            id: learned.id, name: "Design Review", windows: [window("figma"), window("mail")]
+        )
+        .keepingRuntime(of: learned)
+        expect(
+            edited.name == "Design Review" && edited.lastEnteredAt == learned.lastEnteredAt,
+            "an edited room keeps when it was last entered")
+        expect(
+            edited.windows.map(\.windowID) == [12, nil],
+            "a window's number returns only to a window of the same app")
     }
 
     static func storeCRUD() {

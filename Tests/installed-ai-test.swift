@@ -50,11 +50,11 @@ struct InstalledAITests {
             try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: cli.path)
             // The shape `mise activate fish` takes: PATH set only when interactive, after a greeting.
             try """
-                echo 'Welcome to fish'
-                if status is-interactive
-                    set -gx PATH \(tools.path) $PATH
-                end
-                """.write(
+            echo 'Welcome to fish'
+            if status is-interactive
+                set -gx PATH \(tools.path) $PATH
+            end
+            """.write(
                 to: config.appending(path: "fish/config.fish"), atomically: true, encoding: .utf8)
         } catch {
             expect(false, "the fish fixture is written: \(error)")
