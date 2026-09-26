@@ -14,12 +14,11 @@ struct Room: Codable, Hashable, Identifiable, Sendable {
     /// A layout chosen on one display, keyed by its lowercased UUID; `layout` covers the rest.
     var layoutsByDisplay: [String: RoomLayoutKind]
     var lastEnteredAt: Date?
-    var createdAt: Date
 
     init(
         id: UUID = UUID(), name: String, windows: [RoomWindow] = [],
         layout: RoomLayoutKind = .auto, layoutsByDisplay: [String: RoomLayoutKind] = [:],
-        lastEnteredAt: Date? = nil, createdAt: Date = Date()
+        lastEnteredAt: Date? = nil
     ) {
         self.id = id
         self.name = name
@@ -27,11 +26,22 @@ struct Room: Codable, Hashable, Identifiable, Sendable {
         self.layout = layout
         self.layoutsByDisplay = layoutsByDisplay
         self.lastEnteredAt = lastEnteredAt
-        self.createdAt = createdAt
     }
 
     func layout(onDisplay uuid: String?) -> RoomLayoutKind {
         uuid.flatMap { layoutsByDisplay[$0.lowercased()] } ?? layout
+    }
+
+    /// This room as written elsewhere, keeping what entering `learned` taught this Mac.
+    func keepingRuntime(of learned: Room) -> Room {
+        var room = self
+        room.lastEnteredAt = learned.lastEnteredAt
+        // A window's number goes back only to a window of the same app, so an edit can't mismatch.
+        for (index, window) in zip(room.windows.indices, learned.windows)
+        where window.bundleID == room.windows[index].bundleID {
+            room.windows[index].windowID = window.windowID
+        }
+        return room
     }
 
     var summary: String { windows.count == 1 ? "1 window" : "\(windows.count) windows" }
@@ -59,7 +69,7 @@ struct Room: Codable, Hashable, Identifiable, Sendable {
 
     // Hand-written, so an added field keeps stored rooms and older backups readable.
     private enum CodingKeys: String, CodingKey {
-        case id, name, windows, layout, layoutsByDisplay, lastEnteredAt, createdAt
+        case id, name, windows, layout, layoutsByDisplay, lastEnteredAt
     }
 
     init(from decoder: Decoder) throws {
@@ -73,7 +83,6 @@ struct Room: Codable, Hashable, Identifiable, Sendable {
             (try? container.decodeIfPresent([String: String].self, forKey: .layoutsByDisplay)) ?? [:]
         layoutsByDisplay = stored.compactMapValues(RoomLayoutKind.init(rawValue:))
         lastEnteredAt = try container.decodeIfPresent(Date.self, forKey: .lastEnteredAt)
-        createdAt = try container.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
     }
 }
 

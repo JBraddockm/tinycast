@@ -47,9 +47,6 @@ struct ExtensionsSettingsView: View {
         // Escape and Return are the keyboard way out of the same field.
         .onExitCommand { NSApp.keyWindow?.makeFirstResponder(nil) }
         .onSubmit { NSApp.keyWindow?.makeFirstResponder(nil) }
-        .onChange(of: settings.extensionsShowInLauncher) {
-            core.extensionCoordinator.applyExtensionsLauncherPresence()
-        }
         // By item: `isPresented` builds the panel from a snapshot taken before the write.
         .settingsEditorPanel(item: $importCandidates) { candidates in
             ExtensionImportPanel(

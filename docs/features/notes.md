@@ -48,6 +48,11 @@ The per-channel directory is:
 ~/Library/Application Support/<bundle-id>/Notes/
 ```
 
+**Notes Folder** in the Notes pane, or `notes.folder` in the [settings file](settings-file.md), uses
+another folder, absolute or under `~/`, as it is: nothing moves out of the old one. `NotesStore.relocate`
+saves the open draft where it was before it lists the new folder. The folder is excluded from backups,
+since it names a place on this Mac.
+
 `NoteID` is the relative filename. A rename therefore returns a new identity; there are no per-note
 launcher items, hotkeys, favorites, or visibility settings that could retain the old one. Immediate
 regular `.md` children are sorted by modification date, then localized title. Subdirectories, hidden

@@ -75,8 +75,11 @@ struct WindowManagementSettingsView: View {
                     Text("\(settings.windowGap) pt")
                         .monospacedDigit()
                         .foregroundStyle(.secondary)
-                    Stepper("Gap between windows", value: $settings.windowGap, in: 0...64, step: 2)
-                        .labelsHidden()
+                    Stepper(
+                        "Gap between windows", value: $settings.windowGap,
+                        in: WindowPlacementEngine.gapRange, step: 2
+                    )
+                    .labelsHidden()
                 }
             } label: {
                 SettingsRowTitle(.windowManagementOptions, "Gap between windows")

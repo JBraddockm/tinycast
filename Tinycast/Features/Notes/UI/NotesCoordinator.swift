@@ -300,6 +300,20 @@ final class NotesCoordinator {
         }
     }
 
+    /// Points Notes at a folder as it is; nothing is moved out of the old one.
+    func chooseNotesFolder() {
+        guard
+            let url = FolderPicker.choose(
+                message: "Choose the folder your notes are kept in.",
+                startingAt: store.notesDirectory)
+        else { return }
+        settings.notesFolder = AppPaths.contentFolderSetting(for: url, named: "Notes")
+    }
+
+    func resetNotesFolder() {
+        settings.notesFolder = nil
+    }
+
     func openNotesFolder() {
         guard let fileURL = store.activeFileURL else {
             NSWorkspace.shared.open(store.notesDirectory)

@@ -5,6 +5,21 @@ import SwiftUI
 enum ASCIIKeyboardLayout {
     /// No modifiers by default: the key's base character, which is what a shortcut glyph shows.
     @MainActor static func character(for keyCode: Int, modifiers: UInt32 = 0) -> String? {
+        withCurrentLayout { character(for: keyCode, modifiers: modifiers, in: $0) }
+    }
+
+    /// Every key's base character, translated against one lookup of the layout.
+    @MainActor static func baseCharacters(for keyCodes: Range<Int>) -> [Int: String] {
+        withCurrentLayout { layout in
+            keyCodes.reduce(into: [:]) { characters, keyCode in
+                characters[keyCode] = character(for: keyCode, modifiers: 0, in: layout)
+            }
+        } ?? [:]
+    }
+
+    @MainActor private static func withCurrentLayout<Result>(
+        _ body: (UnsafePointer<UCKeyboardLayout>) -> Result?
+    ) -> Result? {
         guard
             let source = TISCopyCurrentASCIICapableKeyboardLayoutInputSource()?
                 .takeRetainedValue(),
@@ -13,8 +28,17 @@ enum ASCIIKeyboardLayout {
         else { return nil }
 
         let layoutData = unsafeBitCast(layoutDataPointer, to: CFData.self)
-        let keyLayout = unsafeBitCast(
-            CFDataGetBytePtr(layoutData), to: UnsafePointer<UCKeyboardLayout>.self)
+        // The bytes belong to `source`, which stays retained until `body` returns.
+        return withExtendedLifetime(source) {
+            body(
+                unsafeBitCast(
+                    CFDataGetBytePtr(layoutData), to: UnsafePointer<UCKeyboardLayout>.self))
+        }
+    }
+
+    private static func character(
+        for keyCode: Int, modifiers: UInt32, in keyLayout: UnsafePointer<UCKeyboardLayout>
+    ) -> String? {
         var deadKeyState: UInt32 = 0
         var length = 0
         var characters = [UniChar](repeating: 0, count: 4)

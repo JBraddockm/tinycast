@@ -93,11 +93,15 @@ struct SnippetsSettingsView: View {
             }
 
             LabeledContent {
+                if settings.snippetsFolder != nil {
+                    Button("Use Default", action: core.snippetCoordinator.resetSnippetsFolder)
+                }
+                Button("Choose…", action: core.snippetCoordinator.chooseSnippetsFolder)
                 Button("Open Folder", action: core.snippetCoordinator.revealSnippetsInFinder)
-                    .accessibilityHint("Reveals this Tinycast channel’s snippets folder in Finder.")
+                    .accessibilityHint("Reveals the snippets folder in Finder.")
             } label: {
                 SettingsRowTitle(.snippetsLibrary, "Snippets Folder")
-                Text("Plain Markdown files.")
+                Text((snippetsStore.snippetsDirectory.path as NSString).abbreviatingWithTildeInPath)
             }
         } header: {
             SettingsSectionHeader(.snippetsLibrary)

@@ -11,6 +11,7 @@ enum SettingsBackupCoverage {
         "hyperKey": .hyperKey,
         "hyperKeyIncludesShift": .hyperKeyIncludesShift,
         "hyperKeyQuickPress": .hyperKeyQuickPress,
+        "showInMenuBar": .showInMenuBar,
         "emojiSkinTone": .emojiSkinTone,
         "emojiGridColumns": .emojiGridColumns,
         "popToRootSeconds": .popToRootTimeout,
@@ -65,8 +66,7 @@ enum SettingsBackupCoverage {
 
     /// The `SettingsData` fields no `AppSettings` key stands behind, and what they read instead.
     static let externallySourced: [String: String] = [
-        "launchAtLogin": "Read from LaunchAtLogin, which owns the login item, not UserDefaults.",
-        "showInMenuBar": "SettingsKey.showInMenuBar — shared with MenuBarExtra, not owned here."
+        "launchAtLogin": "Read from LaunchAtLogin, which owns the login item, not UserDefaults."
     ]
 
     /// Keys kept out of a backup on purpose, each with the reason it has to stay out.
@@ -149,6 +149,12 @@ enum SettingsBackupCoverage {
         AppSettingsKey.quickActionInstructions.rawValue:
             "Custom model instructions change transformed results and must not move unseen.",
         AppSettingsKey.quickActionLanguage.rawValue:
-            "Follows the language the person at this Mac reads, not the one who wrote the backup."
+            "Follows the language the person at this Mac reads, not the one who wrote the backup.",
+        AppSettingsKey.snippetsFolder.rawValue:
+            "Names a folder on this Mac; the one a backup lands on may not have it.",
+        AppSettingsKey.notesFolder.rawValue:
+            "Names a folder on this Mac; the one a backup lands on may not have it.",
+        AppSettingsKey.settingsFileEnabled.rawValue:
+            "Lets a file on this Mac change its settings; an import must not hand that to another."
     ]
 }

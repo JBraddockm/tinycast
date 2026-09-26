@@ -161,7 +161,6 @@ struct AISettingsView: View {
                 SettingsRowTitle(.aiConversations, "Keep conversations")
                 Text("Older ones are deleted, except pinned chats.")
             }
-            .onChange(of: settings.retention) { core.aiChatCoordinator.applyRetention() }
         } header: {
             SettingsSectionHeader(.aiConversations)
         } footer: {

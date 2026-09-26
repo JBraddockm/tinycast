@@ -59,6 +59,7 @@ struct DoubleTapDetectorTests {
         layoutCharacters()
         hyperChord()
         hyperRetargeting()
+        spelling()
         globeTap()
         globeChord()
         firing()
@@ -70,6 +71,68 @@ struct DoubleTapDetectorTests {
 
         print("\(passes) passed, \(failures) failed")
         if failures > 0 { exit(1) }
+    }
+
+    // MARK: - Spelling
+
+    /// Enough of a US layout to spell with; the app reads its own through `ASCIIKeyboardLayout`.
+    private static let usKeys = [
+        kVK_ANSI_K: "k", kVK_ANSI_1: "1", kVK_ANSI_Keypad1: "1", kVK_ANSI_Slash: "/",
+        kVK_ANSI_Equal: "="
+    ]
+    private static let hyperModifiers = controlKey | optionKey | shiftKey | cmdKey
+
+    static func spelling() {
+        let plain = HotKeySpelling(characters: usKeys, hyperModifiers: nil)
+        let hyper = HotKeySpelling(characters: usKeys, hyperModifiers: hyperModifiers)
+        func combo(_ keyCode: Int, _ modifiers: Int) -> HotKeyBinding {
+            .combo(KeyShortcut(carbonKeyCode: keyCode, carbonModifiers: modifiers))
+        }
+        func roundTrips(_ binding: HotKeyBinding, as text: String, _ spelling: HotKeySpelling) {
+            expect(spelling.text(for: binding) == text, "\(text) is how the binding spells")
+            expect(spelling.binding(from: text) == binding, "\(text) reads back as the same binding")
+        }
+
+        roundTrips(combo(kVK_LeftArrow, controlKey | optionKey), as: "ctrl+option+left", plain)
+        roundTrips(combo(kVK_ANSI_K, shiftKey | cmdKey), as: "shift+cmd+k", plain)
+        roundTrips(combo(kVK_Space, optionKey), as: "option+space", plain)
+        roundTrips(combo(kVK_F5, 0), as: "f5", plain)
+        roundTrips(combo(kVK_ANSI_Slash, cmdKey), as: "cmd+/", plain)
+        roundTrips(combo(kVK_UpArrow, kEventKeyModifierFnMask | controlKey), as: "fn+ctrl+up", plain)
+        roundTrips(combo(kVK_ANSI_Keypad1, cmdKey), as: "cmd+keypad-1", plain)
+        roundTrips(combo(kVK_ANSI_1, cmdKey), as: "cmd+1", plain)
+        roundTrips(combo(110, controlKey), as: "ctrl+key-110", plain)
+        roundTrips(.doubleTap(.command), as: "double-tap cmd", plain)
+        roundTrips(.doubleTap(.control), as: "double-tap ctrl", plain)
+        roundTrips(.globe, as: "globe", plain)
+        roundTrips(.doubleGlobe, as: "double-tap globe", plain)
+        roundTrips(combo(kVK_ANSI_K, hyperModifiers), as: "hyper+k", hyper)
+        roundTrips(combo(kVK_ANSI_K, controlKey | optionKey | cmdKey), as: "ctrl+option+cmd+k", hyper)
+
+        expect(
+            plain.binding(from: " Command+Shift+K ") == combo(kVK_ANSI_K, shiftKey | cmdKey),
+            "modifiers read in any order, case and alias")
+        expect(
+            plain.binding(from: "alt+space") == combo(kVK_Space, optionKey), "alt reads as option")
+        expect(
+            plain.binding(from: "double-tap command") == .doubleTap(.command),
+            "a double-tap reads its modifier's alias")
+        expect(
+            plain.text(for: combo(kVK_ANSI_K, hyperModifiers)) == "ctrl+option+shift+cmd+k",
+            "without a Hyper key the chord is spelled out")
+        expect(plain.binding(from: "hyper+k") == nil, "without a Hyper key, hyper means nothing")
+
+        let plusKey = HotKeySpelling(characters: [kVK_ANSI_Equal: "+"], hyperModifiers: nil)
+        expect(
+            plusKey.binding(from: "cmd++") == combo(kVK_ANSI_Equal, cmdKey),
+            "a layout's plus key is spelled after the separator")
+
+        expect(plain.binding(from: "k") == nil, "a bare key is refused, as the recorder refuses it")
+        expect(plain.binding(from: "shift+k") == nil, "Shift alone does not command")
+        expect(plain.binding(from: "cmd+") == nil, "a chord needs a key")
+        expect(plain.binding(from: "cmd+nope") == nil, "an unknown key is refused")
+        expect(plain.binding(from: "cmd+key-999") == nil, "a raw key code must be a real one")
+        expect(plain.binding(from: "double-tap fn") == nil, "fn has no double-tap")
     }
 
     // MARK: - Model

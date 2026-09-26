@@ -101,7 +101,7 @@ If a change touches anything in the right column, the harness on the left is man
 | `palette-selection-test` | `Features/PaletteRowIndex.swift` |
 | `interface-size-test` | `DesignSystem/InterfaceMetrics.swift`, `Features/Settings/InterfaceSize.swift`, `Extensions/Model/ExtensionFormMetrics.swift` |
 | `palette-placement-test` | `DesignSystem/Theme.swift`, `Palette/PalettePlacement.swift` |
-| `hotkey-test` | `HotKeys/Model/DoubleTapModifier.swift`, `DoubleTapDetector.swift`, `GlobeTapDetector.swift`, `HotKeyBinding.swift`, `HyperKey.swift`, `HotKeyAction.swift`, `Service/KeyShortcut.swift`, and the command→action mapping in `Launcher/Model/CommandID.swift` |
+| `hotkey-test` | `HotKeys/Model/DoubleTapModifier.swift`, `DoubleTapDetector.swift`, `GlobeTapDetector.swift`, `HotKeyBinding.swift`, `HotKeySpelling.swift`, `HyperKey.swift`, `HotKeyAction.swift`, `Service/KeyShortcut.swift`, and the command→action mapping in `Launcher/Model/CommandID.swift` |
 | `fallback-test` | `Launcher/Model/Fallback.swift`, plus the `CommandID` and `Quicklink` ids it is built from |
 | `dictionary-test` | `Dictionary/Model/DictionaryEntry.swift`, `DictionaryMarkup.swift` — a real XHTML record and the plain-text fallback, read into page blocks |
 | `callout-test` | `DesignSystem/Theme.swift`, `HotKeys/UI/CalloutPlacement.swift` |
@@ -128,6 +128,8 @@ If a change touches anything in the right column, the harness on the left is man
 | `entry-icon-test` | `EntryIcon` — that each case draws, caches and prints apart from the others, and that a moved `FileIconStamp` retires the bitmap decoded before it |
 | `text-diff-test` | `QuickActions/Model/TextDiffEngine.swift` — exact chunks, Unicode, ties, token-cap boundaries and fast paths |
 | `settings-backup-test` | `Settings/AppSettingsKey.swift`, `Backup/Model/SettingsBackupCoverage.swift` |
+| `settings-file-test` | `Settings/Model/` and `Settings/Service/` — key paths, value tokens, the printer and parser, and the repository's import, replace, save, reload and symlink handling on a scratch folder |
+| `window-file-test` | `WindowManagement/Model/WindowManagementFileFormat.swift` — command shortcuts, custom sizes, layouts and rooms as settings.json spells them, hand edits and bad records |
 | `backup-archive-test` | all of `Backup/Model/`, plus `Backup/Service/BackupStaging.swift` |
 | `updates-test` | `Updates/Model/` — version precedence, channel filtering, install route, readiness |
 | `support-test` | `Support/Model/` — when the support reminder comes due, and a clock moved backwards |
@@ -681,6 +683,7 @@ Wipe the Dev channel and check that path directly:
 ```sh
 rm -rf ~/Library/Caches/com.tinycast.app.dev
 rm -rf "$HOME/Library/Application Support/com.tinycast.app.dev"
+rm -rf ~/.config/tinycast-dev
 defaults delete com.tinycast.app.dev 2>/dev/null || true
 tccutil reset Accessibility com.tinycast.app.dev 2>/dev/null || true
 ```

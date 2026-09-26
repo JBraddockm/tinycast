@@ -17,6 +17,7 @@ struct NotesTests {
         try await testStoreCollectionAndAutosave()
         try await testCollectionMutationsFlushTheDraft()
         try await testStoreRecoversFromFailures()
+        try await testStoreRelocates()
 
         print(failures == 0 ? "Notes tests passed" : "\(failures) tests failed")
         exit(failures == 0 ? 0 : 1)
@@ -411,6 +412,41 @@ struct NotesTests {
         check(
             "an edit that lands during a write is not lost",
             try String(contentsOf: activeURL, encoding: .utf8) == "edit during the write")
+        store.stop()
+    }
+
+    private static func testStoreRelocates() async throws {
+        let root = temporaryRoot("relocation")
+        defer { try? FileManager.default.removeItem(at: root) }
+        let first = try repository(in: root, support: root.appendingPathComponent("first"))
+        let second = try repository(in: root, support: root.appendingPathComponent("second"))
+        let fm = FileManager.default
+        try fm.createDirectory(at: first.notesDirectory, withIntermediateDirectories: true)
+        try fm.createDirectory(at: second.notesDirectory, withIntermediateDirectories: true)
+        let firstURL = first.fileURL(for: NoteID(rawValue: "Plan.md"))
+        try Data("plan".utf8).write(to: firstURL, options: .atomic)
+        let unreadable = second.fileURL(for: NoteID(rawValue: "Broken.md"))
+        try Data([0xFF]).write(to: unreadable, options: .atomic)
+
+        let store = NotesStore(repository: first)
+        _ = await store.start()
+        store.updateSource("unsaved plan")
+        try fm.setAttributes([.posixPermissions: 0o555], ofItemAtPath: first.notesDirectory.path)
+        await store.relocate(to: second)
+        try fm.setAttributes([.posixPermissions: 0o755], ofItemAtPath: first.notesDirectory.path)
+        check(
+            "a draft the old folder can't take keeps the store there",
+            store.notesDirectory == first.notesDirectory && store.source == "unsaved plan")
+
+        _ = await store.retrySave()
+        for _ in 0..<100 where store.notesDirectory != second.notesDirectory {
+            try await Task.sleep(for: .milliseconds(10))
+        }
+        check(
+            "the draft is saved where it was, then the move goes ahead",
+            try String(contentsOf: firstURL, encoding: .utf8) == "unsaved plan"
+                && store.notesDirectory == second.notesDirectory)
+        check("a folder that fails to load leaves no old note open", store.activeID == nil)
         store.stop()
     }
 
@@ -977,7 +1013,7 @@ struct NotesTests {
         let trash = trashDirectory(in: root)
         try FileManager.default.createDirectory(at: trash, withIntermediateDirectories: true)
         return NotesRepository(
-            applicationSupportDirectory: support ?? root,
+            notesDirectory: (support ?? root).appendingPathComponent("Notes", isDirectory: true),
             trashOperation: { url in
                 try FileManager.default.moveItem(
                     at: url, to: trash.appendingPathComponent(url.lastPathComponent))

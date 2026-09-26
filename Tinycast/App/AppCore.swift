@@ -30,6 +30,8 @@ final class AppCore {
     let spaceSwitcher = SpaceSwitcher()
     let inputSourceSwitcher = InputSourceSwitcher()
     let settings: AppSettings
+    /// Mirrors settings into settings.json; nil while the Backup pane's switch is off.
+    @ObservationIgnored private var settingsFile: SettingsFileRepository?
     @ObservationIgnored private var appearanceObservation: NSKeyValueObservation?
     /// The last verdict `trackChatRoute` acted on; nil until it has read one.
     @ObservationIgnored private var chatsRunTheirOwnTools: Bool?
@@ -236,14 +238,13 @@ final class AppCore {
         let clipboardManager = ClipboardManager(store: clipboardStore, settings: settings)
         self.clipboardManager = clipboardManager
         extensions = ExtensionManager(clipboardStore: clipboardStore)
-        snippetsStore = SnippetsStore()
+        snippetsStore = SnippetsStore(repository: Self.snippetsRepository(for: settings))
         textInjector = TextInjector(
             clipboardManager: clipboardManager,
             settings: settings)
         let noteSelectionKey = "notesActiveFileName"
         notesStore = NotesStore(
-            repository: NotesRepository(
-                applicationSupportDirectory: AppPaths.applicationSupport()),
+            repository: Self.notesRepository(for: settings),
             loadSelection: {
                 UserDefaults.standard.string(forKey: noteSelectionKey).map(NoteID.init(rawValue:))
             },
@@ -404,6 +405,8 @@ final class AppCore {
             snippetCoordinator.applySnippetsLauncherPresence()
 
             observeFeatureSwitches()
+            // Last, so an edit made while Tinycast was quit reaches every sink wired above.
+            if settings.settingsFileEnabled { startSettingsFile(importing: true) }
 
             // First launch binds no hotkey, so guide once; the marker is written at show-time.
             if !OnboardingState.hasOnboarded {
@@ -503,6 +506,7 @@ final class AppCore {
     }
 
     func prepareForTermination() {
+        settingsFile?.flush()
         clipboardTextIndexer?.stop()
         // Caps Lock first: its remap is the one teardown that outlives the process.
         hyperKeyTap.prepareForTermination()
@@ -638,6 +642,16 @@ final class AppCore {
             reproject: { $0.snippetCoordinator.applySnippetsLauncherPresence() })
         track({ _ = $0.appearance }, reproject: { $0.applyAppearance() })
         track({ _ = $0.interfaceSize }, reproject: { $0.windowController.applyInterfaceSize() })
+        // Settings panes did these on change; settings.json can change them with no pane open.
+        track(
+            { _ = $0.clipboardRetention },
+            reproject: { $0.clipboardCoordinator.applyRetention($0.settings.clipboardRetention) })
+        track(aiSettings, { _ = $0.retention }, reproject: { $0.aiChatCoordinator.applyRetention() })
+        track(
+            { _ = $0.extensionsShowInLauncher },
+            reproject: { $0.extensionCoordinator.applyExtensionsLauncherPresence() })
+        track({ _ = $0.snippetsFolder }, reproject: { $0.applySnippetsFolder() })
+        track({ _ = $0.notesFolder }, reproject: { $0.applyNotesFolder() })
         trackChatRoute()
     }
 
@@ -654,17 +668,25 @@ final class AppCore {
         }
     }
 
-    /// Fires synchronously on main before the write lands, so the task re-arms and re-reads.
     private func track(
         _ reads: @escaping @Sendable @MainActor (AppSettings) -> Void,
         reproject: @escaping @Sendable @MainActor (AppCore) -> Void
     ) {
+        track(settings, reads, reproject: reproject)
+    }
+
+    /// Fires synchronously on main before the write lands, so the task re-arms and re-reads.
+    private func track<Store: AnyObject & Sendable>(
+        _ store: Store,
+        _ reads: @escaping @Sendable @MainActor (Store) -> Void,
+        reproject: @escaping @Sendable @MainActor (AppCore) -> Void
+    ) {
         withObservationTracking {
-            reads(settings)
+            reads(store)
         } onChange: { [weak self] in
             Task { @MainActor in
                 guard let self else { return }
-                self.track(reads, reproject: reproject)
+                self.track(store, reads, reproject: reproject)
                 reproject(self)
             }
         }
@@ -689,9 +711,55 @@ final class AppCore {
         hotKeys.retargetHyperBindings(includesShift: settings.hyperKeyIncludesShift)
     }
 
+    private func applySnippetsFolder() {
+        let repository = Self.snippetsRepository(for: settings)
+        Task { await snippetsStore.relocate(to: repository) }
+    }
+
+    private func applyNotesFolder() {
+        let repository = Self.notesRepository(for: settings)
+        Task { await notesStore.relocate(to: repository) }
+    }
+
+    private static func snippetsRepository(for settings: AppSettings) -> SnippetRepository {
+        SnippetRepository(
+            snippetsDirectory: AppPaths.contentFolder(settings.snippetsFolder, named: "Snippets"))
+    }
+
+    private static func notesRepository(for settings: AppSettings) -> NotesRepository {
+        NotesRepository(notesDirectory: AppPaths.contentFolder(settings.notesFolder, named: "Notes"))
+    }
+
     private func applyWindowCommandsPresence() {
         let visible = settings.windowManagementEnabled && settings.windowManagementShowInLauncher
         appIndex.setWindowCommandsVisible(visible)
+    }
+
+    // MARK: - Settings file
+
+    /// Mirrors settings into settings.json from now on; `importing` applies the file's own first.
+    func startSettingsFile(importing: Bool) {
+        guard settingsFile == nil else { return }
+        let file = SettingsFileRepository(
+            fileURL: AppPaths.settingsFile(),
+            bindings: SettingsFileSchema.bindings(
+                settings: settings, ai: aiSettings, quickActions: quickActionSettings,
+                windowManagement: WindowManagementSettingsFile(
+                    sizes: customWindowSizes, layouts: windowLayouts, rooms: rooms, hotKeys: hotKeys)))
+        file.onIssues = { [weak self] issues in
+            guard let summary = SettingsFileIssue.summary(issues) else { return }
+            self?.showMessage(summary, tone: .danger)
+        }
+        settingsFile = file
+        settings.settingsFileEnabled = true
+        file.start(importing: importing)
+    }
+
+    /// Stops the mirror; the file stays on disk as last written.
+    func stopSettingsFile() {
+        settingsFile?.flush()
+        settingsFile = nil
+        settings.settingsFileEnabled = false
     }
 
     // MARK: - Interruption

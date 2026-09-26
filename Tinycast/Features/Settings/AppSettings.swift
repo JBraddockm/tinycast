@@ -1,13 +1,5 @@
 import SwiftUI
 
-/// Keys shared between `@AppStorage` sites, so app and Settings bind to the same one.
-enum SettingsKey {
-    /// The launcher icon's visibility — read by its `MenuBarExtra` and the General toggle.
-    static let showInMenuBar = "showInMenuBar"
-    static let calendarMenuBarDisplay = "calendarMenuBarDisplay"
-    static let calendarMenuBarHidesWhenEmpty = "calendarMenuBarHidesWhenEmpty"
-}
-
 /// Delay before a closed palette pops to root; an unset key reads as `.immediately`.
 enum PopToRootTimeout: Int, CaseIterable, Identifiable, Sendable {
     case immediately = 0
@@ -169,6 +161,11 @@ final class AppSettings {
         didSet { LaunchAtLogin.set(launchAtLogin) }
     }
 
+    /// The launcher icon's visibility; dragging the icon out of the menu bar turns it off.
+    var showInMenuBar: Bool {
+        didSet { defaults.set(showInMenuBar, forKey: Key.showInMenuBar.rawValue) }
+    }
+
     /// The physical key remapped to the Hyper chord; `HyperKeyTap` reacts via its observer.
     var hyperKey: HyperKeyPhysicalKey {
         didSet { defaults.set(hyperKey.rawValue, forKey: Key.hyperKey.rawValue) }
@@ -321,6 +318,11 @@ final class AppSettings {
         didSet { defaults.set(notesShowsFormattingBar, forKey: Key.notesShowsFormattingBar.rawValue) }
     }
 
+    /// The notes folder as the user wrote it, `~` allowed; nil keeps it in Application Support.
+    var notesFolder: String? {
+        didSet { defaults.set(notesFolder, forKey: Key.notesFolder.rawValue) }
+    }
+
     /// Off by default: connecting a server is consent to run code Tinycast did not write.
     var mcpEnabled: Bool {
         didSet { defaults.set(mcpEnabled, forKey: Key.mcpEnabled.rawValue) }
@@ -353,6 +355,11 @@ final class AppSettings {
 
     var snippetsShowInLauncher: Bool {
         didSet { defaults.set(snippetsShowInLauncher, forKey: Key.snippetsShowInLauncher.rawValue) }
+    }
+
+    /// The snippets folder as the user wrote it, `~` allowed; nil keeps it in Application Support.
+    var snippetsFolder: String? {
+        didSet { defaults.set(snippetsFolder, forKey: Key.snippetsFolder.rawValue) }
     }
 
     var navigationEnabled: Bool {
@@ -571,6 +578,11 @@ final class AppSettings {
         didSet { defaults.set(supportRemindersEnabled, forKey: Key.supportReminders.rawValue) }
     }
 
+    /// Whether settings.json mirrors these settings; `AppCore` starts and stops the mirror.
+    var settingsFileEnabled: Bool {
+        didSet { defaults.set(settingsFileEnabled, forKey: Key.settingsFileEnabled.rawValue) }
+    }
+
     init() {
         // The only feature switch that defaults on, so absence has to outrank a stored `false`.
         clipboardEnabled =
@@ -589,6 +601,9 @@ final class AppSettings {
             defaults.string(forKey: Key.clipboardDefaultAction.rawValue)
             .flatMap(ClipboardDefaultAction.init) ?? .paste
         launchAtLogin = LaunchAtLogin.isEnabled
+        showInMenuBar =
+            defaults.object(forKey: Key.showInMenuBar.rawValue) == nil
+            || defaults.bool(forKey: Key.showInMenuBar.rawValue)
         hyperKey =
             defaults.string(forKey: Key.hyperKey.rawValue).flatMap(HyperKeyPhysicalKey.init)
             ?? .none
@@ -657,6 +672,7 @@ final class AppSettings {
         notesShowsFormattingBar =
             defaults.object(forKey: Key.notesShowsFormattingBar.rawValue) == nil
             || defaults.bool(forKey: Key.notesShowsFormattingBar.rawValue)
+        notesFolder = defaults.string(forKey: Key.notesFolder.rawValue)
         aiEnabled = defaults.bool(forKey: Key.aiEnabled.rawValue)
         mcpEnabled = defaults.bool(forKey: Key.mcpEnabled.rawValue)
         customCommandsEnabled = defaults.bool(forKey: Key.customCommandsEnabled.rawValue)
@@ -669,6 +685,7 @@ final class AppSettings {
         snippetsShowInLauncher =
             defaults.object(forKey: Key.snippetsShowInLauncher.rawValue) == nil
             || defaults.bool(forKey: Key.snippetsShowInLauncher.rawValue)
+        snippetsFolder = defaults.string(forKey: Key.snippetsFolder.rawValue)
         // Opt-in, unlike its siblings: until it is asked for, nothing about extensions is loaded.
         extensionsEnabled = defaults.bool(forKey: Key.extensionsEnabled.rawValue)
         extensionsShowInLauncher =
@@ -752,5 +769,6 @@ final class AppSettings {
         supportRemindersEnabled =
             defaults.object(forKey: Key.supportReminders.rawValue) == nil
             || defaults.bool(forKey: Key.supportReminders.rawValue)
+        settingsFileEnabled = defaults.bool(forKey: Key.settingsFileEnabled.rawValue)
     }
 }

@@ -90,7 +90,8 @@ enum ExecutableLocator {
             watchdog.cancel()
             guard process.terminationStatus == 0 else { return nil }
             // Startup and logout files can print on either side of the lookup's answer.
-            let path = String(decoding: data, as: UTF8.self)
+            let path =
+                String(decoding: data, as: UTF8.self)
                 .split(whereSeparator: \.isNewline)
                 .last { $0.hasPrefix(answerMarker) }?
                 .dropFirst(answerMarker.count)

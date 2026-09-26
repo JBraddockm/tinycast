@@ -5,13 +5,24 @@ struct GeneralSettingsView: View {
     @Environment(AppSettings.self) private var settings
     private var hyperTap: HyperKeyTap { core.hyperKeyTap }
     private var launcherRanking: LauncherRankingStore { core.launcherRanking }
-    // The same key `MenuBarExtra(isInserted:)` binds, so this updates the icon live.
-    @AppStorage(SettingsKey.showInMenuBar) private var showInMenuBar = true
     @State private var confirmingRankingReset = false
     @State private var inputSources: [InputSourceSwitcher.Option] = []
 
     /// The Hyper modifier chord as prose glyphs, tracking the Include Shift toggle.
     private var hyperGlyphs: String { settings.hyperKeyIncludesShift ? "⌃⌥⇧⌘" : "⌃⌥⌘" }
+
+    /// Only a choice made here resets Quick Press: settings.json may set both keys at once.
+    private var hyperKeySelection: Binding<HyperKeyPhysicalKey> {
+        Binding(
+            get: { settings.hyperKey },
+            set: { key in
+                guard key != settings.hyperKey else { return }
+                settings.hyperKey = key
+                // A Quick Press choice is meaningless for a different key.
+                settings.hyperKeyQuickPress = .none
+                if key != .none { Permissions.ensureAccessibility() }
+            })
+    }
 
     /// The missing-permission half is its own row, so it can carry the button that fixes it.
     private var hyperSubtitle: String {
@@ -34,7 +45,7 @@ struct GeneralSettingsView: View {
                 Toggle(isOn: $settings.launchAtLogin) {
                     SettingsRowTitle(.generalGeneral, "Launch at login")
                 }
-                Toggle(isOn: $showInMenuBar) {
+                Toggle(isOn: $settings.showInMenuBar) {
                     SettingsRowTitle(.generalGeneral, "Show in menu bar")
                     Text("Shortcuts still work when hidden.")
                 }
@@ -97,18 +108,13 @@ struct GeneralSettingsView: View {
             }
 
             Section {
-                Picker(selection: $settings.hyperKey) {
+                Picker(selection: hyperKeySelection) {
                     ForEach(HyperKeyPhysicalKey.allCases) { key in
                         Text(key.title).tag(key)
                     }
                 } label: {
                     SettingsRowTitle(.generalHyperKey, "Hyper Key")
                     Text(hyperSubtitle)
-                }
-                .onChange(of: settings.hyperKey) { _, newKey in
-                    // A Quick Press choice is meaningless for a different key.
-                    settings.hyperKeyQuickPress = .none
-                    if newKey != .none { Permissions.ensureAccessibility() }
                 }
 
                 if hyperTap.status == .needsAccessibility {

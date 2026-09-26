@@ -277,6 +277,7 @@ run hotkey-test            Tinycast/Features/HotKeys/Model/DoubleTapModifier.swi
                            Tinycast/Features/HotKeys/Model/DoubleTapDetector.swift \
                            Tinycast/Features/HotKeys/Model/GlobeTapDetector.swift \
                            Tinycast/Features/HotKeys/Model/HotKeyBinding.swift \
+                           Tinycast/Features/HotKeys/Model/HotKeySpelling.swift \
                            Tinycast/Features/HotKeys/Model/HyperKey.swift \
                            Tinycast/Platform/ASCIIKeyboardLayout.swift \
                            Tinycast/Features/HotKeys/Service/KeyShortcut.swift \
@@ -360,6 +361,22 @@ run window-room-test       Tinycast/Features/WindowManagement/Model/WindowComman
                            Tinycast/Features/WindowManagement/Model/RoomStore.swift \
                            Tinycast/Features/WindowManagement/Model/RoomMinimumSizeStore.swift \
                            Tinycast/Features/WindowManagement/Model/RoomParkingLedger.swift
+run window-file-test       Tinycast/Features/WindowManagement/Model/WindowCommand.swift \
+                           Tinycast/Features/WindowManagement/Model/WindowCycle.swift \
+                           Tinycast/Features/WindowManagement/Model/WindowPlacementEngine.swift \
+                           Tinycast/Features/WindowManagement/Model/WindowLayoutAnchor.swift \
+                           Tinycast/Features/WindowManagement/Model/WindowLayoutDisplay.swift \
+                           Tinycast/Features/WindowManagement/Model/WindowLayout.swift \
+                           Tinycast/Features/WindowManagement/Model/WindowLayoutGeometry.swift \
+                           Tinycast/Features/WindowManagement/Model/CustomWindowSize.swift \
+                           Tinycast/Features/WindowManagement/Model/Room.swift \
+                           Tinycast/Features/WindowManagement/Model/RoomWindow.swift \
+                           Tinycast/Features/WindowManagement/Model/RoomLayoutKind.swift \
+                           Tinycast/Features/WindowManagement/Model/RoomGrid.swift \
+                           Tinycast/Features/WindowManagement/Model/RoomLayoutEngine.swift \
+                           Tinycast/Features/WindowManagement/Model/WindowManagementFileFormat.swift \
+                           Tinycast/Features/Settings/Model/SettingsFileJSON.swift \
+                           Tinycast/Features/Settings/Model/SettingsFileIdentity.swift
 run custom-command-test    Tinycast/Platform/PseudoTerminal.swift \
                            Tinycast/Features/CustomCommands/Model/CustomCommand.swift \
                            Tinycast/Features/CustomCommands/Model/RaycastScriptImport.swift \
@@ -441,6 +458,10 @@ run slow -O raycast-test   Tinycast/Features/Backup/Model/RaycastImportError.swi
                            Tinycast/Platform/Compression/Zlib.swift
 run settings-backup-test   Tinycast/Features/Settings/AppSettingsKey.swift \
                            Tinycast/Features/Backup/Model/SettingsBackupCoverage.swift
+run settings-file-test     Tinycast/Features/Settings/Model/*.swift \
+                           Tinycast/Features/Settings/Service/SettingsFileMonitor.swift \
+                           Tinycast/Features/Settings/Service/SettingsFileRepository.swift \
+                           Tinycast/Platform/AppPaths.swift
 run backup-archive-test    Tinycast/Platform/AppPaths.swift \
                            Tinycast/Features/Backup/Model/BackupArchive.swift \
                            Tinycast/Features/Backup/Model/BackupBundle.swift \
