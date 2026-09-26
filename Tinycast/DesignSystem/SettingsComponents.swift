@@ -54,6 +54,7 @@ struct SettingsRow<Icon: View, Trailing: View>: View {
     var subtitle: String?
     var subtitleLineLimit = 1
     var alignment: VerticalAlignment = .center
+    var labelOpacity = 1.0
     /// Set when a search result points at this row, so its title can carry the pulse.
     var anchor: SettingsAnchor?
     @ViewBuilder var icon: Icon
@@ -61,7 +62,7 @@ struct SettingsRow<Icon: View, Trailing: View>: View {
 
     var body: some View {
         HStack(alignment: alignment, spacing: Theme.Spacing.lg) {
-            icon
+            icon.opacity(labelOpacity)
             VStack(alignment: .leading, spacing: Theme.Spacing.xxs) {
                 Group {
                     if let anchor {
@@ -81,27 +82,96 @@ struct SettingsRow<Icon: View, Trailing: View>: View {
                         .help(subtitle)
                 }
             }
+            .opacity(labelOpacity)
             Spacer(minLength: Theme.Spacing.lg)
             trailing
         }
     }
 }
 
+enum SettingsListMetrics {
+    static let iconSize = Theme.Size.settingsRowIcon + Theme.Spacing.xs
+}
+
 extension SettingsRow where Icon == EmptyView {
     init(
         title: String, subtitle: String? = nil, subtitleLineLimit: Int = 1,
-        alignment: VerticalAlignment = .center, anchor: SettingsAnchor? = nil,
+        alignment: VerticalAlignment = .center,
+        labelOpacity: Double = 1, anchor: SettingsAnchor? = nil,
         @ViewBuilder trailing: () -> Trailing
     ) {
         self.init(
             title: title, subtitle: subtitle, subtitleLineLimit: subtitleLineLimit,
-            alignment: alignment,
+            alignment: alignment, labelOpacity: labelOpacity,
             anchor: anchor, icon: { EmptyView() },
             trailing: trailing)
     }
 }
 
+struct SettingsScopeRow: View {
+    let scope: String
+    let path: String
+    let isMissing: Bool
+    let onRemove: () -> Void
+
+    private var isFolder: Bool { (path as NSString).pathExtension != "app" }
+
+    var body: some View {
+        LabeledContent {
+            HStack(spacing: Theme.Spacing.sm) {
+                if isMissing {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                        .help("This location no longer exists.")
+                }
+                Button(action: onRemove) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.tertiary)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Remove \(scope)")
+            }
+        } label: {
+            HStack {
+                Image(nsImage: IconCache.icon(forFile: path))
+                    .resizable()
+                    .renderingMode(.original)
+                    .interpolation(.high)
+                    .id(IconCache.style.generation)
+                    .frame(
+                        width: SettingsListMetrics.iconSize
+                            - (isFolder ? Theme.Spacing.xxs + 1 : 0),
+                        height: SettingsListMetrics.iconSize - (isFolder ? 1 : 0)
+                    )
+                    .frame(
+                        width: SettingsListMetrics.iconSize,
+                        height: SettingsListMetrics.iconSize
+                    )
+                    .accessibilityHidden(true)
+                Text(scope)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .foregroundStyle(isMissing ? AnyShapeStyle(.tertiary) : AnyShapeStyle(.primary))
+            }
+        }
+    }
+}
+
 extension View {
+    func settingsOptionSegment(isSelected: Bool) -> some View {
+        let shape = RoundedRectangle(cornerRadius: Theme.Radius.barControl, style: .continuous)
+        return
+            self
+            .frame(
+                width: Theme.Size.settingsControlHeight,
+                height: Theme.Size.settingsControlHeight
+            )
+            .contentShape(shape)
+            .background {
+                shape.fill(isSelected ? Theme.Colors.controlSurface : Color.clear)
+            }
+    }
+
     /// Dims as well as disables; `.disabled` alone leaves the title at full strength.
     func settingsEnabled(_ isEnabled: Bool) -> some View {
         disabled(!isEnabled).opacity(isEnabled ? 1 : 0.45)

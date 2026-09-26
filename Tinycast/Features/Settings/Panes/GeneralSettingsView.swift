@@ -112,14 +112,14 @@ struct GeneralSettingsView: View {
                 }
 
                 if hyperTap.status == .needsAccessibility {
-                    LabeledContent {
+                    HStack(alignment: .center, spacing: Theme.Spacing.lg) {
+                        Image(systemName: "exclamationmark.triangle")
+                            .foregroundStyle(.orange)
+                            .frame(width: Theme.Size.settingsRowIcon)
+                        Text("Remapping needs Accessibility access.")
+                            .foregroundStyle(.orange)
+                        Spacer(minLength: Theme.Spacing.lg)
                         Button("Grant Access…") { Permissions.openAccessibilitySettings() }
-                    } label: {
-                        Label(
-                            "Remapping needs Accessibility access.",
-                            systemImage: "exclamationmark.triangle"
-                        )
-                        .foregroundStyle(.orange)
                     }
                 }
 
@@ -296,7 +296,7 @@ private struct InterfaceSizeRow: View {
             subtitle: "Scales the launcher and its panels, not Settings.",
             anchor: .generalAppearance
         ) {
-            HStack(spacing: Theme.Spacing.xxs) {
+            HStack(spacing: Theme.Spacing.xs) {
                 ForEach(InterfaceSize.allCases) { size in
                     segment(size)
                 }
@@ -306,17 +306,13 @@ private struct InterfaceSizeRow: View {
 
     private func segment(_ size: InterfaceSize) -> some View {
         let selected = settings.interfaceSize == size
-        let shape = RoundedRectangle(cornerRadius: Theme.Radius.barControl, style: .continuous)
         return Button {
             settings.interfaceSize = size
         } label: {
             Text("Aa")
                 .font(.system(size: Self.glyph[size] ?? 13, weight: .medium))
                 .foregroundStyle(selected ? Color.primary : Color.secondary)
-                .frame(width: Theme.Size.interfaceSizeSegment, height: Theme.Size.settingsControlHeight)
-                // Without this only the glyphs take the click, not the segment around them.
-                .contentShape(shape)
-                .background(shape.fill(selected ? Theme.Colors.controlSurface : Color.clear))
+                .settingsOptionSegment(isSelected: selected)
         }
         .buttonStyle(.plain)
         .accessibilityLabel(size.title)

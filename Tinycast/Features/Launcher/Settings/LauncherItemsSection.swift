@@ -69,6 +69,8 @@ struct LauncherItemsList: View {
             Text(query.isEmpty ? "Nothing here yet." : "No matches for “\(query)”.")
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .center)
+        } else if entries.first?.kind != .application && entries.first?.kind != .appleShortcut {
+            ForEach(entries) { entry in LauncherItemRow(entry: entry) }
         } else {
             // One row holding the table: a `Form` realizes every row it is handed.
             LauncherItemsTable(
@@ -99,9 +101,14 @@ struct LauncherItemRow: View {
     @Environment(VisibilityStore.self) private var visibility
 
     var body: some View {
-        SettingsRow(title: entry.name) {
+        SettingsRow(
+            title: entry.name,
+            labelOpacity: visibility.isItemVisible(entry) ? 1 : 0.45
+        ) {
             // Keyed so a reused cell seeds the new entry's icon on its first frame.
-            AppIconView(app: entry).frame(width: 18, height: 18).id(entry.iconKey)
+            AppIconView(app: entry)
+                .frame(width: SettingsListMetrics.iconSize, height: SettingsListMetrics.iconSize)
+                .id(entry.iconKey)
         } trailing: {
             AliasField(entry: entry)
             if let action = entry.hotKeyAction {

@@ -653,6 +653,8 @@ system-drawn and a pane reads exactly as macOS System Settings does.
   the way `SystemPromptEditor` does; dimming an editor that still accepts input is the bug, not the fix.
 - **A group is a `Section`**, with `header:` for its name and `footer:` for the caption that used to
   ride under the last row.
+- **Interface size and Emoji Skin Tone use `settingsOptionSegment`** for the same square selection
+  shape, while keeping their own content sizes.
 - **A pane scans as section → setting → control, so its words are rationed.** A subtitle is a short
   phrase, and only where the title leaves out a consequence or a limit ("Shortcuts still work when
   hidden."); a footer carries a caveat, such as privacy or cost, never a restatement of its header. A
@@ -750,12 +752,17 @@ system-drawn and a pane reads exactly as macOS System Settings does.
   fixed that, but tears a row's `TextField` and checkbox — both `NSView`s — down when the row scrolls
   off and builds them again when one scrolls on, about 7 ms and 4 ms on macOS 27. A fast scrollbar
   drag replaces a screenful of rows per update, so the list froze for 100–400 ms at a time.
-  `LauncherItemsSection` therefore holds its items in `LauncherItemsTable`, an `NSTableView` filling
-  one Form row: it keeps a screenful of cells and hands each a new entry, and each cell hosts the
+  The Applications and Apple Shortcuts lists therefore use `LauncherItemsTable`, an `NSTableView`
+  filling one Form row; the shorter launcher-item lists use native Form rows. The table keeps a
+  screenful of cells and hands each a new entry, and each cell hosts the
   SwiftUI `LauncherItemRow`, so a reused row's controls update in place. A hosted row inherits nothing
   from the pane, so the table injects the stores the row reads, and moves Tab on to the next row's
-  alias field itself; rows are a fixed 54 pt. A negative `.padding` doesn't move an AppKit view, so the
-  table hangs 15 pt past its own view into the Form row's padding, where the lazy stack's rows sat.
+  alias field itself; rows are a fixed 45 pt to match the native Form rows. A negative `.padding`
+  doesn't move an AppKit view, so the table hangs 11 pt into the Form row's padding at the top
+  (including the search divider) and 10 pt at the bottom, matching native row origins without
+  adding space after the last row.
+  `SettingsListMetrics` keeps row icons at one size, and `SettingsScopeRow` renders folder and
+  application scope icons consistently across pages.
   A long list whose rows hold no AppKit control can stay a `LazyVStack`.
 
 ### The window-layout editor

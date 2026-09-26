@@ -34,6 +34,7 @@ struct MCPSettingsSection: View {
                         SettingsRowTitle(.aiMCPServers, "Add MCP Server")
                     } icon: {
                         Image(systemName: "plus")
+                            .foregroundStyle(.primary)
                     }
                 }
             }
@@ -98,7 +99,7 @@ private struct MCPServerRow: View {
     var body: some View {
         SettingsRow(title: server.title, subtitle: subtitle) {
             Image(systemName: "wrench.and.screwdriver")
-                .foregroundStyle(server.isEnabled ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
+                .foregroundStyle(.primary)
         } trailing: {
             Button(action: onEdit) { Image(systemName: "pencil") }
                 .buttonStyle(.plain)

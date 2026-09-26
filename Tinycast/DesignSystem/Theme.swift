@@ -219,10 +219,9 @@ enum Theme {
         static let chatSourceTitle: CGFloat = 200
         /// The context card's width: a label column and a value one, with room for a model name.
         static let chatContextCard: CGFloat = 300
-        /// One "Aa" segment of the Interface Size control; three sit in a grouped row's trailing slot.
-        static let interfaceSizeSegment: CGFloat = 40
         /// A grouped `Form` row's control height.
         static let settingsControlHeight: CGFloat = 28
+        static let emojiSkinToneGlyph: CGFloat = 13
         /// One density preview; five fit across the Emoji settings detail pane.
         static let emojiSettingsGridPreview: CGFloat = 72
         /// The layout editor. Height is stated so selecting an entry cannot resize the panel.
