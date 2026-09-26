@@ -526,9 +526,11 @@ caches, TCC grants and login item, so this cannot disturb an installed copy.
   flipping it back re-renders without dirtying the note or touching undo
 - Edit one note, switch to a shorter note, then Undo and Redo: the new note remains intact and the app
   does not terminate
-- Marked-text input, emoji, combining marks, Copy, Cut, Paste, Select All, Undo, Redo, and Find preserve
-  exact source
-- An empty note shows `Start writing…`; the footer count is right after typing, pasting and undoing
+- Marked-text input, emoji, combining marks, Copy, Cut, Paste, Select All, Undo, and Redo preserve
+  exact source; ⌘F finds occurrences in the active note with rendering on and off, and Escape closes
+  the find bar before hiding Notes
+- An empty note shows `Start writing…`; ⌘F moves it below the find bar without overlap, and closing Find
+  restores its position. The footer count is right after typing, pasting and undoing
 - With Render Markdown and Show Formatting Bar on, the band under a note holds the character count on
   the left and the round formatting button on the right; with either setting off, the old centred
   count footer is back and nothing else moved

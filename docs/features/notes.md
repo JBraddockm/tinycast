@@ -100,8 +100,9 @@ failed flush retains the draft for retry.
 - **Create Note** creates and selects one unique Untitled note, including from an empty channel.
 - **Search Notes** shows the same panel with the switcher open and its search field focused.
 
-Command-N creates, Command-P opens or refocuses the switcher, Command-O opens the Notes folder, Escape
-closes the switcher before hiding, and Command-W and the red traffic light both hide directly. Hiding
+Command-N creates, Command-P opens or refocuses the switcher, Command-O opens the Notes folder, and
+Command-F opens AppKit's find bar in the active note. Escape closes the find bar or switcher before
+hiding; Command-W and the red traffic light both hide directly. Hiding
 restores the prior external application or Tinycast window and flushes without delaying the order-out —
 but only while that app is still the frontmost one, so closing a window the user has already left behind
 leaves them in whatever app they moved to.
@@ -109,7 +110,7 @@ Command-Q is bound to nothing app-wide, so no chord over Notes can quit Tinycast
 
 Both windows are one `NotesPanel`, a non-activating floating panel that owns the Escape rule and reads
 ⌘⌫. They differ only in style mask and in the `commandChords` their controller installs: the note window
-claims ⌘N, ⌘P, ⌘O and ⌘W, and the switcher reads ⌘N plus ⌘W and ⌘P as dismissals.
+claims ⌘N, ⌘P, ⌘O, ⌘F and ⌘W, and the switcher reads ⌘N plus ⌘W and ⌘P as dismissals.
 
 AppKit draws the note window's chrome. Its 52-point title bar holds the traffic lights, the centred
 active title, and one frosted capsule of Create, Browse, and Open Folder. The title is drawn, not
@@ -232,7 +233,8 @@ collide. In a note, ⌘E replaces AppKit's Use Selection for Find.
 AppKit still owns typing, selection, Cut, Copy, Paste, Select All, Find, marked text, emoji, combining
 characters and undo grouping. Copy yields raw Markdown and VoiceOver reads the source. Changing the note
 identity or editor epoch reinstalls and restyles the string and clears the previous document's undo
-history. Snippets expand through `insertText` and are styled like typed text.
+history. Snippets expand through `insertText` and are styled like typed text. The empty-note placeholder
+is drawn in the text view, so opening the find bar moves it with the editor content.
 
 ### The formatting bar
 
@@ -300,7 +302,7 @@ autosave, empty collections, switcher interaction, and cancellation, plus the Ma
 edit plan, the formatting each selection reports and the reveal policy.
 
 `Tests/notes-editor-test.swift` uses real TextKit 2 and AppKit undo objects. It runs the native
-Cut/Copy/Paste, Unicode and marked-text cases with rendering off and on, and covers undo isolation, an
+Cut/Copy/Paste, the native find bar, Unicode and marked-text cases with rendering off and on, and covers undo isolation, an
 exact source after styling, hidden and revealed markers, restyling after edits and after undo, block
 decorations and layout fragments, list keys, chords, the task rule, checkbox toggles, link schemes,
 pasting a URL, and the formatting reports and `format(_:)` the formatting bar uses.

@@ -43,7 +43,12 @@ struct NotesEditorTests {
         defer { pasteboard.releaseGlobally() }
 
         check("the editor displays literal Markdown source", editor.textView.string == source)
-        check("the plain editor enables native Find", editor.textView.usesFindPanel)
+        check("the plain editor enables native Find", editor.textView.usesFindBar)
+        editor.textView.find(.showFindInterface)
+        check("Find opens in the editor", editor.textView.enclosingScrollView?.isFindBarVisible == true)
+        editor.textView.find(.hideFindInterface)
+        check("Find closes in the editor", editor.textView.enclosingScrollView?.isFindBarVisible == false)
+        check("Find closes without changing the source", editor.textView.string == source)
 
         let boldRange = (editor.textView.string as NSString).range(of: "**bold**")
         editor.textView.setSelectedRange(boldRange)
