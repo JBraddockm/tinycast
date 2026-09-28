@@ -83,6 +83,9 @@ enum AIProviderFactory {
             guard let connection = settings.connection(id: connectionID) else {
                 throw AIProviderError.unavailable("Choose an API connection in Settings.")
             }
+            guard settings.isRouteEnabled(.api(connectionID)) else {
+                throw AIProviderError.unavailable("\(connection.title) is disabled in AI Settings.")
+            }
             let baseURL: URL
             do {
                 baseURL = try AIEndpointPolicy.validate(connection.baseURL)

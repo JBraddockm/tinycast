@@ -179,14 +179,29 @@ struct InstalledAIModel: Equatable, Identifiable, Sendable {
         return []
     }
 
-    /// "Opus 5.5 · Best for everyday…" names the version the alias points at today.
+    /// The same answer that lists the models names the account; nothing more is asked for it.
+    static func claudeAccount(_ output: String) -> InstalledAIAccount? {
+        for line in output.split(whereSeparator: \.isNewline) {
+            guard let object = try? JSONSerialization.jsonObject(with: Data(line.utf8)) as? [String: Any],
+                object["type"] as? String == "control_response",
+                let response = object["response"] as? [String: Any],
+                let payload = response["response"] as? [String: Any],
+                let account = payload["account"] as? [String: Any]
+            else { continue }
+            let email = account["email"] as? String
+            let plan = account["subscriptionType"] as? String
+            guard email != nil || plan != nil else { return nil }
+            return InstalledAIAccount(email: email, plan: plan)
+        }
+        return nil
+    }
+
+    /// An older CLI leads `description` with the version, "Opus 5.5 · Best…"; a newer one names it.
     private static func claudeName(_ entry: [String: Any], fallback: String) -> String {
-        let described = (entry["description"] as? String)?
-            .components(separatedBy: " · ").first?
-            .trimmingCharacters(in: .whitespaces)
-        let name =
-            described.flatMap { $0.isEmpty ? nil : $0 }
-            ?? entry["displayName"] as? String ?? fallback
+        let parts = (entry["description"] as? String ?? "").components(separatedBy: " · ")
+        let versioned = parts.count > 1 ? parts[0].trimmingCharacters(in: .whitespaces) : ""
+        let displayed = entry["displayName"] as? String ?? ""
+        let name = [versioned, displayed].first { !$0.isEmpty } ?? fallback
         return name.hasPrefix("Claude") ? name : "Claude " + name
     }
 
@@ -281,6 +296,21 @@ struct InstalledAIModel: Equatable, Identifiable, Sendable {
     }
 }
 
+/// Who a tool is signed in as, when it says; shown so the reader knows which account is billed.
+struct InstalledAIAccount: Equatable, Sendable {
+    let email: String?
+    let plan: String?
+
+    /// The CLI says "max" in one answer and "Claude Max" in another; the row adds the tool's name.
+    var planTitle: String? {
+        guard var title = plan?.trimmingCharacters(in: .whitespaces), !title.isEmpty else {
+            return nil
+        }
+        if title.lowercased().hasPrefix("claude ") { title = String(title.dropFirst(7)) }
+        return title.prefix(1).uppercased() + title.dropFirst()
+    }
+}
+
 struct InstalledAIStatus: Equatable, Sendable {
     enum Phase: Equatable, Sendable {
         case idle
@@ -295,6 +325,7 @@ struct InstalledAIStatus: Equatable, Sendable {
     var version: String?
     var executable: URL?
     var models: [InstalledAIModel] = []
+    var account: InstalledAIAccount?
 
     var isReady: Bool { phase == .ready && executable != nil && !models.isEmpty }
 }

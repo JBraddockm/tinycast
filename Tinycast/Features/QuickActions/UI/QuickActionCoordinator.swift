@@ -5,6 +5,18 @@ import Observation
 @MainActor
 @Observable
 final class QuickActionCoordinator {
+    private struct NoteSelection {
+        let editor: NoteTextView
+        let document: NoteEditorInput
+        let range: NSRange
+        let text: String
+    }
+
+    private enum Target {
+        case external(NSRunningApplication?)
+        case note(NoteSelection)
+    }
+
     private let settings: AppSettings
     private let store: QuickActionSettingsStore
     private let customActions: CustomQuickActionStore
@@ -162,8 +174,22 @@ final class QuickActionCoordinator {
 
     func run(_ action: QuickAction) {
         guard settings.quickActionsEnabled, running == nil else { return }
-        let target = paletteCoordinator.targetApp
-        if paletteCoordinator.isVisible { paletteCoordinator.hidePalette(restoreFocus: false) }
+        let source = paletteCoordinator.isVisible
+            ? InjectionTarget.behindPalette(
+                ownWindow: paletteCoordinator.previousOwnWindow, app: paletteCoordinator.targetApp)
+            : InjectionTarget.current()
+        let target: Target
+        if let editor = source?.ownEditor as? NoteTextView {
+            target = .note(
+                NoteSelection(
+                    editor: editor, document: core.notesCoordinator.editorInput,
+                    range: editor.selectedRange(), text: editor.injectableSelection))
+        } else {
+            target = .external(paletteCoordinator.targetApp)
+        }
+        if paletteCoordinator.isVisible {
+            paletteCoordinator.hidePalette(restoreFocus: source?.ownEditor is NoteTextView)
+        }
         start { [weak self] in await self?.begin(action, target: target) }
     }
 
@@ -187,10 +213,15 @@ final class QuickActionCoordinator {
         }
     }
 
-    private func begin(_ action: QuickAction, target: NSRunningApplication?) async {
+    private func begin(_ action: QuickAction, target: Target) async {
         let selection: String
         do {
-            selection = try await QuickActionRunner.selection(in: target, using: injector)
+            switch target {
+            case .external(let app):
+                selection = try await QuickActionRunner.selection(in: app, using: injector)
+            case .note(let note):
+                selection = try QuickActionRunner.accepted(note.text)
+            }
         } catch let failure as QuickActionFailure {
             reportRefusal(failure)
             return
@@ -227,7 +258,7 @@ final class QuickActionCoordinator {
     }
 
     private func perform(
-        _ state: QuickActionPanelState, target: NSRunningApplication?, previewing: Bool
+        _ state: QuickActionPanelState, target: Target, previewing: Bool
     ) async {
         do {
             let text = try await produce(state, previewing: previewing)
@@ -281,16 +312,28 @@ final class QuickActionCoordinator {
     }
 
     /// A replacement that never lands would otherwise lose the reply, so the clipboard keeps it.
-    private func deliver(_ text: String, to target: NSRunningApplication?, action: QuickAction) {
-        injector.replaceSelection(
-            with: text, in: target,
-            onDelivered: { [weak self] in self?.core.showMessage("\(action.title) applied") },
-            onFailed: { [weak self] in
-                Paster.copyPlainText(text)
-                self?.core.showMessage(
-                    "\(action.title) couldn't replace the selection — copied instead",
-                    tone: .danger)
-            })
+    private func deliver(_ text: String, to target: Target, action: QuickAction) {
+        let onDelivered: @MainActor @Sendable () -> Void = { [weak self] in
+            self?.core.showMessage("\(action.title) applied")
+        }
+        let onFailed: @MainActor @Sendable () -> Void = { [weak self] in
+            Paster.copyPlainText(text)
+            self?.core.showMessage(
+                "\(action.title) couldn't replace the selection — copied instead",
+                tone: .danger)
+        }
+        switch target {
+        case .external(let app):
+            injector.replaceSelection(
+                with: text, in: app, onDelivered: onDelivered, onFailed: onFailed)
+        case .note(let note):
+            guard core.notesCoordinator.editorInput == note.document,
+                note.editor.window?.isVisible == true,
+                note.editor.replaceUnchangedSelection(
+                    with: text, source: note.document.source, range: note.range)
+            else { onFailed(); return }
+            onDelivered()
+        }
     }
 
     /// A failure the reader cannot see is a hotkey that silently did nothing.
@@ -302,7 +345,7 @@ final class QuickActionCoordinator {
         state.fail(error.localizedDescription)
     }
 
-    private func present(_ state: QuickActionPanelState, target: NSRunningApplication?) {
+    private func present(_ state: QuickActionPanelState, target: Target) {
         panels.present(
             state,
             metrics: settings.interfaceSize.metrics,
@@ -316,7 +359,7 @@ final class QuickActionCoordinator {
             })
     }
 
-    private func rerun(_ state: QuickActionPanelState, target: NSRunningApplication?) {
+    private func rerun(_ state: QuickActionPanelState, target: Target) {
         state.restart()
         start { [weak self] in await self?.perform(state, target: target, previewing: true) }
     }

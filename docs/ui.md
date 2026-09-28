@@ -88,7 +88,8 @@ this, member by member, including that `.standard` is `Theme` verbatim.
 
 `xxs` is the tight gap between adjacent keycap chips (used everywhere keycaps sit side by side).
 
-Row content insets are `md`; list horizontal inset is `md`; the search icon aligns with rows via `md * 2`.
+Row content insets are `md`; list horizontal inset is `md`; the search icon aligns with rows via
+`md * 2`; the `xl` gap after it starts the query on the row titles' column.
 
 Section-header rhythm has two dedicated tokens: `sectionHeaderBottom` (header → first row) and
 `sectionSpacing` (gap above every header **except the list's first**, which reads as the previous
@@ -167,6 +168,11 @@ AI Chat adds `aiChatWindow 960×660` (opening size), `aiChatWindowMinimum 680×4
 `chatContextGauge 14` for the composer's context ring, and `chatContextCard 300` for the card it
 raises on hover.
 
+The AI Providers panel adds `aiProvidersPanel 840×520` (the height is its two columns', stated so
+that selecting a longer provider never resizes the panel), `aiProvidersList 262`, `aiUsageBar 110`
+and `aiVariableName 170`. `segmentLabelInset 13` is what the system leaves either side of a
+segment's label once a segmented control has settled.
+
 `keyCap` sizes the palette's keycap chips; `recorderKeyCap` (both size and radius) is the intentionally-smaller Settings shortcut-recorder chip.
 
 ### Typography (`Theme.Typography`)
@@ -227,7 +233,7 @@ Source: `Palette/PalettePanel.swift`, `Palette/RootPaletteView.swift`.
 
 - **`PalettePanel`** is a borderless `NSPanel`: `isOpaque = false`, `backgroundColor = .clear`, `.palette` level (one above `.modalPanel`, so other apps' open panels never cover it), `hasShadow`, `animationBehavior = .none`. It hosts SwiftUI via `NSHostingView`. `PaletteWindowController` centers it slightly above screen center (`+8%`) and dismisses it on `windowDidResignKey`.
 - **The results layer fills the whole panel.** The header and bottom bar attach via `.safeAreaInset(edge: .top/.bottom)` as transparent overlays that float _over_ the list. The list underlaps them and dissolves at the edges.
-- **Header** (`headerHeight 44`): a back-chevron _or_ mode glyph, then the plain `TextField` (no border/background). Sub-screens (Clipboard, Calculator History) show the back chevron; the launcher shows a magnifying glass. The search icon aligns horizontally with row content.
+- **Header** (`headerHeight 44`): a back-chevron _or_ mode glyph, then the plain `TextField` (no border/background). Sub-screens (Clipboard, Calculator History) show the back chevron; the launcher shows a magnifying glass. The search icon aligns horizontally with row content, and the query with the row titles.
 - **Compact keyboard entry:** pressing `↓` in the collapsed launcher expands the results and selects the first row without replacing or defocusing the shared search field.
 - **Bottom bar** (`bottomBarHeight 52`): a menu circle on the left, the action group on the right — both floating glass, no bar background. The action group is one glass `Capsule` holding the primary-action pill (label + `↵`) and the Actions toggle (`⌘K`).
 - **`BarButton`** is the shared bar control: bare label at rest, a `rowHover` capsule on hover, `barButtonHeight 28`. Set `isSelected` and it fills with `selection` instead, which beats hover; the Notes formatting bar lights its buttons this way. Set `isCompact` for `sm` padding instead of `md`: around a 16-point glyph frame that makes a 28-point square. It carries the footer's two buttons and the clipboard header's type filter, so those hover identically. Hover state lives inside it, so sweeping one never re-renders the palette body.
@@ -645,6 +651,14 @@ system-drawn and a pane reads exactly as macOS System Settings does.
   is unaffected.
 - **`.settingsEnabled(_:)`, never a bare `.disabled(_:)`.** It dims as well as disables, so a
   switched-off row reads as unavailable rather than merely unresponsive.
+- **A segmented control that opens in a panel is a `SteadySegmentedPicker`.** The system control
+  opens tight around its labels and widens the first time its selection changes, under the pointer,
+  and its own idea of its width shifts a few points with it. The wrapper pins each segment to its
+  label plus `segmentLabelInset` and reports its size from those widths. A segmented `Picker` that is
+  redrawn right after it appears, like the Providers panel's page control, settles before it is seen.
+- **A control placed directly on an editor panel's glass loses its accent colour.** Inside a grouped
+  `Form` row it keeps it. A panel with such a control asks for
+  `settingsEditorPanelSurface(controlsOnGlass: false)`, which draws the same glass behind the content.
 - **A secret is a `RevealableSecureField`, never a bare `SecureField`.** One eye, one place, so an API
   key, a header value and a passphrase all offer the same way to check a pasted value before saving.
   It re-hides on its own once the field is cleared, and its eye is disabled while it is empty.

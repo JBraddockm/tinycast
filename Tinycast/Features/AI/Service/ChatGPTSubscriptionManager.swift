@@ -10,11 +10,18 @@ final class ChatGPTSubscriptionManager {
 
     private let client: CodexAppServerClient
     let turns: CodexTurnRunner
+    /// Forwarded to the app-server's launch; a change takes effect at its next start.
+    @ObservationIgnored var launchSettings: () -> InstalledAILaunch {
+        get { client.launchSettings }
+        set { client.launchSettings = newValue }
+    }
 
     private(set) var phase = ChatGPTSubscription.Phase.idle
     private(set) var account: ChatGPTSubscription.Account?
     private(set) var models: [ChatGPTSubscription.Model] = []
     private(set) var rateLimits: ChatGPTSubscription.RateLimits?
+    /// Copied from the client at each check: the client is not observed, and Settings shows this.
+    private(set) var executable: URL?
 
     @ObservationIgnored private var operationTask: Task<Void, Never>?
     @ObservationIgnored private var idleTask: Task<Void, Never>?
@@ -104,6 +111,7 @@ final class ChatGPTSubscriptionManager {
         phase = .starting
         do {
             try await client.startForCheck()
+            executable = client.executable
             guard try await restoreAccount() else {
                 phase = .signedOut
                 client.stop()

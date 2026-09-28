@@ -13,6 +13,7 @@ struct NotesEditorTests {
         testLiteralEditingAndNativeCommands(rendersMarkdown: false)
         testLiteralEditingAndNativeCommands(rendersMarkdown: true)
         testUndoIsolation()
+        testQuickActionReplacement()
         testCharacterCountReports()
         testRenderingKeepsSourceAndUndo()
         testHiddenMarkersAndReveal()
@@ -83,6 +84,35 @@ struct NotesEditorTests {
         editor.textView.unmarkText()
         check("marked text commits through native AppKit editing", editor.textView.string.hasSuffix("語"))
         check("every published value equals the displayed source", changes.last == editor.textView.string)
+    }
+
+    private static func testQuickActionReplacement() {
+        let source = "The cat are here."
+        let input = NoteEditorInput(id: NoteID(rawValue: "Action.md"), source: source, epoch: 1)
+        var changes: [String] = []
+        let editor = makeEditor(input: input, onSourceChange: { changes.append($0) })
+        let range = (source as NSString).range(of: "cat are")
+        editor.textView.setSelectedRange(range)
+        check("Quick Actions read the note selection", editor.textView.injectableSelection == "cat are")
+        check(
+            "Quick Actions replace an unchanged note selection",
+            editor.textView.replaceUnchangedSelection(
+                with: "cats are", source: source, range: range))
+        check(
+            "replacement updates the note through the editor",
+            editor.textView.string == "The cats are here." && changes.last == editor.textView.string)
+        editor.coordinator.editorUndoManager.undo()
+        check("the replacement is undoable", editor.textView.string == source)
+
+        editor.textView.setSelectedRange(NSRange(location: 0, length: 3))
+        check(
+            "a moved selection is not replaced",
+            !editor.textView.replaceUnchangedSelection(with: "wrong", source: source, range: range))
+        editor.textView.insertText("!", replacementRange: NSRange(location: 0, length: 0))
+        editor.textView.setSelectedRange(range)
+        check(
+            "a changed note is not replaced",
+            !editor.textView.replaceUnchangedSelection(with: "wrong", source: source, range: range))
     }
 
     private static func testUndoIsolation() {
