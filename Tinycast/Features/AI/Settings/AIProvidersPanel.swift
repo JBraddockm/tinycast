@@ -290,10 +290,7 @@ struct AIProvidersPanel: View {
                     .foregroundStyle(.secondary)
             } label: {
                 Text(AppleIntelligence.title)
-                Text(
-                    available
-                        ? "Runs on this Mac. Nothing leaves it."
-                        : AppleIntelligenceProvider.status().message ?? "Not available on this Mac.")
+                Text(appleIntelligenceDetail(available: available))
             }
         } header: {
             Text("Status")
@@ -302,6 +299,16 @@ struct AIProvidersPanel: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
+    }
+
+    private func appleIntelligenceDetail(available: Bool) -> String {
+        if available {
+            return "Runs on this Mac. Nothing leaves it."
+        }
+        if #available(macOS 26.0, *) {
+            return AppleIntelligenceProvider.status().message ?? "Not available on this Mac."
+        }
+        return "Requires macOS 26 or later."
     }
 
     // MARK: Installed commands
@@ -671,8 +678,9 @@ struct AIProvidersPanel: View {
     private func caption(for route: AIProviderRoute) -> String {
         switch route {
         case .appleIntelligence:
+            guard settings.isAppleIntelligenceAvailable() else { return "Unavailable" }
             guard settings.isRouteEnabled(.appleIntelligence) else { return "Off" }
-            return settings.isAppleIntelligenceAvailable() ? "Ready · Runs on this Mac" : "Unavailable"
+            return "Ready · Runs on this Mac"
         case .installed(let kind):
             guard settings.enabledInstalledProviders.contains(kind) else { return "Off" }
             return kind == .codex ? codexCaption : installedCaption(kind)
@@ -750,14 +758,16 @@ struct AIProvidersPanel: View {
     }
 
     private func routeToggle(_ route: AIProviderRoute) -> some View {
-        Toggle(
+        let unavailable = route == .appleIntelligence && !settings.isAppleIntelligenceAvailable()
+        return Toggle(
             "Enable \(title(for: route))",
             isOn: Binding(
-                get: { settings.isRouteEnabled(route.source) },
+                get: { !unavailable && settings.isRouteEnabled(route.source) },
                 set: { settings.setRoute(route.source, enabled: $0) })
         )
         .labelsHidden()
         .toggleStyle(.switch)
+        .disabled(unavailable)
     }
 
     private var removalPresented: Binding<Bool> {
