@@ -24,7 +24,7 @@ struct NotesView: View {
         HStack(spacing: 0) {
             Color.clear
                 .contentShape(Rectangle())
-                .windowDraggable(true)
+                .overlay { NoteTitlebarDragRegion(onDoubleClick: notes.moveToTopRight) }
             NoteTitlebarActions()
         }
         .frame(height: Theme.Size.noteTitlebar)
@@ -113,6 +113,31 @@ struct NotesView: View {
             .foregroundStyle(Theme.Colors.textTertiary)
             .lineLimit(1)
             .accessibilityLabel("\(notes.characterCountLabel) in this note")
+    }
+}
+
+private struct NoteTitlebarDragRegion: NSViewRepresentable {
+    let onDoubleClick: () -> Void
+
+    func makeNSView(context: Context) -> NoteTitlebarDragView {
+        let view = NoteTitlebarDragView()
+        view.onDoubleClick = onDoubleClick
+        return view
+    }
+    func updateNSView(_ view: NoteTitlebarDragView, context: Context) {
+        view.onDoubleClick = onDoubleClick
+    }
+}
+
+private final class NoteTitlebarDragView: NSView {
+    var onDoubleClick: (() -> Void)?
+
+    override func mouseDown(with event: NSEvent) {
+        if event.clickCount == 2 {
+            onDoubleClick?()
+            return
+        }
+        window?.performDrag(with: event)
     }
 }
 

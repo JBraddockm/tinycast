@@ -253,10 +253,10 @@ the window. The three actions cannot do that, so they live in an `NSTitlebarAcce
 at `.trailing` — `NoteTitlebarActions`, the launcher's footer capsule (`BarButton` in a
 `frosted(in: Capsule())`) with glyphs in place of pills. Its 44-point height is what sizes the band.
 
-`NotesWindowController` no longer computes frames: the user owns the size, and AppKit autosaves both
-position and size under `"Notes Window"`. The window shows exactly one surface at a time — editor,
-switcher, or the "No Notes" empty state — and the character count is part of the editor surface, so
-it never appears without a note.
+`NotesWindowController` preserves the user-owned size and AppKit autosaves the frame under
+`"Notes Window"`; only a title-bar double-click computes a top-right target. The window shows exactly
+one surface at a time — editor, switcher, or the "No Notes" empty state — and the character count is
+part of the editor surface, so it never appears without a note.
 
 The header keeps a fixed slot for status so Saving, Saved, failure, and conflict symbols cannot move
 the controls. Failure and conflict symbols can be clicked to reopen their recovery report after a

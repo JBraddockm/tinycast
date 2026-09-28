@@ -1,3 +1,4 @@
+import CoreGraphics
 import Foundation
 
 @main
@@ -14,6 +15,7 @@ struct NotesTests {
         testRevealPolicy()
         try testUnnamedNotesTitleThemselves()
         testSwitcherInteraction()
+        testWindowPlacement()
         try await testStoreCollectionAndAutosave()
         try await testCollectionMutationsFlushTheDraft()
         try await testStoreRecoversFromFailures()
@@ -240,6 +242,33 @@ struct NotesTests {
                 afterRemoving: first,
                 from: [first],
                 fallback: fallback) == fallback)
+    }
+
+    private static func testWindowPlacement() {
+        let visible = CGRect(x: 0, y: 50, width: 1440, height: 850)
+        let window = CGRect(x: 100, y: 100, width: 440, height: 312)
+        check(
+            "corner placement respects menu bar and Dock insets",
+            NoteWindowPlacement.topRight(window, in: visible, inset: 40)
+                == CGRect(x: 960, y: 548, width: 440, height: 312))
+
+        let external = CGRect(x: -1920, y: 30, width: 1880, height: 1020)
+        check(
+            "corner placement respects another display's origin",
+            NoteWindowPlacement.topRight(window, in: external, inset: 40)
+                == CGRect(x: -520, y: 698, width: 440, height: 312))
+
+        let nearlyFull = CGRect(x: 0, y: 0, width: 1420, height: 830)
+        check(
+            "corner placement reduces the inset rather than pushing a fitting window offscreen",
+            NoteWindowPlacement.topRight(nearlyFull, in: visible, inset: 40)
+                == CGRect(x: 0, y: 50, width: 1420, height: 830))
+
+        let oversized = CGRect(x: 0, y: 0, width: 1600, height: 1000)
+        check(
+            "oversized notes retain their size and align the top-right corner",
+            NoteWindowPlacement.topRight(oversized, in: visible, inset: 40)
+                == CGRect(x: -160, y: -100, width: 1600, height: 1000))
     }
 
     private static func testStoreCollectionAndAutosave() async throws {

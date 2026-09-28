@@ -322,6 +322,10 @@ final class NotesCoordinator {
         NSWorkspace.shared.activateFileViewerSelecting([fileURL])
     }
 
+    func moveToTopRight() {
+        windowController.moveToTopRight()
+    }
+
     func updateSource(_ source: String) {
         closeHeadingMenu()
         store.updateSource(source)

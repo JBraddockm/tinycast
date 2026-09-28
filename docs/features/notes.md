@@ -120,6 +120,8 @@ claims ⌘N, ⌘P, ⌘O, ⌘F and ⌘W, and the switcher reads ⌘N plus ⌘W an
 AppKit draws the note window's chrome. Its 52-point title bar holds the traffic lights, the centred
 active title, and one frosted capsule of Create, Browse, and Open Folder. The title is drawn, not
 native, so it centres on the window; it is not hit-testable, so dragging it moves the window.
+The yellow and green traffic lights are disabled; double-clicking the free title bar moves the
+unchanged window to the top-right of its current screen's visible area.
 
 The switcher is a borderless child window centred on its host and hung below the title bar, not an
 in-window screen — a note window may be 180pt tall, and the list must not be. It carries the same glass
