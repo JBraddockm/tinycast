@@ -404,7 +404,7 @@ screens hold (see [palette.md](palette.md)).
   the flattened `ExtensionAction` list rather than the drawn rows, so ↵ and the panel fire the same
   one without resolving an icon per arrow key. Header accessory symbols use the same 14pt Medium
   monochrome treatment; their menus use the same extension-owned transition, anchored to the control.
-- **Feedback** — `showToast` stacks above the footer, `showHUD` is a centred pill, and `confirmAlert`
+- **Feedback** — `showToast` replaces the current toast above the footer, `showHUD` is a centred pill, and `confirmAlert`
   goes through `DialogController` like every other question the app asks. Its dialog sits at
   `.dialog`, above the palette's `.palette`, so a view command keeps its screen behind it — and
   the palette does not dismiss while it is up (`AppCore.isShowingDialog`), because dismissing pops to
@@ -658,7 +658,7 @@ the descriptor calls `tar` unpacks through), `os`,
 `child_process` (`exec`, `execFile`, `execSync`, `execFileSync`, `spawnSync`, and a streaming `spawn`,
 each async form reporting the child's real `pid` for `process.kill` — Timers pauses that way),
 `crypto` (hashes, HMAC, PBKDF2, AES-CBC/ECB, random, UUID), `zlib` (gzip/zlib/raw deflate, both
-directions), `http`/`https` (`request`, `get` and `Agent`, buffered over the same URLSession bridge
+directions, plus `create*` streams that buffer until `end`), `http`/`https` (`request`, `get` and `Agent`, buffered over the same URLSession bridge
 as `fetch`), `stream` (`Readable`, `Writable`, `Duplex`, `Transform`, `PassThrough`, `pipeline`,
 `finished`, plus `stream/promises` and `stream/web`), `util`, `events`, `buffer`, `url`, `querystring`, `punycode`, `assert`,
 `string_decoder`, `timers`. Every other built-in resolves to a stub that throws only when used, so a
@@ -720,7 +720,7 @@ needs no push channel; sends are chained, because two host calls can otherwise s
 A bundled `ws` never looks at that global. It runs its handshake through `http.request` and waits for
 an `upgrade` carrying a raw socket it frames itself, so the shim answers with one that re-frames RFC
 6455 in both directions on top of the native task. The 101 it synthesises names no extension, which
-is what keeps `permessage-deflate` — streaming zlib, which the shims have no answer for — off the
+is what keeps `permessage-deflate` — incremental zlib, which the shims have no answer for — off the
 connection. Home Assistant is the reference case: it authenticates, subscribes, and re-renders on
 every state push over that socket. The scheme rides with the module for the same reason: `ws` hands
 `https.request` an options bag with no protocol in it, and a `wss:` URL that went out as `ws:` would
