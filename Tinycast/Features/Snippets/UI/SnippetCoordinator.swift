@@ -176,6 +176,18 @@ final class SnippetCoordinator {
         expandSnippet(id: id, target: target)
     }
 
+    /// A shortcut lands where the caret is; over the palette, that's what the palette covered.
+    func expandSnippetFromHotKey(id: StoredSnippet.ID) {
+        guard settings.snippetsEnabled, store.record(id: id)?.snippet.isEnabled == true else {
+            return
+        }
+        if windowController.isVisible {
+            expandSnippetFromPalette(id: id)
+        } else {
+            expandSnippet(id: id, target: InjectionTarget.current())
+        }
+    }
+
     func expandSnippet(
         id: StoredSnippet.ID,
         target: InjectionTarget?,

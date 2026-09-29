@@ -472,7 +472,11 @@ requested at first use, and denial produces an alert linking to the relevant Sys
 Toggle System Appearance changes macOS; Tinycast follows it only while its own Appearance is System.
 
 Restart, Shut Down, Log Out, Empty Trash and Quit All Applications confirm before execution: ↵ runs
-the action, Escape cancels. Every dialog is Tinycast's own: confirmations, failure reports and the Set
+the action, Escape cancels. **Empty Trash follows Finder's own "Show warning before emptying the
+Trash"** (Finder ▸ Settings ▸ Advanced) rather than overriding it: with the box off it runs without a
+dialog. `SystemActionRunner.finderWarnsBeforeEmptyingTrash` reads `com.apple.finder`'s
+`WarnOnEmptyTrash` at call time, and an absent key counts as on, because Finder writes it only once
+the box is changed. Every dialog is Tinycast's own: confirmations, failure reports and the Set
 Volume slider all render through `DialogController` rather than an `NSAlert`
 (see [ui.md](../ui.md#dialogs--hud)). Each confirmation carries the action's own icon — Restart shows
 `arrow.clockwise`, Empty Trash `trash.slash` — so the dialog is recognizably about the row that

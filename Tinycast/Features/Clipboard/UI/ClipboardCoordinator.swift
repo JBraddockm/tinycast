@@ -14,6 +14,7 @@ final class ClipboardCoordinator {
     private unowned let core: AppCore
     /// One Copy Text at a time: a newer trigger cancels the helper an older one is waiting on.
     private var textTask: Task<Void, Never>?
+    private var pasteSequence: PasteSequence?
 
     init(
         clipboardStore: ClipboardStore,
@@ -37,7 +38,7 @@ final class ClipboardCoordinator {
 
     /// Off means the poller stops, the database closes and nothing new is ever recorded.
     func applyEnabled() {
-        appIndex.setCommandsVisible([.clipboardHistory], settings.clipboardEnabled)
+        appIndex.setCommandsVisible([.clipboardHistory, .pasteSequentially], settings.clipboardEnabled)
         guard settings.clipboardEnabled else {
             core.applyClipboardTextSearch()
             clipboardManager.stop()
@@ -112,6 +113,35 @@ final class ClipboardCoordinator {
         if !windowController.pasteKeepingWindowOpen(item, store: clipboardStore) {
             reportUnavailable(item)
         }
+    }
+
+    /// Each press pastes the next older entry into the app in front, never promoting it.
+    func pasteNextInSequence() {
+        let now = Date()
+        // Dropped rather than queued, so a held shortcut cannot paste a burst of entries.
+        if let pasteSequence, pasteSequence.isSettling(at: now) { return }
+        guard let target = paletteCoordinator.targetApp else { return }
+        // A copy made just before the press must reach history, or the walk starts one entry late.
+        clipboardManager.prepareForTinycastPasteboardMutation()
+        var sequence = continuingPasteSequence(at: now)
+        while let item = sequence.next(in: clipboardStore.items) {
+            if paletteCoordinator.isVisible { paletteCoordinator.hidePalette() }
+            // An image or file gone from disk writes nothing, so the press moves on to the next.
+            guard Paster.pasteInPlace(item, store: clipboardStore, into: target) else { continue }
+            sequence.recordPaste(changeCount: NSPasteboard.general.changeCount, at: now)
+            pasteSequence = sequence
+            return
+        }
+        core.showMessage("Nothing left to paste", tone: .neutral)
+    }
+
+    /// A copy since the last press, or a long pause, starts the walk over from the newest entry.
+    private func continuingPasteSequence(at now: Date) -> PasteSequence {
+        let changeCount = NSPasteboard.general.changeCount
+        if let pasteSequence, pasteSequence.continues(changeCount: changeCount, at: now) {
+            return pasteSequence
+        }
+        return PasteSequence(history: clipboardStore.items, changeCount: changeCount, now: now)
     }
 
     /// A write only fails on a vanished file, and a palette that just closes explains nothing.

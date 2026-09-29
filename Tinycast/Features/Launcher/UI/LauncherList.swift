@@ -251,8 +251,8 @@ private struct AppRow: View {
 
     var body: some View {
         HStack(spacing: metrics.spacing.lg) {
-            AppIconView(app: app, pointSize: metrics.size.rowIcon)
-                .frame(width: metrics.size.rowIcon, height: metrics.size.rowIcon)
+            AppIconView(app: app, pointSize: metrics.size.resultRowIcon)
+                .frame(width: metrics.size.resultRowIcon, height: metrics.size.resultRowIcon)
                 .overlay(alignment: .bottom) {
                     if running {
                         Circle()

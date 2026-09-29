@@ -11,7 +11,7 @@ description: Recording global shortcuts, double-tap modifiers, and the Hyper key
 - Every built-in command, except Open in Browser, Run Shell Command and Quit Tinycast. See
   [Commands](/docs/launcher/commands).
 - Every app, and every System Settings pane
-- Every quicklink, custom command, custom Quick Action and extension command
+- Every quicklink, snippet, custom command, custom Quick Action and extension command
 - All 31 [system actions](/docs/launcher/system-actions)
 - All 35 [window commands](/docs/features/window-management), every
   [window layout](/docs/features/window-layouts) and every [room](/docs/features/rooms)
@@ -112,15 +112,16 @@ switch to another user, it pauses until you are back.
 Settings**, **Enable System Actions** and **Enable Commands** each stop every shortcut in their pane.
 
 **Turning a feature off turns off its shortcuts.** File Search, Notes, AI, Quick Actions, Navigation,
-Calendar, window commands, quicklinks, custom commands and extensions all check their switch before
-doing anything. Turn the feature back on and your shortcuts work again.
+Calendar, window commands, quicklinks, snippets, custom commands and extensions all check their
+switch before doing anything. Turn the feature back on and your shortcuts work again.
 
 A [system action's confirmation](/docs/launcher/system-actions#confirmation) comes up for its shortcut
 exactly as it does in the palette.
 
 ## Keeping them
 
-Shortcuts are included in [backups](/docs/reference/backup), except for custom Quick Actions.
+Shortcuts are included in [backups](/docs/reference/backup), except for custom Quick Actions and
+snippets.
 
 Shortcuts for things you deleted while Tinycast was not running are cleaned up the next time it
 starts.

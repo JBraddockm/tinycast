@@ -363,6 +363,9 @@ final class AppCore {
             hotKeys.onRunAppleShortcut = { [weak self] id in
                 self?.appleShortcutCoordinator.run(id: id)
             }
+            hotKeys.onExpandSnippet = { [weak self] id in
+                self?.snippetCoordinator.expandSnippetFromHotKey(id: id)
+            }
             hotKeys.onRunExtensionCommand = { [weak self] entryID in
                 self?.extensionCoordinator.runExtensionCommand(entryID: entryID)
             }
@@ -401,6 +404,7 @@ final class AppCore {
                 guard let self else { return }
                 self.snippetCoordinator.applySnippetsLauncherPresence()
                 self.snippetListener.update(snapshot.records)
+                self.hotKeys.removeSnippetBindings(keeping: snapshot.fileIDs)
             }
             // Off out of the box, so an unused feature costs no load, watcher or tap.
             if settings.snippetsEnabled {
@@ -474,6 +478,8 @@ final class AppCore {
             return customWindowSizes.size(id: id)?.name
         case .appleShortcut(let id):
             return appleShortcutCoordinator.name(of: id)
+        case .snippet(let id):
+            return snippetsStore.record(id: id)?.snippet.name
         case .extensionCommand(let entryID):
             return appIndex.apps.first { $0.kind == .extensionCommand && $0.id == entryID }?.name
         case .togglePalette, .command, .systemAction, .windowCommand:

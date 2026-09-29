@@ -226,7 +226,7 @@ a library being browsed rather than a query racing apps and commands for a rank.
 The preview shows the **raw template**, never an expansion. Expanding per selection would capture the
 clipboard, read the target's selected text and burn a `{uuid}` on every arrow key, and a snippet
 carrying `{argument}` would raise its prompt just to draw a pane. Beside it sits the name, keyword,
-file name and character count.
+shortcut, file name and character count.
 
 ↵ and the ⌘K menu's **Paste Snippet** both go through `SnippetCoordinator.expandSnippetFromPalette`,
 which reads `previousApp` before hiding the panel and then calls the same `expandSnippet` funnel a
@@ -237,6 +237,19 @@ through `AppCore.pendingSnippetEdit`, and **Show in Finder**.
 
 `Create Snippet` is a launcher command as well as a menu row because the palette swallows ⌘K when a
 screen has no rows: an empty library would otherwise open a browser with nothing to do.
+
+## Shortcuts
+
+Each snippet can hold a global shortcut, recorded on its row in **Settings → Snippets**, and shown
+as keycaps on its launcher and browser rows. `SnippetCoordinator.expandSnippetFromHotKey` refuses
+while the feature or the snippet is off, then calls the same `expandSnippet` funnel a launcher row
+does. Its target is `InjectionTarget.current()`, or what the palette covered while the palette is
+open.
+
+**The shortcut's own modifiers are still held when delivery starts.** A keyboard event built from
+`.combinedSessionState` inherits them, so a Unicode keystroke clears its flags like every other
+synthetic event, or ⌥⇧V would type each character as an ⌥⇧ chord. Persistence and the sweep of
+deleted files are in [hotkeys.md](hotkeys.md#persistence).
 
 ## Confirmation HUD
 

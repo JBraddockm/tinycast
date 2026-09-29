@@ -171,6 +171,15 @@ enum SystemActionRunner {
         return nil
     }
 
+    /// Finder writes the key only once the box is changed, so an absent key is its default: on.
+    static var finderWarnsBeforeEmptyingTrash: Bool {
+        let key = "WarnOnEmptyTrash"
+        guard let finder = UserDefaults(suiteName: "com.apple.finder"),
+            finder.object(forKey: key) != nil
+        else { return true }
+        return finder.bool(forKey: key)
+    }
+
     static func currentVolume() throws -> Float32 {
         let device = try defaultOutputDevice()
         let elements = try volumeElements(on: device)

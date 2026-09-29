@@ -8,8 +8,8 @@ using.
 
 Clipboard history is the one feature that ships **on**. **Settings → Clipboard → Enable Clipboard
 History** turns it off. Off means off: nothing is recorded, the history file closes, and the
-Clipboard History command and its shortcut go away. What you already saved stays, and
-**Clear history** still works while it is off.
+Clipboard History and Paste Sequentially commands and their shortcuts go away. What you already
+saved stays, and **Clear history** still works while it is off.
 
 ## Opening it
 
@@ -40,6 +40,16 @@ Pasting needs the [Accessibility permission](/docs/permissions).
 
 **Drag any row out** into another app. It is always a copy, so the entry stays in your history. When
 the drop lands, the palette closes, just like a paste.
+
+## Paste Sequentially
+
+Give **Paste Sequentially** a shortcut in **Settings → Clipboard** to paste a run of copies one at a
+time, without opening the palette. Copy `A`, then `B`, then `C`, and three presses paste `C`, `B`,
+then `A` into whatever field is in front, so you can move between fields as you go.
+
+It pastes text, images and files alike, and leaves your history in the order it was. Copying
+something new, or a minute without a press, starts it over from the newest entry. After the oldest
+entry it says **Nothing left to paste** instead of starting again.
 
 ## What it keeps
 
@@ -107,6 +117,7 @@ This setting is not included in [backups](/docs/reference/backup).
 | ------------------------------ | ----------------------------------------------------------------- | -------------------------- |
 | Enable Clipboard History       | On · Off                                                          | **On**                     |
 | Clipboard History shortcut     | Any shortcut                                                      | None                       |
+| Paste Sequentially shortcut    | Any shortcut                                                      | None                       |
 | Keep history for               | 1 Day · 1 Week · 1 Month · 3 Months · 6 Months · 1 Year · Forever | **3 Months**               |
 | Search text in images and PDFs | On · Off                                                          | **Off**                    |
 | Default action                 | Paste · Copy to Clipboard                                         | **Paste**                  |

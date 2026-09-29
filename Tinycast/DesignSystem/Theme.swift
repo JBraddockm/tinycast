@@ -111,6 +111,7 @@ enum Theme {
         /// A `BarButton`'s hover capsule, shared by the footer group and the header's filter.
         static let barButtonHeight: CGFloat = 28
         static let rowIcon: CGFloat = 24
+        static let resultRowIcon: CGFloat = 26
         /// Colour-codes a secondary label, as Calendar.app marks an event's calendar.
         static let colorDot: CGFloat = 8
         /// The calendar-colour bar between a meeting row's icon and its title.

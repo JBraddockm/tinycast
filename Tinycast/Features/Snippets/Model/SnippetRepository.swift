@@ -63,6 +63,9 @@ struct SnippetRepository: Sendable {
     struct Snapshot: Sendable, Equatable {
         let records: [StoredSnippet]
         let issues: [Issue]
+
+        /// Every file still on disk: one that fails to parse is mid-edit, not deleted.
+        var fileIDs: Set<StoredSnippet.ID> { Set(records.map(\.id) + issues.map(\.id)) }
     }
 
     struct Issue: Identifiable, Sendable, Equatable {

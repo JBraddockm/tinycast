@@ -4,7 +4,7 @@
 
 - **`clipboardEnabled` ships on — the only feature switch that does.** Absence of the key therefore
   has to outrank a stored `false` in `AppSettings.init`, and off means fully off: the poller stops,
-  the SQLite file closes, the launcher command and its shortcut go, and Tab skips the screen.
+  the SQLite file closes, the launcher commands and their shortcuts go, and Tab skips the screen.
   `ClipboardCoordinator.applyEnabled()` is the single place that applies it.
 - **↵, ⌘↵ and ⌃⌘↵ trade places around one setting, and
   `ClipboardDefaultAction.action(for:on:)` is the only place that says which chord runs what.**
@@ -19,6 +19,9 @@
   plain-text default pastes it as it is, and ⌃⌘↵ on it falls back to ⌘↵ as on every other screen.
 - **Clipboard writes stamp a private `internalType` marker** so the poller skips Tinycast's own writes.
   If the writer and the poller ever disagree, the app re-captures its own pastes in a loop.
+- **Paste Sequentially never promotes, and its walk is frozen at the first press.** `PasteSequence`
+  keeps every entry's id, newest first, and resolves each against the live history, so a promotion
+  cannot repeat or skip an entry and a deleted one is passed over rather than pasted.
 - **`Model/ClipboardStore.swift` keeps to Foundation plus SQLite3 and no other app source**, so
   `clipboard-test` can compile it standalone. It uses `isolated deinit` for its SQLite teardown.
 - A database that cannot be opened is deleted and recreated. That is sound because a history is
@@ -461,3 +464,25 @@ drag leaves it up and animates back to the row it came from, so a drag that achi
 so. The session outliving the panel is safe for the reason the player teardown above is delicate:
 `orderOut` leaves the SwiftUI tree mounted, and the pasteboard holds the payload from the moment the
 session begins.
+
+## Paste Sequentially
+
+A command, so it is bound in Settings ▸ Clipboard like any other. Each press pastes the next older
+entry — text, image or file — into `PaletteCoordinator.targetApp` through `Paster.pasteInPlace`:
+⌘V goes to that app's pid, and nothing is activated or promoted. An image or file gone from disk
+writes nothing, so the same press moves on to the next entry.
+
+**A press drains the poller before it writes**, through `prepareForTinycastPasteboardMutation`. A
+copy made inside the 0.5s poll interval would otherwise be overwritten unrecorded, and the walk
+would start one entry too old.
+
+**What keeps a walk going is the pasteboard count its own write left.** Any other count means the
+user copied since, and a pause of `PasteSequence.idleTimeout` (60s) since the last paste does the
+same; either starts the walk over from the newest entry. Past the oldest entry a press shows
+**Nothing left to paste** rather than wrapping. The pasteboard keeps the last entry pasted, as after
+any other Tinycast paste.
+
+**A press within `PasteSequence.settleInterval` (0.25s) of the last paste is dropped, not queued.**
+`pasteInPlace` writes the pasteboard at once and posts ⌘V 50ms later, and the target reads the
+pasteboard only when it handles that ⌘V. A press inside that gap would swap the pasteboard first:
+one entry pasted twice, another skipped. A queue would replay a held shortcut as a burst.

@@ -64,6 +64,13 @@ Apple Shortcuts keep the same kind of index in `boundAppleShortcutIDs`, pruned n
 the first successful read of the library, since a failed read looks exactly like deletion
 (see [apple-shortcuts.md](apple-shortcuts.md#sweeping-deleted-shortcuts)).
 
+Snippets index `StoredSnippet.ID`, the file's path, in `boundSnippetIDs`. The store runs only while
+the feature is on, so they are swept not at launch but on every snapshot, by
+`removeSnippetBindings`; a file that fails to parse still counts, since it is mid-edit rather than
+gone. A rename outside Tinycast or a new Snippets Folder therefore drops the shortcut, and none
+travels in a backup, where an imported snippet lands at a new path
+(see [snippets.md](snippets.md#shortcuts)).
+
 `HotKeyBinding` takes the synthesised `Codable`, so a `.combo` writes
 `{"combo":{"_0":{"carbonKeyCode":N,"carbonModifiers":N}}}` and a `.doubleTap` writes
 `{"doubleTap":{"_0":"command"}}`. `KeyShortcut` keeps a hand-written `init(from:)` — not a format seam,

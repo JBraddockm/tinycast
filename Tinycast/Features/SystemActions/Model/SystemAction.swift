@@ -39,6 +39,8 @@ struct SystemAction: Identifiable, Hashable, Sendable {
     enum Confirmation: Hashable, Sendable {
         case none
         case required(title: String, message: String)
+        /// Asks only while Finder's own "Show warning before emptying the Trash" is on.
+        case followsFinder(title: String, message: String)
         /// Quit All alone counts its targets before asking, so its copy is built at call time.
         case computed
     }
@@ -152,7 +154,7 @@ enum SystemActionCatalog {
         case .logOut:
             return .required(title: "Log out now?", message: sessionEndingMessage)
         case .emptyTrash:
-            return .required(
+            return .followsFinder(
                 title: "Empty Trash?",
                 message: "The items in the Trash will be permanently deleted.")
         case .quitAllApps:

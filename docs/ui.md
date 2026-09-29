@@ -49,7 +49,7 @@ These are the things that quietly break the look if changed. Preserve them unles
 - **Resolve every glyph through `SymbolImage`, not `Image(systemName:)`.** Some catalog symbols are bundled assets in `Assets.xcassets` (`toggleBluetooth`), and `Image(systemName:)` silently renders nothing for those.
 - **↵ runs the primary action, Escape cancels, and Cancel always renders leading** (the left button), matching macOS convention. A button never prints its key cap; a deliberate hover reveals its outlined `KeyCapChip` in a `Tooltip`.
 - **In the palette, a hover label is Tinycast's `tooltip`, never `.help()`**: an AppKit tooltip never appears while the app sits inactive behind the non-activating panel. A Settings window activates the app, so `.help()` shows there and stays the label to use. The tooltip hangs above its control by default; a control in the palette header passes `edge: .bottom`, since above it is off the window, and a label may run to several lines — the chat's attachment pill lists every staged name.
-- **A transient readout is a HUD, not a dialog.** `VolumeHUDController`'s box is volume and mute only, since that one needs an actual level and number; every other success or info confirmation goes through `MessageHUDController`'s pill, whose trailing glyph *is* its `DialogTone`. A pill has no subject to name, so the icon rule above does not apply to it — and that mapping stays file-scoped so nothing can reach for it when building a `DialogRequest`. A new HUD means a new presenter, not a second shape bolted onto an existing controller.
+- **A transient readout is a HUD, not a dialog.** `VolumeHUDController`'s box is volume and mute only, since that one needs an actual level and number; every other success or info confirmation goes through `MessageHUDController`'s pill, whose leading glyph *is* its `DialogTone`. A pill has no subject to name, so the icon rule above does not apply to it — and that mapping stays file-scoped so nothing can reach for it when building a `DialogRequest`. A new HUD means a new presenter, not a second shape bolted onto an existing controller.
 - **Glass is for floating controls, with dialogs as the deliberate modal exception.** The action capsule, menu circle and `PopoverMenu` use it inside the palette; dialogs apply one system `.glassEffect(.regular)` to their root surface. Dialog buttons stay matte so their roles remain legible. Both HUDs keep the lighter `panelScrim` → `GlassEffectView()` → `clipShape` recipe.
 
 ---
@@ -149,7 +149,8 @@ panel, the shortcut-recorder callout and the Notes switcher, and `menuRow` is de
 ### Size (`Theme.Size`)
 
 `panelWidth 750` · `panelHeight 475` · `headerHeight 44` · `bottomBarHeight 52` · `barButtonHeight 28` ·
-`rowIcon 24` · `keyCap 18` · `recorderKeyCap 16` · `menuButton 36` · `clipboardListWidth 290` ·
+`rowIcon 24` · `resultRowIcon 26` · `keyCap 18` · `recorderKeyCap 16` · `menuButton 36` ·
+`clipboardListWidth 290` ·
 `menuWidth 276` · `clipboardFilterMenuWidth 200` · `fileSearchFilterMenuWidth 200` ·
 `emojiCategoryMenuWidth 220` · `menuIcon 20` ·
 `emojiGridInset 16` ·
@@ -388,8 +389,9 @@ Source: `Launcher/UI/LauncherList.swift`, `Clipboard/UI/ClipboardView.swift`,
 
 All lists share one row grammar so launcher and clipboard look identical:
 
-- `HStack(spacing: lg)`: leading 24pt icon/thumbnail, title (`.body`, `lineLimit(1)`), optional trailing keycaps/kind label, `Spacer`. Insets: `.horizontal md`, `.vertical sm`.
-- **The leading slot is always `Theme.Size.rowIcon`, whatever fills it.** A glyph smaller than an app icon — the uninstall list's 16pt checkbox — is centred _inside_ that 24pt slot rather than sizing the slot to itself. Every list then starts its title at the same x, so switching palette modes doesn't jog the column sideways. The slot doubles as the hit target.
+- `HStack(spacing: lg)`: leading 26pt icon/thumbnail, title (`.body`, `lineLimit(1)`), optional trailing keycaps/kind label, `Spacer`. Insets: `.horizontal md`, `.vertical sm`.
+- **The palette result slot is always `Theme.Size.resultRowIcon`, whatever fills it.** A glyph smaller than an app icon — the uninstall list's 16pt checkbox — is centred _inside_ that 26pt slot rather than sizing the slot to itself. Every list then starts its title at the same x, so switching palette modes doesn't jog the column sideways. The slot doubles as the hit target. Settings and compact favorites keep the existing 24pt `rowIcon`.
+- Clipboard thumbnails use `IconCache.appIconExtent` within that slot; synthetic row symbols use the same app-icon-shaped tile as the launcher.
 - Background is a `RoundedRectangle(row, .continuous)` filled by `fill`: **selection → hover → clear**, in that precedence. This `fill` computed property is copy-identical across `AppRow`, `ClipboardRow` and `UninstallRow` — keep them in sync. The launcher's lead cards don't restate it: `.leadCard(selected:)` (`Features/Launcher/UI/LeadCard.swift`) owns their fill and hover, so a card can't answer a selection differently from its siblings.
 - **Hover state lives on the row**, not the list, so a mouse sweep repaints only the rows entering/leaving (a list-level hover rebuilds every row per move — don't do that).
 - **Hover is armed by pointer movement, not by the pointer's position** (`armedHover`, `Palette/HoverArming.swift`). A palette shown under a resting pointer lights nothing, and keys or a scroll drop the highlight until the pointer moves clear of the slop radius around where it stood — a row must never light up because it *slid under* a still pointer. Two measured facts the rule rests on: SwiftUI fires hover phases for rows arriving under a stationary pointer, but **not** for a lit row that merely shifts, so `PaletteState.hoverDisarmToken` clears what is already lit; and a wheel gesture ends with a mouse-moved event carrying no displacement, so *event type is not evidence the pointer moved*. `Tests/hover-arming-test.swift` pins both halves.
@@ -536,19 +538,21 @@ sole owner rule) and is the only presenter, so every confirmation in the app loo
 - **`MessageHUDController`'s pill** is every _other_ transient
   confirmation: Custom Commands and Snippets confirming a run, and every system action whose effect
   is invisible (`Trash Emptied`, `Hidden Files Shown`, `Bluetooth Off`). One capsule shape, sized to
-  its message (`hudMaxWidth 420` ceiling), clipped to a `Capsule()`, with the message first and a
-  filled glyph trailing it: `checkmark.circle.fill` green for `.success`, `exclamationmark.circle.fill`
-  red for `.danger`, `info.circle.fill` secondary for `.neutral`. **Here the glyph is the tone** — the
+  its message (`hudMaxWidth 420` ceiling), clipped to a `Capsule()`, with a plain glyph leading the
+  message: `checkmark` green for `.success`, `exclamationmark` red for `.danger`,
+  `info` secondary for `.neutral`. The glyph's tone also lights the glass — a faint radial glow from
+  behind it and a hairline rim that fades across the message, the same treatment an extension toast
+  restates in its own feature. **Here the glyph is the tone** — the
   one place that's true, because a pill has no subject to name the way a dialog does; the message
   already says what happened ("Trash Emptied"), so the icon only has to say how it went. The mapping is
   `fileprivate` in `MessageHUDView.swift` precisely so nobody can reach for it when building a
-  `DialogRequest`, where the icon rule is the opposite. It trails rather than leads because a pill is
-  read left to right and the outcome is the last thing you want to land on. Auto-dismisses after
+  `DialogRequest`, where the icon rule is the opposite. It leads, as an extension toast's does, so the
+  outcome lands at a glance before the sentence is read. Auto-dismisses after
   `Duration.messageHUD` (2.4s) — longer than the volume box, since a sentence needs reading time and a
   level only needs a glance — and a repeat call replaces rather than stacks.
 - **The same pill reports work still running**, through `showProgress(message:onCancel:)`: a Quick Action set to
   replace has no panel to watch the answer arrive in, so the pill says `Fixing Grammar…` in its place
-  and the result message replaces it when the model is done. Its trailing mark is a spinner rather
+  and the result message replaces it when the model is done. Its leading mark is a spinner rather
   than a tone, which is why `MessageHUDView.Accessory` exists — a tone says how something *went*, and
   nothing has gone anywhere yet. When `onCancel` is provided, hovering over the pill lights it up,
   turns the spinner into an `xmark`, and clicking anywhere on the pill cancels the in-flight task.

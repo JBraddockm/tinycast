@@ -96,15 +96,10 @@ private struct ChatHistoryRow: View {
     }
 
     var body: some View {
-        HStack(spacing: metrics.spacing.lg) {
-            RoundedRectangle(cornerRadius: metrics.radius.thumbnail, style: .continuous)
-                .fill(Theme.Colors.controlSurface)
-                .frame(width: metrics.size.rowIcon, height: metrics.size.rowIcon)
-                .overlay(
-                    Image(systemName: "bubble.left")
-                        .font(.system(size: 12))
-                        .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(.secondary))
+        IconCache.observeStyle()
+        return HStack(spacing: metrics.spacing.lg) {
+            Image(nsImage: IconCache.symbolIcon(named: "bubble.left")).resizable()
+                .frame(width: metrics.size.resultRowIcon, height: metrics.size.resultRowIcon)
             VStack(alignment: .leading, spacing: metrics.spacing.xxs) {
                 Text(conversation.displayTitle)
                     .font(metrics.typography.rowTitle)

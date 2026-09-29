@@ -42,9 +42,9 @@ Both take a global shortcut and an alias in **Settings → Snippets**.
 **Search Snippets** lists every enabled snippet, with a preview beside it. Type to filter by name or
 keyword.
 
-The preview shows the **template as written**, with its placeholders, plus the name, keyword, file
-name and character count. It never fills placeholders just to draw a preview, so browsing never reads
-your clipboard or asks for an argument.
+The preview shows the **template as written**, with its placeholders, plus the name, keyword,
+shortcut, file name and character count. It never fills placeholders just to draw a preview, so
+browsing never reads your clipboard or asks for an argument.
 
 | Action (<kbd>⌘</kbd><kbd>K</kbd>) | Shortcut          |
 | --------------------------------- | ----------------- |
@@ -54,6 +54,17 @@ your clipboard or asks for an argument.
 | Show in Finder                    |                   |
 
 <kbd>esc</kbd> or <kbd>delete</kbd> in an empty search goes back.
+
+## Shortcuts
+
+**Any snippet can have its own global shortcut.** Record it on the snippet's row in
+**Settings → Snippets**. Press it and the snippet pastes wherever you are typing, exactly as it
+would from the launcher: placeholders, arguments, the cursor and the confirmation all work the same.
+
+A snippet's shortcut does nothing while snippets are off or that snippet is disabled.
+
+The shortcut belongs to the file. Renaming or moving the file outside Tinycast, or choosing another
+snippets folder, clears it. Snippet shortcuts are not included in backups.
 
 ## The file format
 

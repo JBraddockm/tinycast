@@ -36,6 +36,9 @@ Restart · Shut Down · Log Out · Empty Trash · Quit All Applications
 <kbd>return</kbd> runs and <kbd>esc</kbd> cancels. Each dialog shows that action's own icon, so you can see
 at a glance what you are about to do. **Quit All Applications** tells you how many apps it will quit.
 
+**Empty Trash follows Finder.** It asks only while **Show warning before emptying the Trash** is on
+in Finder ▸ Settings ▸ Advanced. Turn that off, and Empty Trash runs without a dialog.
+
 **The same question comes up when you use a shortcut.** There is no way around it, and holding a
 shortcut down cannot stack up dialogs.
 

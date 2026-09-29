@@ -91,7 +91,7 @@ private struct FileSearchRow: View {
                         .fill(Theme.Colors.iconPlaceholder)
                 }
             }
-            .frame(width: metrics.size.rowIcon, height: metrics.size.rowIcon)
+            .frame(width: metrics.size.resultRowIcon, height: metrics.size.resultRowIcon)
             // The column is too narrow for a path beside the name; the preview states it instead.
             label
                 .font(metrics.typography.rowTitle)

@@ -190,6 +190,10 @@ private struct SnippetSettingsRow: View {
                 .font(.system(size: Theme.Size.settingsRowIcon - Theme.Spacing.xs))
                 .frame(width: SettingsListMetrics.iconSize, height: SettingsListMetrics.iconSize)
         } trailing: {
+            // A disabled snippet's shortcut fires into the funnel's refusal, so it dims too.
+            ShortcutRecorder(action: .snippet(id: record.id))
+                .settingsEnabled(record.snippet.isEnabled)
+
             Button(action: onEdit) {
                 Image(systemName: "pencil")
             }

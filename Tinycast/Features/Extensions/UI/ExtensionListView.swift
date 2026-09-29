@@ -186,7 +186,8 @@ private struct ExtensionItemRow: View {
         HStack(spacing: metrics.spacing.lg) {
             if let icon = node.props["icon"], icon != .null {
                 ExtensionIconView(
-                    resolved: ExtensionImage.resolve(icon, assetsPath: assetsPath, isDark: isDark))
+                    resolved: ExtensionImage.resolve(icon, assetsPath: assetsPath, isDark: isDark),
+                    size: metrics.size.resultRowIcon)
             }
             Text(node.string("title") ?? "")
                 .font(metrics.typography.rowTitle)

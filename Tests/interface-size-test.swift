@@ -91,6 +91,7 @@ struct InterfaceSizeTests {
         expect(m.size.bottomBarHeight, Theme.Size.bottomBarHeight, "size.bottomBarHeight")
         expect(m.size.barButtonHeight, Theme.Size.barButtonHeight, "size.barButtonHeight")
         expect(m.size.rowIcon, Theme.Size.rowIcon, "size.rowIcon")
+        expect(m.size.resultRowIcon, Theme.Size.resultRowIcon, "size.resultRowIcon")
         expect(m.size.colorDot, Theme.Size.colorDot, "size.colorDot")
         expect(m.size.calendarBarWidth, Theme.Size.calendarBarWidth, "size.calendarBarWidth")
         expect(m.size.calendarBarHeight, Theme.Size.calendarBarHeight, "size.calendarBarHeight")
@@ -293,6 +294,7 @@ struct InterfaceSizeTests {
             ("size.compactHeight", m.size.compactHeight),
             ("size.bottomBarHeight", m.size.bottomBarHeight),
             ("size.barButtonHeight", m.size.barButtonHeight), ("size.rowIcon", m.size.rowIcon),
+            ("size.resultRowIcon", m.size.resultRowIcon),
             ("size.colorDot", m.size.colorDot),
             ("size.calendarBarWidth", m.size.calendarBarWidth),
             ("size.calendarBarHeight", m.size.calendarBarHeight),

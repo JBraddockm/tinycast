@@ -196,7 +196,9 @@ struct AppEntry: Identifiable, Hashable, Sendable {
             return Quicklink.id(fromEntryID: id).map { .quicklink(id: $0) }
         case .appleShortcut:
             return AppleShortcut.id(fromEntryID: id).map { .appleShortcut(id: $0) }
-        case .snippet, .extensionCommand, .meeting:
+        case .snippet:
+            return StoredSnippet.id(fromEntryID: id).map { .snippet(id: $0) }
+        case .extensionCommand, .meeting:
             return nil
         }
     }
@@ -529,7 +531,7 @@ final class AppIndex {
             .filter { $0.snippet.isEnabled }
             .map { record in
                 AppEntry(
-                    id: "snippet:\(record.id)",
+                    id: record.entryID,
                     name: record.snippet.name,
                     url: record.fileURL,
                     bundleID: nil,

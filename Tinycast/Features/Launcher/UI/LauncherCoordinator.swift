@@ -152,7 +152,7 @@ final class LauncherCoordinator {
             guard let bundleID = app.bundleID else { return }
             AppLauncher.openSettingsPane(bundleID: bundleID)
         case .snippet:
-            let snippetID = String(app.id.dropFirst("snippet:".count))
+            guard let snippetID = StoredSnippet.id(fromEntryID: app.id) else { return }
             snippetCoordinator.expandSnippet(id: snippetID, target: previous)
         case .command, .quickAction, .customCommand, .systemAction, .windowCommand, .windowLayout,
             .windowRoom, .quicklink, .appleShortcut, .extensionCommand, .meeting:
@@ -180,6 +180,8 @@ final class LauncherCoordinator {
             paletteCoordinator.togglePalette(mode: .calculatorHistory)
         case .clipboardHistory:
             paletteCoordinator.togglePalette(mode: .clipboard)
+        case .pasteSequentially:
+            core.clipboardCoordinator.pasteNextInSequence()
         case .searchEmoji:
             paletteCoordinator.togglePalette(mode: .emoji)
         case .searchFiles:
