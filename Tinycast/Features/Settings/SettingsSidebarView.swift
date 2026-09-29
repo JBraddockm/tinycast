@@ -5,21 +5,51 @@ struct SettingsSidebarView: View {
     @Environment(\.appearsActive) private var appearsActive
     @State private var query = ""
     @State private var highlighted: SettingsSearchEntry.ID?
-    @State private var searching = false
+    @FocusState private var searchFocused: Bool
 
     private var results: [SettingsSearchEntry] { SettingsSearchCatalog.results(for: query) }
 
     var body: some View {
         ZStack {
-            browse
-                .activeState(query.isEmpty)
-
-            found
-                .activeState(!query.isEmpty)
+            if query.isEmpty {
+                browse
+            } else {
+                found
+            }
         }
-        .searchable(text: $query, isPresented: $searching, placement: .sidebar, prompt: "Search")
-        .onExitCommand { query = "" }
+        .safeAreaInset(edge: .top, spacing: 0) { searchField }
         .background(focusShortcut)
+    }
+
+    private var searchField: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(.secondary)
+
+            TextField("Search", text: $query)
+                .textFieldStyle(.plain)
+                .focused($searchFocused)
+                .onExitCommand {
+                    if query.isEmpty { searchFocused = false } else { query = "" }
+                }
+
+            if !query.isEmpty {
+                Button {
+                    query = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .accessibilityLabel("Clear search")
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background(.quaternary, in: RoundedRectangle(cornerRadius: 7))
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
+        .background(.regularMaterial)
     }
 
     private var browse: some View {
@@ -48,11 +78,9 @@ struct SettingsSidebarView: View {
 
     @ViewBuilder private var found: some View {
         if results.isEmpty {
-            List {
-                ContentUnavailableView.search(text: query)
-                    .listRowBackground(Color.clear)
-            }
-            .listStyle(.sidebar)
+            // Greedy: a finite max height here becomes a constraint that shrinks the whole window.
+            ContentUnavailableView.search(text: query)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             // A second `List`, so result IDs and `SettingsTab` never share a selection namespace.
             List(selection: $highlighted) {
@@ -73,7 +101,7 @@ struct SettingsSidebarView: View {
 
     /// ⌘F with no menu item to hang it on; zero-sized so it only ever contributes the shortcut.
     private var focusShortcut: some View {
-        Button("Search Settings") { searching = true }
+        Button("Search Settings") { searchFocused = true }
             .keyboardShortcut("f", modifiers: .command)
             .buttonStyle(.plain)
             .frame(width: 0, height: 0)
@@ -87,16 +115,6 @@ struct SettingsSidebarView: View {
             get: { navigation.tab },
             set: { if let tab = $0 { navigation.select(tab) } }
         )
-    }
-}
-
-private extension View {
-    /// Syncs view visibility, interaction, and accessibility in one place.
-    func activeState(_ isActive: Bool) -> some View {
-        self
-            .opacity(isActive ? 1 : 0)
-            .allowsHitTesting(isActive)
-            .accessibilityHidden(!isActive)
     }
 }
 
