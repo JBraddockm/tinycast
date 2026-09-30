@@ -106,6 +106,22 @@ struct EmojiTests {
             EmojiGridGeometry.selectionAfterRemovingPin(at: 0, remainingCount: 0) == 0,
             "unpinning the only pin leaves a safe empty selection")
 
+        let history = ["a", "b", "x", "d"]
+        expect(
+            EmojiGridGeometry.selection(
+                3, afterSectionAt: 1, changesFrom: history, to: ["x", "a", "b", "d"]) == 1,
+            "a used emoji takes the selection with it to the front")
+        expect(
+            EmojiGridGeometry.selection(6, afterSectionAt: 1, changesFrom: history, to: ["n"] + history)
+                == 7,
+            "a growing section shifts the cells after it")
+        expect(
+            EmojiGridGeometry.selection(4, afterSectionAt: 1, changesFrom: history, to: ["a", "b"]) == 2,
+            "a shrinking section clamps a dropped glyph to its last cell")
+        expect(
+            EmojiGridGeometry.selection(0, afterSectionAt: 1, changesFrom: history, to: []) == 0,
+            "cells before the section keep their index")
+
         let sixColumns = EmojiGridGeometry(counts: [12, 8], columns: 6)
         expect(sixColumns.down(from: 2) == 8, "six-column navigation keeps its visual column")
         let tenColumns = EmojiGridGeometry(counts: [20], columns: 10)

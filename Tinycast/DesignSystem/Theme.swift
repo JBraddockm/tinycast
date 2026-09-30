@@ -437,9 +437,7 @@ enum Theme {
         /// Emoji grid chrome: a quiet tile at rest, with two legible rings on interaction.
         static let emojiCell = ramp(dark: 0.045, light: 0.04)
         static let emojiHoverBorder = ramp(dark: 0.42, light: 0.34)
-        static let emojiSelectionBorder = adaptive(
-            dark: NSColor(srgbRed: 0.96, green: 0.90, blue: 0.72, alpha: 0.92),
-            light: .srgbInk(0, alpha: 0.72))
+        static let emojiSelectionBorder = ramp(dark: 0.92, light: 0.72)
         static let emojiInnerBorder = adaptive(
             dark: .srgbInk(0, alpha: 0.72), light: .srgbInk(1, alpha: 0.72))
         static let menuHover = ramp(dark: 0.10, light: 0.09)

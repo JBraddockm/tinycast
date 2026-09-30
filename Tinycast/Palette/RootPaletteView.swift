@@ -339,6 +339,11 @@ struct RootPaletteView: View {
         content
             .onChange(of: vm.emojiCategoryFilter) { land() }
             .onChange(of: core.pinnedEmoji.revision) { emojiGridChanged() }
+            .onChange(of: (screen as? EmojiScreen)?.frequentlyUsed) { old, new in
+                guard let old, let new else { return }
+                (screen as? EmojiScreen)?.frequentlyUsedChanged(from: old, to: new)
+                emojiGridChanged()
+            }
             .onChange(of: vm.emojiGridColumnsOverride) { emojiGridChanged() }
             .onChange(of: settings.emojiGridColumns) { emojiGridChanged() }
             // ⌘0 / ⌘+ / ⌘- arrive as a token, like ⌘. does. See `PaletteState.emojiGridZoomToken`.

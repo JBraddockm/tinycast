@@ -17,7 +17,7 @@ A palette sub-screen (reached like Clipboard / Calculator History) presenting a 
 | `Model/EmojiGridGeometry.swift` | Pure grid math — columns, item sizing |
 | `Model/EmojiData.generated.swift` | The dataset |
 | `Service/EmojiIndex.swift` | Search index over the catalog |
-| `Service/FrequentEmojiStore.swift` | Persisted most-frequently-used emoji |
+| `Service/FrequentEmojiStore.swift` | Persisted emoji history and usage counts |
 | `Service/PinnedEmojiStore.swift` | Persisted pins, in the order the user set |
 | `UI/EmojiGridView.swift` | The SwiftUI grid |
 | `UI/EmojiScreen.swift`, `UI/EmojiCoordinator.swift` | The palette screen and its action surface |
@@ -65,11 +65,13 @@ foreground glyph so the colour wash and slim outer ring remain specific to that 
 ## Categories, pins and density
 
 The header category menu filters the same ordered section model used by rendering and search. The
-default overview shows Pinned first, then Frequently Used and the catalog categories. Pinned glyphs
-live in `emoji-pinned.json` under Application Support; their order is explicit user data and is also
-carried by the configuration backup. A new pin is appended without moving the current selection;
-the Actions menu or ⌥⌘↑/↓ can then move it up or down inside Pinned. Every position is counted over
-the pins the catalog can show, so a stored glyph it lacks — from a newer backup — never shifts one.
+default overview shows Pinned first, then Frequently Used and the catalog categories. Frequently Used
+shows the most recently used emoji, regardless of count, in at most two rows at the current column
+count; when a use or a density change rewrites it, the selection follows its emoji. Pinned glyphs live in `emoji-pinned.json` under Application Support; their order is explicit
+user data and is also carried by the configuration backup. A new pin is appended without moving the
+current selection; the Actions menu or ⌥⌘↑/↓ can then move it up or down inside Pinned. Every position
+is counted over the pins the catalog can show, so a stored glyph it lacks — from a newer backup — never
+shifts one.
 
 Grid density is six through ten columns. `AppSettings.emojiGridColumns` is the default for a fresh
 picker; zoom, from Actions or its chords, writes only `PaletteState.emojiGridColumnsOverride`, so a temporary zoom
