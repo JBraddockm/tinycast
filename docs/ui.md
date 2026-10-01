@@ -711,7 +711,10 @@ system-drawn and a pane reads exactly as macOS System Settings does.
 - **A Settings editor borrows the dialog language, not its job.** `SettingsEditorPresenter` hosts the
   existing form in an activating, transparent child `NSPanel`, with the same `panel 26` Liquid Glass
   surface, 3pt/8% entrance and matte action buttons. A blocking child covers and dims the whole parent,
-  including its titlebar; nested editors form one stack owned by the Settings-window session. The
+  including its titlebar, so a press on it drags the parent; nested editors form one stack owned by the
+  Settings-window session. As with a sheet, a drag on an editor's empty space moves the Settings window:
+  the surface puts `WindowDragBackground` behind its content, and the panel hands `performDrag(with:)`
+  up to its parent. The
   presenting binding remains the dismissal source of truth, while launcher handoffs are consumed into
   pane-local state so opening an editor does not repaint the split view. A list that can keep growing
   scrolls at a stated row count instead — Custom Commands caps its arguments at `visibleArgumentRows` —

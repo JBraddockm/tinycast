@@ -17,7 +17,8 @@ Events are read on your Mac. **Nothing leaves it.**
   live countdown. <kbd>return</kbd> joins.
 - **Join Next Meeting.** A command you can bind to a global shortcut. It joins what the card shows,
   or a meeting already running, or the next meeting with a link.
-- **The menu bar.** An optional calendar item shows the next event and a menu to join it.
+- **The menu bar.** An optional calendar item shows the next event, and its menu lists your
+  upcoming events by day.
 - **Auto join.** Meetings can open themselves as they start.
 
 If there is nothing to join, a small message says **Nothing to join right now**.
@@ -72,14 +73,13 @@ card, the menu bar and your shortcuts keep working.
 
 ### My Schedule
 
-My Schedule lists what is left of today, and tomorrow when that is included, grouped by day. Type to
-filter. <kbd>return</kbd> joins the selected meeting, and <kbd>⌘</kbd><kbd>K</kbd> offers
+My Schedule lists the events left in the days Tinycast reads, grouped by day. Type to filter. <kbd>return</kbd> joins the selected meeting, and <kbd>⌘</kbd><kbd>K</kbd> offers
 **Open in Calendar**.
 
 ## How far ahead it reads
 
-**Include Tomorrow's Events** (on by default) reads tomorrow as well as the rest of today. Turn it
-off and every surface only looks at today.
+**Days to Show** sets how far ahead Tinycast reads: **Today**, **Today and Tomorrow** (default) or
+**Next 7 Days**. My Schedule, the menu bar and launcher search all follow it.
 
 ## Auto join
 
@@ -106,6 +106,7 @@ both or neither.
 | Setting                        | Options                                                                  | Default                          |
 | ------------------------------ | ------------------------------------------------------------------------ | -------------------------------- |
 | Calendar in Menu Bar           | Disabled · Meeting Icon · Meeting Title                                  | **Disabled**                     |
+| Days to Show                   | Today · Today and Tomorrow · Next 7 Days                                 | **Today and Tomorrow**           |
 | Show Upcoming Events           | Today · 2 · 5 · 10 · 30 minutes before                                   | **Today**                        |
 | Only show events with meetings | On · Off                                                                 | **On**                           |
 | Hide Current Event             | Keep visible, show time left · Automatically · After 5, 10 or 30 minutes | **Keep visible, show time left** |
@@ -113,8 +114,11 @@ both or neither.
 **Meeting Title** reads like `Standup • in 4 min`. Once nothing is left today, it reads
 **No upcoming events**. Today also counts the first 30 minutes after midnight.
 
-The item's menu offers **Join** the meeting, **Open in Calendar…**, **My Schedule** and
-**Calendar Settings…**. **A plain click never joins.** Mis-clicking the menu bar should not open a
+The item's menu offers **Join** the meeting, **Open in Calendar** and **Dismiss Event**. Below them
+it lists your upcoming events, grouped by day, for the days set in **Days to Show**. A filled dot
+marks the meeting under way. Click an event to join it. An event without a meeting link opens in
+Calendar. Then come **My Schedule** (<kbd>⌘</kbd><kbd>O</kbd>) and **Calendar Settings…**
+(<kbd>⌘</kbd><kbd>,</kbd>). **A plain click on the item never joins.** Mis-clicking the menu bar should not open a
 call.
 
 Dragging the item out of the menu bar sets it to Disabled.

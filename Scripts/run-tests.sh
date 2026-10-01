@@ -333,6 +333,13 @@ run window-command-test    Tinycast/Features/WindowManagement/Model/WindowComman
                            Tinycast/Features/WindowManagement/Model/WindowCycle.swift \
                            Tinycast/Features/WindowManagement/Model/WindowPlacementEngine.swift \
                            Tinycast/Features/WindowManagement/Model/WindowActionMemory.swift
+run window-preset-test     Tinycast/Features/WindowManagement/Model/WindowCommand.swift \
+                           Tinycast/Features/WindowManagement/Model/WindowShortcutPreset.swift \
+                           Tinycast/Features/HotKeys/Model/DoubleTapModifier.swift \
+                           Tinycast/Features/HotKeys/Model/HotKeyBinding.swift \
+                           Tinycast/Features/HotKeys/Model/HyperKey.swift \
+                           Tinycast/Platform/ASCIIKeyboardLayout.swift \
+                           Tinycast/Features/HotKeys/Service/KeyShortcut.swift
 run space-gesture-test     Tinycast/Features/WindowManagement/Model/WindowCommand.swift \
                            Tinycast/Features/WindowManagement/Model/SpaceGesture.swift
 run window-layout-test     Tinycast/Features/WindowManagement/Model/WindowCommand.swift \
@@ -492,7 +499,10 @@ run ext-refresh-test       $E/Model/ExtensionManifest.swift \
 run ext-metadata-test      $E/Model/ExtensionCommandMetadata.swift \
                            $E/Model/ExtensionMenuBarSnapshot.swift \
                            $E/Service/ExtensionCommandMetadataStore.swift
-run ext-store-test         $E/Model/ExtensionRegistry.swift \
+run ext-version-test       $E/Model/ExtensionListing.swift \
+                           $E/Service/ExtensionVersionStore.swift
+run ext-store-test         $E/Model/ExtensionGitHubSource.swift \
+                           $E/Model/ExtensionListing.swift \
                            $E/Model/ExtensionPackageManager.swift \
                            $E/Model/ExtensionStoreResponse.swift
 run ext-form-test          $E/Model/ExtensionFormMetrics.swift \

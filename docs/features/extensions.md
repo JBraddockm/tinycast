@@ -6,7 +6,7 @@ produces, rendered natively into the palette. No Electron, no browser, no Node.j
 - [How it works](#how-it-works) · [The JS runtime](#the-js-runtime) ·
   [The Swift host](#the-swift-host) · [Rendering](#rendering)
 - [Turning it on](#turning-it-on) · [Installing extensions](#installing-extensions) ·
-  [Registries](#registries) · [Shortcuts](#shortcuts) · [Aliases](#aliases) · [Deeplinks](#deeplinks) ·
+  [Installing from GitHub](#installing-from-github) · [Updates](#updates) · [Shortcuts](#shortcuts) · [Aliases](#aliases) · [Deeplinks](#deeplinks) ·
   [What's supported](#whats-supported) ·
   [What isn't](#what-isnt-supported-yet) · [Working on the runtime](#working-on-the-runtime)
 
@@ -457,51 +457,45 @@ like everything else, so a Debug build never shares installs with a release chan
 `package.json`, `assets/` and one `<command>.js` per command — byte-for-byte the layout Raycast's own
 build produces.
 
-Settings → Extensions offers three routes, under **Install New**:
+Settings → Extensions offers four routes, under **Install New**:
 
-1. **Search Registries…** — searches every enabled registry and installs from any of them. See below.
-2. **Import from Raycast** — copies the already-built bundles out of a local Raycast. Nothing is
+1. **Search extensions** — searches the Raycast Store and installs the bundle it already built. Nothing
+   is compiled, so no Node or package manager is involved. The search is
+   `raycast.com/frontend_api/extensions/search`, the endpoint the store's own site uses; it is
+   unofficial, so Install from GitHub is the way in when it changes.
+2. **Install from GitHub** — builds one extension from its source on this Mac. See below.
+3. **Import from Raycast** — copies the already-built bundles out of a local Raycast. Nothing is
    compiled, so no Node, npm or network is involved. The pane also scans whenever it opens, and says
    so when Raycast has something Tinycast doesn't — installing in Raycast otherwise leaves no trace
    here. **Both channels are searched**: `~/.config/raycast` and `~/.config/raycast-x`, the latter
    being Raycast Beta v2. Checking only the first reported "no Raycast install" to every Beta user,
    whose stable directory is present but empty. The same extension in both is offered once.
-3. **Add Folder…** — pick any directory with a manifest and built command files, e.g. an extension you
-   just ran `ray build` in.
+4. **Add from folder** — pick any directory with a manifest and built command files, e.g. an extension
+   you just ran `ray build` in.
 
 Only `package.json`, the built commands and `assets/` are copied — never `node_modules` or the
 multi-megabyte `.js.map` Raycast writes beside each bundle.
 
-## Registries
+## Installing from GitHub
 
-A registry is a place extensions are searched for and fetched from. Two kinds, because the two sources
-hand back different things:
-
-| | Raycast Store | A GitHub repository |
-| --- | --- | --- |
-| What it serves | The bundle Raycast already built | Source |
-| Installing needs | Nothing | Node, and a package manager |
-| How it's found | `raycast.com/frontend_api/extensions/search`, the endpoint the store's own site uses — unofficial, hence the fallback | The Git trees API, then a `package.json` read per candidate |
-
-Both ship enabled, and anyone can add their own GitHub registry — a repository laid out like
-`raycast/extensions`, one folder per extension.
+The panel takes `owner/repo`, a clone URL, or the `/tree/<ref>/<path>` link a browser copies from an
+extension's folder — `ExtensionGitHubSource` parses all three. A bare repository builds its root on
+`HEAD`, which follows the default branch whatever it is called. The package manager and custom search
+paths sit in the same panel, because only this route needs them.
 
 **Only the extension's own folder is ever fetched.** `raycast/extensions` is gigabytes; cloning it to
 install one extension would be absurd.
 
-**Listings come from the Git trees API, not the contents API.** Contents caps a directory at 1000
-entries and says nothing about having done so, and `raycast/extensions` holds over three thousand —
-under contents, everything alphabetically past the cap was simply unfindable.
+**Downloading is a walk to the folder's tree, then one recursive listing.** The contents API caps a
+directory at 1000 entries without saying so, and costs a call per directory against GitHub's anonymous
+budget of 60 an hour per IP — Color Picker has 17 directories, so an install used to spend 18 calls and
+three of them exhausted the hour. Walking `<path>` to its sha and asking for that tree with
+`recursive=1` costs one call per path segment plus one, whatever the folder holds, and the file bodies
+come from `raw.githubusercontent.com`, which the API budget does not count. A `truncated` listing is a
+prefix, so it throws rather than install part of an extension. A 404 from the API is reported as a
+missing repository or branch: anonymous requests cannot tell a private repository from no repository.
 
-**Downloading one is a walk to the folder's tree, then one recursive listing.** Contents costs an API
-call per directory, and GitHub's anonymous budget is 60 an hour per IP — Color Picker has 17
-directories, so an install used to spend 18 calls and three of them exhausted the hour. Walking
-`extensions/<folder>` to its sha and asking for that tree with `recursive=1` costs 3 calls whatever
-the folder holds, and the file bodies come from `raw.githubusercontent.com`, which the API budget
-does not count. A `truncated` listing is a prefix, so it throws rather than install part of an
-extension.
-
-Installing from a source registry runs `<package manager> install --ignore-scripts`, then
+Installing runs `<package manager> install --ignore-scripts`, then
 **`node_modules/.bin/ray build -e dist -o <build dir>` directly — never the manifest's `build`
 script.** That script is `ray build`, whose default environment is `dev`, and dev mode *installs into
 the local Raycast* rather than emitting anything. The build reported success and exited 0 while
@@ -513,6 +507,11 @@ directory first, so aiming it at the source deleted `assets/` before the install
 extension arrived with no icon. Building into its own directory leaves the source intact and yields
 exactly the layout `ExtensionCatalog.install` expects: `package.json`, one `<command>.js` each, and
 `assets/`. What it installs from is that directory, not the source.
+
+**Only the build survives.** Source, `node_modules` and build all live in the install's workspace
+(below), which a `defer` removes whichever way the install ends. **Closing the panel cancels the
+install**: the running child is terminated and the workspace goes with it, so a cancelled build leaves
+nothing behind.
 
 **An extension carrying a Rust package builds `-e dev` instead.** A `rust:` helper is Raycast's
 Windows counterpart to `swift:`, and `dist` cross-compiles it with `cargo xwin` for
@@ -530,15 +529,33 @@ build script is the contract, a `postinstall` is code nobody asked to run. The p
 inherits none of a login shell's `PATH`, so `ExtensionPackageManager.searchPaths` is where they are
 looked for, version managers included (Homebrew, Volta, asdf, mise, fnm, nvm, Yarn).
 
-That hardcoded list can never cover every toolchain layout — Nix among them — so the Registries sheet
-also has "Custom search paths": a `:`-separated list, `extensionCustomSearchPaths` in `AppSettings`,
-checked *before* the built-in list wherever it resolves a package manager or Node. Set once, it applies
-to every future install; nothing about it needs entering per-install. `ExtensionInstaller` takes it as
-`additionalSearchPaths` rather than reading settings itself, keeping the Model/Service split intact.
+That hardcoded list can never cover every toolchain layout — Nix among them — so the panel also has
+"Custom search paths": a `:`-separated list, `extensionCustomSearchPaths` in `AppSettings`, checked
+*before* the built-in list wherever it resolves a package manager or Node. Set once, it applies to
+every future install. `ExtensionInstaller` takes it as `additionalSearchPaths` rather than reading
+settings itself, keeping the Model/Service split intact.
 
-Neither the registry list, the package manager, nor the custom search paths ride a settings backup:
-the first two name a tool or a source of code the machine an import lands on may not have or want, and
-the last is a set of paths specific to this Mac's toolchain layout.
+Neither the package manager nor the custom search paths ride a settings backup: the first names a tool
+the machine an import lands on may not have, and the second is a set of paths specific to this Mac's
+toolchain layout.
+
+## Updates
+
+Only store extensions update; a GitHub or folder install is the user's own copy, and reinstalling it
+is how it changes. **The check runs when Settings › Extensions opens, and at no other time.**
+
+`ExtensionVersionStore` records the store's `commit_sha` for each store-sourced extension in
+`extension-versions.json`, because nothing installed carries a version: neither the store's zip nor
+Raycast's own copy has one in its `package.json`. A store install records the listing's commit. An
+import from Raycast records an unknown version, which the next check adopts from the store — Raycast
+keeps its own copies current, so that is what an import holds. A folder or GitHub install removes the
+entry, and an extension with no entry is never checked.
+
+A check looks each tracked extension up by `GET /api/v1/extensions/<handle>/<name>`, where the handle
+is the manifest's `owner` when it has one and its `author` otherwise. A different commit is an update.
+A lookup that fails is skipped rather than reported, so a flaky network never invents an update.
+Updating is a store install of that listing, which replaces only the extension's directory — its
+preferences, storage and icon carry over.
 
 ## Shortcuts
 
@@ -827,6 +844,7 @@ never shares with an installed copy.
 | The extension | `extensions/<name>/` | yes |
 | `LocalStorage`, `Cache`, preferences | `extension-data/<safe name>.json` | yes |
 | Command subtitle, refresh state | `extension-commands.json` | yes |
+| Installed store version | `extension-versions.json` | yes |
 | `environment.supportPath` | `extension-support/<safe name>/` | yes |
 | OAuth tokens | macOS Keychain (`com.tinycast.extensions.oauth`) | yes |
 | Menu-bar activation and snapshot | `extension-commands.json` | yes |

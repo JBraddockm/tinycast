@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// The My Schedule list, bucketed into Today and Tomorrow.
+/// The My Schedule list, bucketed by day.
 struct ScheduleList: View {
     @Environment(\.metrics) private var metrics
     let results: [MeetingEvent]
@@ -21,20 +21,10 @@ struct ScheduleList: View {
         }
     }
 
-    /// `results` is already in start order, so a bucket change is where a header belongs.
     private var rows: [Row] {
-        var rows: [Row] = []
-        var current: String?
-        for meeting in results {
-            let title =
-                MeetingDay(for: meeting.start, now: now, calendar: .current)?.title ?? "Later"
-            if title != current {
-                rows.append(.header(title))
-                current = title
-            }
-            rows.append(.meeting(meeting))
+        MeetingDayGroup.grouping(results, now: now, calendar: .current).flatMap { group in
+            [.header(group.day.title(calendar: .current))] + group.meetings.map(Row.meeting)
         }
-        return rows
     }
 
     private var firstRowSelected: Bool {

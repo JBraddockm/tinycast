@@ -53,7 +53,7 @@ enum SettingsBackupCoverage {
         "extensionsShowInLauncher": .extensionsShowInLauncher,
         "calendarShowInLauncher": .calendarShowInLauncher,
         "calendarLauncherLimit": .calendarLauncherLimit,
-        "calendarIncludesTomorrow": .calendarIncludesTomorrow,
+        "calendarSpan": .calendarSpan,
         "joinWindowMinutes": .joinWindowMinutes,
         "autoJoinConfirms": .autoJoinConfirms,
         "menuBarEvents": .menuBarEvents,
@@ -77,8 +77,6 @@ enum SettingsBackupCoverage {
             "Doubles as keyword-expansion consent; an import must not enable keystroke listening.",
         AppSettingsKey.extensionPackageManager.rawValue:
             "Names a tool on this Mac; the machine a backup lands on may not have it.",
-        AppSettingsKey.extensionRegistries.rawValue:
-            "A registry is a source of executable code; adding one has to be a deliberate act.",
         AppSettingsKey.extensionCustomSearchPaths.rawValue:
             "Machine-local toolchain paths; the Mac a backup lands on may not have them, or may have "
             + "something else there.",

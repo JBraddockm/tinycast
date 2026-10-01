@@ -77,7 +77,7 @@ struct SettingsBackup: Codable {
         var calendarShowInLauncher: Bool?
         var calendarLauncherLimit: Int?
         // Carried: it narrows what is read rather than widening what may be reached.
-        var calendarIncludesTomorrow: Bool?
+        var calendarSpan: Int?
         var joinWindowMinutes: Int?
         // `autoJoinMeetings` and `cameraPreview` are absent: an import must arm neither.
         var autoJoinConfirms: Bool?
@@ -180,7 +180,7 @@ extension SettingsBackup {
             appleShortcutsEnabled: s.appleShortcutsEnabled,
             calendarShowInLauncher: s.calendarShowInLauncher,
             calendarLauncherLimit: s.calendarLauncherLimit.rawValue,
-            calendarIncludesTomorrow: s.calendarIncludesTomorrow,
+            calendarSpan: s.calendarSpan.rawValue,
             joinWindowMinutes: s.joinWindowMinutes.rawValue,
             autoJoinConfirms: s.autoJoinConfirms,
             menuBarEvents: s.menuBarEvents.rawValue,
@@ -500,8 +500,8 @@ extension SettingsBackup {
             settings.calendarLauncherLimit = limit
             count += 1
         }
-        if let flag = s.calendarIncludesTomorrow {
-            settings.calendarIncludesTomorrow = flag
+        if let raw = s.calendarSpan, let span = MeetingSpan(rawValue: raw) {
+            settings.calendarSpan = span
             count += 1
         }
         if let raw = s.joinWindowMinutes, let window = JoinWindow(rawValue: raw) {

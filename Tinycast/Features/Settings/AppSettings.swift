@@ -389,19 +389,11 @@ final class AppSettings {
         }
     }
 
-    /// Only a source registry needs one — the store serves extensions already built.
+    /// Only an install from GitHub needs one — the store serves extensions already built.
     var extensionPackageManager: ExtensionPackageManager {
         didSet {
             defaults.set(
                 extensionPackageManager.rawValue, forKey: Key.extensionPackageManager.rawValue)
-        }
-    }
-
-    /// Seeded with the store and the official repository; a user can add their own.
-    var extensionRegistries: [ExtensionRegistry] {
-        didSet {
-            guard let data = try? JSONEncoder().encode(extensionRegistries) else { return }
-            defaults.set(data, forKey: Key.extensionRegistries.rawValue)
         }
     }
 
@@ -431,10 +423,8 @@ final class AppSettings {
     }
 
     /// Narrows the fetch itself rather than what is shown, so every surface reads the same days.
-    var calendarIncludesTomorrow: Bool {
-        didSet {
-            defaults.set(calendarIncludesTomorrow, forKey: Key.calendarIncludesTomorrow.rawValue)
-        }
+    var calendarSpan: MeetingSpan {
+        didSet { defaults.set(calendarSpan.rawValue, forKey: Key.calendarSpan.rawValue) }
     }
 
     var joinWindowMinutes: JoinWindow {
@@ -694,10 +684,6 @@ final class AppSettings {
         extensionPackageManager =
             defaults.string(forKey: Key.extensionPackageManager.rawValue)
             .flatMap(ExtensionPackageManager.init(rawValue:)) ?? .automatic
-        extensionRegistries =
-            defaults.data(forKey: Key.extensionRegistries.rawValue)
-            .flatMap { try? JSONDecoder().decode([ExtensionRegistry].self, from: $0) }
-            ?? ExtensionRegistry.defaults
         extensionCustomSearchPaths =
             defaults.stringArray(forKey: Key.extensionCustomSearchPaths.rawValue) ?? []
         // Opt-in, like extensions: until it is asked for, EventKit is never loaded.
@@ -709,9 +695,10 @@ final class AppSettings {
             defaults.object(forKey: Key.calendarLauncherLimit.rawValue)
             .flatMap { $0 as? Int }
             .flatMap(CalendarLauncherLimit.init(rawValue:)) ?? .five
-        calendarIncludesTomorrow =
-            defaults.object(forKey: Key.calendarIncludesTomorrow.rawValue) == nil
-            || defaults.bool(forKey: Key.calendarIncludesTomorrow.rawValue)
+        // No case is zero, so an unset key falls through to the default.
+        calendarSpan =
+            MeetingSpan(rawValue: defaults.integer(forKey: Key.calendarSpan.rawValue))
+            ?? .todayAndTomorrow
         joinWindowMinutes =
             JoinWindow(rawValue: defaults.integer(forKey: Key.joinWindowMinutes.rawValue)) ?? .five
         autoJoinMeetings = defaults.bool(forKey: Key.autoJoinMeetings.rawValue)

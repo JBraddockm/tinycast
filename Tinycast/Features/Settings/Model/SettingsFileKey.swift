@@ -68,7 +68,7 @@ enum SettingsFileKey: String, CaseIterable, Sendable {
     case emojiGridColumns = "emoji.gridColumns"
     case calendarShowInLauncher = "calendar.showInLauncher"
     case calendarLauncherLimit = "calendar.launcherLimit"
-    case calendarIncludesTomorrow = "calendar.includesTomorrow"
+    case calendarSpan = "calendar.span"
     case joinWindowMinutes = "calendar.joinWindowMinutes"
     case autoJoinConfirms = "calendar.autoJoinConfirms"
     case meetingBrowser = "calendar.meetingBrowser"

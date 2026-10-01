@@ -117,8 +117,6 @@ enum Theme {
         /// The calendar-colour bar between a meeting row's icon and its title.
         static let calendarBarWidth: CGFloat = 3
         static let calendarBarHeight: CGFloat = 18
-        /// The same bar in the menu bar and its menu, sized to the system's 13pt menu text.
-        static let menuBarCalendarBarHeight: CGFloat = 12
         static let keyCap: CGFloat = 18
         /// Settings shortcut-recorder keycap — smaller than the palette's `keyCap` chip.
         static let recorderKeyCap: CGFloat = 16

@@ -8,8 +8,9 @@ struct ExtensionsSettingsView: View {
     @State private var filter = ""
     @State private var importCandidates: ImportCandidates?
     @State private var browsingStore = false
-    @State private var editingRegistries = false
+    @State private var installingFromGitHub = false
     @State private var error: String?
+    @State private var updateError: String?
     /// Extensions Raycast has built that aren't here yet, refreshed whenever the pane appears.
     @State private var pending: [RaycastImportCandidate] = []
     /// What a bulk import is doing, so a thirty-item batch reports rather than going quiet.
@@ -61,8 +62,8 @@ struct ExtensionsSettingsView: View {
         .settingsEditorPanel(isPresented: $browsingStore) {
             ExtensionStorePanel(onClose: { browsingStore = false })
         }
-        .settingsEditorPanel(isPresented: $editingRegistries) {
-            ExtensionRegistriesPanel(onClose: { editingRegistries = false })
+        .settingsEditorPanel(isPresented: $installingFromGitHub) {
+            ExtensionGitHubPanel(onClose: { installingFromGitHub = false })
         }
         .onChange(of: navigation.scrollRequest, initial: true) {
             if case .row(.extensionsInstalled, let name)? = navigation.scrollRequest?.target {
@@ -74,6 +75,7 @@ struct ExtensionsSettingsView: View {
             await core.extensions.refresh()
             await measureReclaimable()
             await findPending()
+            await core.extensions.checkForUpdates()
         }
     }
 
@@ -109,6 +111,9 @@ struct ExtensionsSettingsView: View {
 
     private var library: some View {
         Section {
+            if !core.extensions.updates.isEmpty {
+                updatesRow
+            }
             if core.extensions.installed.isEmpty {
                 Text("Nothing installed yet.")
                     .foregroundStyle(.secondary)
@@ -122,14 +127,13 @@ struct ExtensionsSettingsView: View {
                         .frame(maxWidth: .infinity, alignment: .center)
                 } else {
                     ForEach(matching) { installed in
+                        let name = installed.manifest.name
                         ExtensionDisclosure(
                             installed: installed,
-                            isExpanded: expanded == installed.manifest.name,
-                            onToggle: {
-                                expanded =
-                                    expanded == installed.manifest.name
-                                    ? nil : installed.manifest.name
-                            },
+                            isExpanded: expanded == name,
+                            isUpdating: core.extensions.updating.contains(name),
+                            onToggle: { expanded = expanded == name ? nil : name },
+                            onUpdate: core.extensions.updates[name] == nil ? nil : { update([name]) },
                             onUninstall: {
                                 core.extensionCoordinator.confirmUninstall(installed)
                             })
@@ -142,6 +146,36 @@ struct ExtensionsSettingsView: View {
                     core.extensions.installed.isEmpty
                         ? "Installed" : "Installed (\(core.extensions.installed.count))")
             }
+        } footer: {
+            if let updateError {
+                Label(updateError, systemImage: "exclamationmark.triangle")
+                    .font(.caption)
+                    .foregroundStyle(.orange)
+            }
+        }
+    }
+
+    /// Above the list as well as on each row, so a batch is one press.
+    private var updatesRow: some View {
+        SettingsRow(
+            title: "Updates available",
+            subtitle: listed(core.extensions.updates.values.map(\.title)) + "."
+        ) {
+            ExtensionSettingsIcon(systemName: "arrow.down.circle")
+        } trailing: {
+            if core.extensions.updating.isEmpty {
+                Button("Update All") { update(core.extensions.updates.keys.sorted()) }
+            } else {
+                ProgressView().controlSize(.small)
+            }
+        }
+    }
+
+    private func update(_ names: [String]) {
+        updateError = nil
+        Task {
+            let failed = await core.extensions.update(names)
+            if !failed.isEmpty { updateError = "Couldn't update \(failed.joined(separator: ", "))." }
         }
     }
 
@@ -155,15 +189,25 @@ struct ExtensionsSettingsView: View {
         }
     }
 
-    /// Three rows rather than a menu: search, copy and folder behave differently.
+    /// Rows rather than a menu: each route installs differently.
     private var install: some View {
         Section {
-            SettingsRow(title: "Search extensions", subtitle: searchSubtitle, anchor: .extensionsInstall) {
+            SettingsRow(
+                title: "Search extensions", subtitle: "Ready-built from the Raycast Store.",
+                anchor: .extensionsInstall
+            ) {
                 ExtensionSettingsIcon(systemName: "magnifyingglass")
             } trailing: {
-                // Beside search, because this is the setting that decides what search can find.
-                Button("Registries…") { editingRegistries = true }
                 Button("Search…") { browsingStore = true }
+            }
+            SettingsRow(
+                title: "Install from GitHub",
+                subtitle: "Builds from source with your package manager.",
+                anchor: .extensionsInstall
+            ) {
+                ExtensionSettingsIcon(systemName: "hammer")
+            } trailing: {
+                Button("Install…") { installingFromGitHub = true }
             }
             // A state of this row, not a card: the same job as the button beside it.
             SettingsRow(
@@ -240,13 +284,6 @@ struct ExtensionsSettingsView: View {
         }.value
     }
 
-    /// Names what searching will cover, so the row says what the Registries button is for.
-    private var searchSubtitle: String {
-        let on = core.settings.extensionRegistries.filter(\.isEnabled)
-        guard !on.isEmpty else { return "No registries enabled — searching would find nothing." }
-        return "Searching \(on.map(\.name).joined(separator: ", "))."
-    }
-
     private var importSubtitle: String {
         if let importProgress {
             return "Importing \(importProgress.done) of \(importProgress.total)…"
@@ -258,12 +295,16 @@ struct ExtensionsSettingsView: View {
         guard !pending.isEmpty else {
             return "Copies what Raycast has already built."
         }
-        let names = pending.map(\.installed.title)
-            .sorted { $0.sortKey.localizedCaseInsensitiveCompare($1.sortKey) == .orderedAscending }
-            .prefix(3)
-            .joined(separator: ", ")
-        let more = pending.count > 3 ? " and \(pending.count - 3) more" : ""
-        return "\(pending.count) not here yet — \(names)\(more)."
+        return "\(pending.count) not here yet — \(listed(pending.map(\.installed.title)))."
+    }
+
+    /// The first three in list order, then a count, so a long batch still fits one subtitle.
+    private func listed(_ titles: [String]) -> String {
+        let sorted = titles.sorted {
+            $0.sortKey.localizedCaseInsensitiveCompare($1.sortKey) == .orderedAscending
+        }
+        let names = sorted.prefix(3).joined(separator: ", ")
+        return sorted.count > 3 ? "\(names) and \(sorted.count - 3) more" : names
     }
 
     private var raycastAvailable: Bool {
@@ -341,7 +382,10 @@ private struct ExtensionSettingsIcon: View {
 private struct ExtensionDisclosure: View {
     let installed: InstalledExtension
     let isExpanded: Bool
+    let isUpdating: Bool
     let onToggle: () -> Void
+    /// Nil unless the store has a newer version.
+    let onUpdate: (() -> Void)?
     let onUninstall: () -> Void
 
     var body: some View {
@@ -360,6 +404,18 @@ private struct ExtensionDisclosure: View {
                 resolved: installed.iconPath.map { ExtensionImage.Resolved(source: .file($0)) },
                 size: Theme.Size.rowIcon)
         } trailing: {
+            if isUpdating {
+                ProgressView().controlSize(.small)
+            } else if let onUpdate {
+                Button("Update", action: onUpdate)
+            }
+            Button(action: onUninstall) {
+                Image(systemName: "trash")
+                    .foregroundStyle(Theme.Colors.destructive)
+            }
+            .buttonStyle(.plain)
+            .help("Uninstall")
+            .accessibilityLabel("Uninstall \(installed.title)")
             Image(systemName: "chevron.down")
                 .rotationEffect(.degrees(isExpanded ? 180 : 0))
                 .foregroundStyle(.secondary)
@@ -377,38 +433,32 @@ private struct ExtensionDisclosure: View {
 
     /// One `Grid` for every run: separate grids size columns apart, stranding controls.
     private var settings: some View {
-        VStack(alignment: .leading, spacing: Theme.Spacing.lg) {
-            Grid(
-                alignment: .leading, horizontalSpacing: Theme.Spacing.lg,
-                verticalSpacing: Theme.Spacing.md
-            ) {
-                // No heading: these two are one idea, and first so 19 commands can't bury them.
-                ExtensionLauncherRow(installed: installed)
-                ExtensionIconRow(installed: installed)
+        Grid(
+            alignment: .leading, horizontalSpacing: Theme.Spacing.lg,
+            verticalSpacing: Theme.Spacing.md
+        ) {
+            // No heading: these two are one idea, and first so 19 commands can't bury them.
+            ExtensionLauncherRow(installed: installed)
+            ExtensionIconRow(installed: installed)
 
-                if !installed.manifest.preferences.isEmpty {
-                    rule
-                    heading("Preferences")
-                    ForEach(
-                        Array(installed.manifest.preferences.enumerated()), id: \.element.name
-                    ) { index, schema in
-                        if index > 0 { rule }
-                        ExtensionPreferenceRow(
-                            extensionName: installed.manifest.name, schema: schema)
-                    }
-                }
-
+            if !installed.manifest.preferences.isEmpty {
                 rule
-                heading(installed.manifest.commands.count == 1 ? "Command" : "Commands")
-                ForEach(Array(installed.manifest.commands.enumerated()), id: \.element.id) {
-                    index, command in
+                heading("Preferences")
+                ForEach(
+                    Array(installed.manifest.preferences.enumerated()), id: \.element.name
+                ) { index, schema in
                     if index > 0 { rule }
-                    CommandRows(installed: installed, command: command)
+                    ExtensionPreferenceRow(
+                        extensionName: installed.manifest.name, schema: schema)
                 }
             }
-            HStack {
-                Spacer()
-                Button("Uninstall…", role: .destructive, action: onUninstall)
+
+            rule
+            heading(installed.manifest.commands.count == 1 ? "Command" : "Commands")
+            ForEach(Array(installed.manifest.commands.enumerated()), id: \.element.id) {
+                index, command in
+                if index > 0 { rule }
+                CommandRows(installed: installed, command: command)
             }
         }
         // Indented under the row's icon, so the settings read as belonging to the row above them.

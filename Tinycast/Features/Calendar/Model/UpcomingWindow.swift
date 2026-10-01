@@ -51,10 +51,7 @@ struct UpcomingWindow: Sendable {
     }
 
     static func dayLabel(_ date: Date, calendar: Calendar) -> String {
-        let style = Date.FormatStyle(
-            locale: calendar.locale ?? Locale(identifier: "en_US"), calendar: calendar,
-            timeZone: calendar.timeZone)
-        return date.formatted(style.weekday(.abbreviated).month(.abbreviated).day())
+        date.formatted(calendar.formatStyle.weekday(.abbreviated).month(.abbreviated).day())
     }
 
     /// The menu bar names the time left once a meeting has been underway for five minutes.

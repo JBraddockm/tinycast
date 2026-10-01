@@ -111,6 +111,7 @@ Where a number has a special case, the case is a word:
 | `ai.toolRounds` | 10, 25, 50, 100, `"unlimited"` |
 | `ai.opensTo` | `"recent"`, `"newConversation"` |
 | `calendar.launcherLimit` | 1, 3, 5, `"all"` |
+| `calendar.span` | `"today"`, `"todayAndTomorrow"`, `"nextSevenDays"` |
 | `calendar.menuBar` | `"disabled"`, `"meetingIcon"`, `"meetingTitle"` |
 | `calendar.menuBarUpcomingEvents` | `"today"`, or 2, 5, 10, 30 minutes before |
 | `calendar.hideCurrentEventAfterMinutes` | `"never"`, 0 (as it starts), 5, 10, 30 |

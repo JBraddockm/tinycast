@@ -7,6 +7,7 @@ struct LauncherList: View {
     /// The flat row id the screen has selected, not an entry id: a fallback can repeat a result.
     let selectedRowID: String?
     let favoriteCount: Int
+    let meetingCount: Int
     let suggestionCount: Int
     let showSections: Bool
     /// Changes only when the list should scroll, so mouse selection never yanks it.
@@ -96,8 +97,9 @@ struct LauncherList: View {
         }
         var rows: [Row] = cardRows
         let favorites = results.prefix(favoriteCount)
-        let suggestions = results.dropFirst(favoriteCount).prefix(suggestionCount)
-        let rest = results.dropFirst(favoriteCount + suggestionCount)
+        let meetings = results.dropFirst(favoriteCount).prefix(meetingCount)
+        let suggestions = results.dropFirst(favoriteCount + meetingCount).prefix(suggestionCount)
+        let rest = results.dropFirst(favoriteCount + meetingCount + suggestionCount)
         var grouped: [AppEntry.Kind: [AppEntry]] = [:]
         for app in rest { grouped[app.kind, default: []].append(app) }
         if !favorites.isEmpty {
@@ -106,6 +108,10 @@ struct LauncherList: View {
                 contentsOf: favorites.enumerated().map {
                     .app($1, slot: FavoriteSlots.digit(at: $0))
                 })
+        }
+        if !meetings.isEmpty {
+            rows.append(.header(AppEntry.Kind.meeting.descriptor.sectionTitle))
+            rows.append(contentsOf: meetings.map { .app($0, slot: nil) })
         }
         if !suggestions.isEmpty {
             rows.append(.header("Suggestions"))

@@ -293,11 +293,11 @@ final class LauncherCoordinator {
     }
 
     /// Quits the app behind an entry; a no-op (palette stays put) when it isn't running.
-    func quit(_ app: AppEntry) {
+    func quit(_ app: AppEntry, force: Bool = false) {
         guard app.kind == .application, let bundleID = app.bundleID else { return }
         // Nothing here takes focus, so hand it back unless that app is on its way out.
         let quittingPreviousApp = windowController.previousApp?.bundleIdentifier == bundleID
-        guard AppLauncher.quit(bundleID: bundleID) else { return }
+        guard AppLauncher.quit(bundleID: bundleID, force: force) else { return }
         paletteCoordinator.hidePalette(restoreFocus: !quittingPreviousApp)
     }
 }

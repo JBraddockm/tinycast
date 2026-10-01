@@ -86,7 +86,6 @@ extension SettingsAnchor {
 
     static let calendarCalendar = Self(tab: .calendar, title: "Calendar")
     static let calendarCommands = Self(tab: .calendar, title: "Commands")
-    static let calendarSchedule = Self(tab: .calendar, title: "Schedule")
     static let calendarJoining = Self(tab: .calendar, title: "Joining")
     static let calendarMenuBar = Self(tab: .calendar, title: "Menu Bar")
     static let calendarCalendars = Self(tab: .calendar, title: "Calendars")

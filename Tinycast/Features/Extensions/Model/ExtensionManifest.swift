@@ -199,11 +199,16 @@ struct ExtensionManifest: Sendable, Hashable {
     let title: String
     let description: String
     let author: String
+    /// The organisation an extension is published under, when it isn't its author's own.
+    let owner: String?
     let icon: String?
     let categories: [String]
     let platforms: [String]?
     let commands: [ExtensionCommand]
     let preferences: [ExtensionPreferenceSchema]
+
+    /// The handle the store lists it under: its organisation's when it has one.
+    var storeHandle: String { owner ?? author }
 
     /// `platforms` is absent on older manifests, which predate Windows support and are macOS-only.
     var supportsMacOS: Bool {
@@ -244,6 +249,7 @@ struct ExtensionManifest: Sendable, Hashable {
         title = json["title"] as? String ?? name
         description = json["description"] as? String ?? ""
         author = json["author"] as? String ?? ""
+        owner = json["owner"] as? String
         icon = json["icon"] as? String
         categories = json["categories"] as? [String] ?? []
         platforms = json["platforms"] as? [String]

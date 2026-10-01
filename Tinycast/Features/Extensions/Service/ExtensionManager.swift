@@ -16,6 +16,9 @@ enum ExtensionSessionState: Equatable {
 @Observable
 final class ExtensionManager: ExtensionRuntimeDelegate, ExtensionHostContext {
     private(set) var installed: [InstalledExtension] = []
+    /// The store's newer version of each installed extension that has one, keyed by manifest name.
+    private(set) var updates: [String: ExtensionListing] = [:]
+    private(set) var updating: Set<String> = []
     private(set) var menuBars: ExtensionMenuBarManager?
     private(set) var state: ExtensionSessionState = .idle
     /// The command whose session is live, if any.
@@ -39,6 +42,7 @@ final class ExtensionManager: ExtensionRuntimeDelegate, ExtensionHostContext {
     let appearances = ExtensionAppearanceStore()
     private let commandMetadata = ExtensionCommandMetadataStore(
         fileURL: ExtensionCatalog.commandMetadataFile())
+    private let storeVersions = ExtensionVersionStore(fileURL: ExtensionCatalog.storeVersionsFile())
     @ObservationIgnored private let runtime: ExtensionRuntime
     @ObservationIgnored private let bridge: ExtensionHostBridge
     @ObservationIgnored private let oauthSession = ExtensionOAuthSession()
@@ -219,7 +223,7 @@ final class ExtensionManager: ExtensionRuntimeDelegate, ExtensionHostContext {
     // MARK: - Install / uninstall
 
     func install(from source: URL) async throws {
-        _ = try ExtensionCatalog.install(from: source)
+        untrack(try ExtensionCatalog.install(from: source).manifest.name)
         await refresh()
     }
 
@@ -234,16 +238,27 @@ final class ExtensionManager: ExtensionRuntimeDelegate, ExtensionHostContext {
         }
     }
 
-    /// Progress is reported per step: building from source can take minutes.
     func install(
-        listing: ExtensionListing, packageManager: ExtensionPackageManager,
-        additionalSearchPaths: [String] = [],
+        _ listing: ExtensionListing,
         onProgress: @Sendable @escaping (ExtensionInstaller.Progress) -> Void
     ) async throws {
+        try await installFromStore(listing, onProgress: onProgress)
+        await refresh()
+    }
+
+    /// Progress is reported per step: building from source can take minutes.
+    @discardableResult
+    func install(
+        _ source: ExtensionGitHubSource, packageManager: ExtensionPackageManager,
+        additionalSearchPaths: [String],
+        onProgress: @Sendable @escaping (ExtensionInstaller.Progress) -> Void
+    ) async throws -> InstalledExtension {
         let installer = ExtensionInstaller(
             packageManager: packageManager, additionalSearchPaths: additionalSearchPaths)
-        try await installer.install(listing, onProgress: onProgress)
+        let installed = try await installer.install(source, onProgress: onProgress)
+        untrack(installed.manifest.name)
         await refresh()
+        return installed
     }
 
     /// Refreshes once at the end, and returns what failed so the pane can name it.
@@ -254,7 +269,9 @@ final class ExtensionManager: ExtensionRuntimeDelegate, ExtensionHostContext {
         var failed: [String] = []
         for (index, candidate) in candidates.enumerated() {
             do {
-                _ = try ExtensionCatalog.install(from: candidate.directory)
+                let name = try ExtensionCatalog.install(from: candidate.directory).manifest.name
+                storeVersions.record(nil, for: name)
+                updates[name] = nil
             } catch {
                 failed.append(candidate.title)
             }
@@ -262,6 +279,63 @@ final class ExtensionManager: ExtensionRuntimeDelegate, ExtensionHostContext {
         }
         await refresh()
         return failed
+    }
+
+    // MARK: - Updates
+
+    /// Asked when Settings opens; a lookup that fails is skipped rather than reported.
+    func checkForUpdates() async {
+        guard isEnabled else { return }
+        let tracked = storeVersions.tracked
+        let lookups = installed.map(\.manifest).filter { tracked.contains($0.name) }
+        let client = ExtensionStoreClient()
+        let latest = await withTaskGroup(of: ExtensionListing?.self) { group in
+            for manifest in lookups {
+                let (handle, name) = (manifest.storeHandle, manifest.name)
+                group.addTask { try? await client.lookup(handle: handle, name: name) }
+            }
+            var found: [ExtensionListing] = []
+            for await listing in group {
+                if let listing { found.append(listing) }
+            }
+            return found
+        }
+        guard !Task.isCancelled else { return }
+        updates = Dictionary(
+            storeVersions.reconcile(with: latest).map { ($0.name, $0) }, uniquingKeysWith: { $1 })
+    }
+
+    /// One at a time, like an import; returns the titles that failed so the pane can name them.
+    func update(_ names: [String]) async -> [String] {
+        updating.formUnion(names)
+        var failed: [String] = []
+        for name in names {
+            defer { updating.remove(name) }
+            guard let listing = updates[name] else { continue }
+            do {
+                try await installFromStore(listing, onProgress: { _ in })
+            } catch {
+                failed.append(listing.title)
+            }
+        }
+        await refresh()
+        return failed
+    }
+
+    /// Replaces only the extension's directory, so its preferences and storage carry over.
+    private func installFromStore(
+        _ listing: ExtensionListing,
+        onProgress: @Sendable @escaping (ExtensionInstaller.Progress) -> Void
+    ) async throws {
+        let installed = try await ExtensionInstaller().install(listing, onProgress: onProgress)
+        storeVersions.record(listing.commitSHA, for: installed.manifest.name)
+        updates[installed.manifest.name] = nil
+    }
+
+    /// A folder or GitHub install is the user's own copy, so the store has nothing to offer it.
+    private func untrack(_ name: String) {
+        storeVersions.forget(name)
+        updates[name] = nil
     }
 
     /// Takes everything keyed to it: files, storage, icon, and its shortcuts.
@@ -280,6 +354,7 @@ final class ExtensionManager: ExtensionRuntimeDelegate, ExtensionHostContext {
         try? ExtensionCatalog.uninstall(installedExtension)
         storage.removeAll(extension: installedExtension.manifest.name)
         commandMetadata.removeAll(extension: installedExtension.manifest.name)
+        untrack(installedExtension.manifest.name)
         appearances.set(nil, for: installedExtension.manifest.name)
         onDidUninstall?(entryIDs)
         await refresh()

@@ -407,6 +407,15 @@ struct ExtensionTests {
                     "name": "w", "platforms": ["Windows"],
                     "commands": [["name": "c", "title": "C"]]
                 ])?.supportsMacOS == false)
+        let commands = [["name": "c", "title": "C"]]
+        check(
+            "the store lists an organisation's extension under its owner",
+            ExtensionManifest(json: ["name": "o", "author": "me", "owner": "org", "commands": commands])?
+                .storeHandle == "org")
+        check(
+            "and anyone else's under its author",
+            ExtensionManifest(json: ["name": "a", "author": "me", "commands": commands])?.storeHandle
+                == "me")
 
         // Launcher round-trip: an entry id must decode back to the same command.
         let reference = ExtensionCommandRef(extensionName: "@scope/demo", commandName: "search")
