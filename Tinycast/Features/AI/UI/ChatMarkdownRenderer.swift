@@ -271,7 +271,8 @@ struct ChatMarkdownRenderer {
         _ formula: MathFormula, font: NSFont, attributes: [NSAttributedString.Key: Any]
     ) -> NSAttributedString {
         let color = attributes[.foregroundColor] as? NSColor ?? textColor(Context())
-        let box = mathEngine(for: font)?.layout(formula) ?? MathBox(text: formula.source, font: font as CTFont)
+        let box =
+            mathEngine(for: font)?.layout(formula) ?? MathBox(text: formula.source, font: font as CTFont)
         let attachment = NSTextAttachment()
         attachment.attachmentCell = MathAttachmentCell(box: box, color: color, label: formula.source)
         let string = NSMutableAttributedString(attachment: attachment)

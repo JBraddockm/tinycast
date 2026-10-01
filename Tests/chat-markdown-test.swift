@@ -236,7 +236,8 @@ struct ChatMarkdownTests {
             rendered.string.hasSuffix("then apple.\n…") && !rendered.string.contains("frac"),
             "the unfinished equation draws as a placeholder, got \(rendered.string.debugDescription)")
         let dots = (rendered.string as NSString).range(of: "…")
-        let style = rendered.attribute(.paragraphStyle, at: dots.location, effectiveRange: nil) as? NSParagraphStyle
+        let style =
+            rendered.attribute(.paragraphStyle, at: dots.location, effectiveRange: nil) as? NSParagraphStyle
         expect(style?.alignment == .center, "the placeholder sits where the equation will, centred")
         let found = ChatFindIndex.occurrences(of: "apple", in: [streaming])
         expect(found.count == 2, "find sees what is drawn mid-stream, got \(found.count)")
@@ -251,7 +252,8 @@ struct ChatMarkdownTests {
                 "match \(occurrence.index) lands on its word mid-stream")
         }
         let inline = render(
-            ChatMessage(role: .assistant, text: "Roots are \\(x = \\frac{1}{", state: .streaming), current: nil)
+            ChatMessage(role: .assistant, text: "Roots are \\(x = \\frac{1}{", state: .streaming),
+            current: nil)
         expect(inline.string.string == "Roots are ", "an inline equation still arriving is withheld")
     }
 

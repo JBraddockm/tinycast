@@ -1069,7 +1069,9 @@ struct AIChatTests {
             ],
             "an opener the stream has moved past is a stray and stays visible")
         expect(
-            MarkdownBlock.parse("$$\nx\n\nafter", midStream: true) == [.paragraph("$$\nx"), .paragraph("after")],
+            MarkdownBlock.parse("$$\nx\n\nafter", midStream: true) == [
+                .paragraph("$$\nx"), .paragraph("after")
+            ],
             "a blank line inside $$ proves it stray, even mid-stream")
         expect(
             MarkdownBlock.parse("Text\n$$\nx = \\frac{a}{b}.\n", midStream: true) == [
@@ -1081,7 +1083,9 @@ struct AIChatTests {
             MarkdownBlock.parse("Roots \\(x +\n", midStream: true) == [.paragraph("Roots ")],
             "an inline equation is still held back when a newline is the last thing to arrive")
         expect(
-            MarkdownBlock.parse("Text\n$$\nx = \\frac{a}{b}.\n") == [.paragraph("Text"), .paragraph("$$\nx = \\frac{a}{b}.")],
+            MarkdownBlock.parse("Text\n$$\nx = \\frac{a}{b}.\n") == [
+                .paragraph("Text"), .paragraph("$$\nx = \\frac{a}{b}.")
+            ],
             "a finished reply ending in a newline still shows an unclosed equation as source")
         expect(
             MarkdownBlock.parse("- item\n  $$\n  x", midStream: true) == [
@@ -1105,7 +1109,9 @@ struct AIChatTests {
             ],
             "only the table cell being written holds back its equation")
         guard case .math? = MarkdownBlock.parse("$$x$$", midStream: true).first,
-            MarkdownBlock.inline("Roots \\(x\\)").runs.contains(where: { $0[MathFormula.Attribute.self] != nil })
+            MarkdownBlock.inline("Roots \\(x\\)").runs.contains(where: {
+                $0[MathFormula.Attribute.self] != nil
+            })
         else {
             expect(false, "an equation that has closed renders mid-stream")
             return
@@ -1121,7 +1127,8 @@ struct AIChatTests {
         expect(
             message.isArriving(segmentAt: 0, of: 1) == false
                 && ChatMessage(role: .assistant, text: "", state: .streaming).isArriving(segmentAt: 1, of: 2)
-                && !ChatMessage(role: .assistant, text: "", state: .streaming).isArriving(segmentAt: 0, of: 2),
+                && !ChatMessage(role: .assistant, text: "", state: .streaming).isArriving(
+                    segmentAt: 0, of: 2),
             "only the last segment of a streaming reply is still arriving")
     }
 

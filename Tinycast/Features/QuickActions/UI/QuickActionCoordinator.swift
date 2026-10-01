@@ -174,7 +174,8 @@ final class QuickActionCoordinator {
 
     func run(_ action: QuickAction) {
         guard settings.quickActionsEnabled, running == nil else { return }
-        let source = paletteCoordinator.isVisible
+        let source =
+            paletteCoordinator.isVisible
             ? InjectionTarget.behindPalette(
                 ownWindow: paletteCoordinator.previousOwnWindow, app: paletteCoordinator.targetApp)
             : InjectionTarget.current()

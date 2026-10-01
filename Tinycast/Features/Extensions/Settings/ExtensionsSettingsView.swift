@@ -370,7 +370,8 @@ private struct ExtensionDisclosure: View {
         .onTapGesture(perform: onToggle)
         .accessibilityAddTraits(.isButton)
         .accessibilityLabel(
-            isExpanded ? "Hide \(installed.title) settings" : "Configure \(installed.title)")
+            isExpanded ? "Hide \(installed.title) settings" : "Configure \(installed.title)"
+        )
         .id(SettingsTarget.row(.extensionsInstalled, installed.manifest.name))
     }
 
