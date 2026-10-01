@@ -35,15 +35,30 @@ enum FuzzyMatch {
         }
     }
 
+    /// A candidate folded once, for an index that matches the same text against every query.
+    struct Candidate: Sendable {
+        let text: String
+        fileprivate let length: Int
+
+        init(_ raw: String) {
+            text = FuzzyMatch.normalized(raw)
+            length = text.count
+        }
+    }
+
     /// The tier a query hits a candidate at, with the geometry `SearchRelevance.shape` reads.
     static func match(query: String, candidate: String) -> Match? {
         match(Query(query), candidate: candidate)
     }
 
     static func match(_ query: Query, candidate: String) -> Match? {
+        match(query, candidate: Candidate(candidate))
+    }
+
+    static func match(_ query: Query, candidate: Candidate) -> Match? {
         let q = query.text
-        let c = normalized(candidate)
-        let length = c.count
+        let c = candidate.text
+        let length = candidate.length
         guard !q.isEmpty else {
             return Match(
                 tier: .exact, offset: 0, queryLength: 0, candidateLength: length, spread: 0)
@@ -78,6 +93,10 @@ enum FuzzyMatch {
 
     /// The folded form, for a caller sweeping many candidates against one query.
     static func score(_ query: Query, candidate: String) -> Int? {
+        match(query, candidate: candidate).map(rawScore)
+    }
+
+    static func score(_ query: Query, candidate: Candidate) -> Int? {
         match(query, candidate: candidate).map(rawScore)
     }
 

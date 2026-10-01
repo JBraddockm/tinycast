@@ -1755,7 +1755,7 @@ enum EmojiData {
 🇬🇼|flag: guinea-bissau|fl|0|flag
 🇬🇾|flag: guyana|fl|0|flag
 🇭🇰|flag: hong kong sar china|fl|0|flag
-🇭🇲|flag: heard & mcdonald islands|fl|0|flag
+🇭🇲|flag: heard island & mcdonald islands|fl|0|flag
 🇭🇳|flag: honduras|fl|0|flag
 🇭🇷|flag: croatia|fl|0|flag
 🇭🇹|flag: haiti|fl|0|flag
@@ -1859,7 +1859,7 @@ enum EmojiData {
 🇸🇩|flag: sudan|fl|0|flag
 🇸🇪|flag: sweden|fl|0|flag
 🇸🇬|flag: singapore|fl|0|flag
-🇸🇭|flag: st. helena|fl|0|flag
+🇸🇭|flag: st. helena ascension & tristan da cunha|fl|0|flag
 🇸🇮|flag: slovenia|fl|0|flag
 🇸🇯|flag: svalbard & jan mayen|fl|0|flag
 🇸🇰|flag: slovakia|fl|0|flag
@@ -1877,7 +1877,7 @@ enum EmojiData {
 🇹🇦|flag: tristan da cunha|fl|0|flag
 🇹🇨|flag: turks & caicos islands|fl|0|flag
 🇹🇩|flag: chad|fl|0|flag
-🇹🇫|flag: french southern territories|fl|0|flag
+🇹🇫|flag: french southern and antarctic lands|fl|0|flag
 🇹🇬|flag: togo|fl|0|flag
 🇹🇭|flag: thailand|fl|0|flag
 🇹🇯|flag: tajikistan|fl|0|flag
