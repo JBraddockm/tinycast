@@ -104,7 +104,7 @@ struct ExtensionStorePanel: View {
 
     // MARK: - State
 
-    private func state(for listing: ExtensionListing) -> StoreRow.Phase {
+    private func state(for listing: ExtensionListing) -> StoreRow.InstallState {
         if installed.contains(listing.name) { return .installed }
         if let progress = installing[listing.id] { return .installing(progress.message) }
         if let failure = failures[listing.id] { return .failed(failure) }
@@ -172,7 +172,7 @@ struct ExtensionStorePanel: View {
 
 /// One search result: what it is, who made it, how many use it, and the button that installs it.
 private struct StoreRow: View {
-    enum Phase: Equatable {
+    enum InstallState: Equatable {
         case idle
         case installing(String)
         case installed
@@ -184,7 +184,7 @@ private struct StoreRow: View {
     private static let iconSide: CGFloat = 40
 
     let listing: ExtensionListing
-    let state: Phase
+    let state: InstallState
     let onInstall: () -> Void
     @Environment(\.isDarkAppearance) private var isDark
     @State private var hovered = false
