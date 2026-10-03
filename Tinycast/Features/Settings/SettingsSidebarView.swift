@@ -49,7 +49,6 @@ struct SettingsSidebarView: View {
         .background(.quaternary, in: RoundedRectangle(cornerRadius: 7))
         .padding(.horizontal, 10)
         .padding(.vertical, 8)
-        .background(.regularMaterial)
     }
 
     private var browse: some View {
