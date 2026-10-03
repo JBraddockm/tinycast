@@ -5,6 +5,23 @@ import Foundation
 @Observable
 final class HotKeyManager {
     var onTogglePalette: (() -> Void)?
+    var onDictationPressed: (() -> Void)?
+    var onDictationReleased: (() -> Void)?
+    var onDictationCancelled: (() -> Void)?
+    var dictationEnabled = false {
+        didSet {
+            guard dictationEnabled != oldValue else { return }
+            if !dictationEnabled { onDictationCancelled?() }
+            syncModifierTaps()
+        }
+    }
+    var dictationHoldToTalk = false {
+        didSet {
+            guard dictationHoldToTalk != oldValue else { return }
+            onDictationCancelled?()
+            syncModifierTaps()
+        }
+    }
     /// The launcher's own command funnel, so a shortcut and a palette row run the same thing.
     var onRunCommand: ((CommandID) -> Void)?
     var onRunCustomCommand: ((UUID) -> Void)?
@@ -28,6 +45,7 @@ final class HotKeyManager {
         didSet {
             guard recordingAction != oldValue else { return }
             let recording = recordingAction != nil
+            if recording, dictationEnabled, dictationHoldToTalk { onDictationCancelled?() }
             center.isPaused = recording
             modifierTapMonitor.isPaused = recording
             if let recordingAction {
@@ -87,6 +105,9 @@ final class HotKeyManager {
             guard let self, let action = modifierTaps[binding] else { return }
             perform(action)
         }
+        modifierTapMonitor.onHoldPressed = { [weak self] in self?.perform(.dictation) }
+        modifierTapMonitor.onHoldReleased = { [weak self] in self?.onDictationReleased?() }
+        modifierTapMonitor.onHoldCancelled = { [weak self] in self?.onDictationCancelled?() }
         modifierTapMonitor.start()
         syncModifierTaps()
     }
@@ -160,6 +181,7 @@ final class HotKeyManager {
 
     /// Persists or clears the binding and swaps live registration.
     func setBinding(_ binding: HotKeyBinding?, for action: HotKeyAction) {
+        if action == .dictation, binding != self.binding(for: action) { onDictationCancelled?() }
         let previous = bindings[action]
         if let binding,
             let data = try? encoder.encode(binding),
@@ -199,7 +221,7 @@ final class HotKeyManager {
             index(id, bound: binding != nil, key: boundSnippetKey)
         case .extensionCommand(let entryID):
             index(entryID, bound: binding != nil, key: boundExtensionCommandKey)
-        case .togglePalette, .command, .systemAction, .windowCommand:
+        case .togglePalette, .dictation, .command, .systemAction, .windowCommand:
             break
         }
         candidateActionsCache = nil
@@ -222,11 +244,17 @@ final class HotKeyManager {
         }
     }
 
-    /// What else holds `binding`, or nil. Whole-binding comparison covers every kind alike.
+    /// A hold reserves its physical modifier across both tap gestures.
     func conflictOwner(of binding: HotKeyBinding, excluding action: HotKeyAction) -> String? {
-        for candidate in candidateActions
-        where candidate != action && self.binding(for: candidate) == binding {
-            return displayName(of: candidate)
+        for candidate in candidateActions where candidate != action {
+            guard let other = self.binding(for: candidate) else { continue }
+            let holdsModifier =
+                dictationHoldToTalk
+                && (action == .dictation && binding.holdKey != nil
+                    || candidate == .dictation && other.holdKey != nil)
+            if binding.conflicts(with: other, holdsModifier: holdsModifier) {
+                return displayName(of: candidate)
+            }
         }
         return nil
     }
@@ -256,6 +284,8 @@ final class HotKeyManager {
         switch action {
         case .togglePalette:
             return "App Launcher"
+        case .dictation:
+            return "Dictation"
         case .command(let id):
             return id.name
         case .app(let bundleID), .settingsPane(let bundleID):
@@ -288,19 +318,30 @@ final class HotKeyManager {
     /// Hands a combo to Carbon; a modifier-only binding has no per-action registration.
     private func register(_ action: HotKeyAction) {
         guard let shortcut = binding(for: action)?.shortcut else { return }
-        center.register(id: action.defaultsKey, shortcut: shortcut) { [weak self] in
-            self?.perform(action)
-        }
+        center.register(
+            id: action.defaultsKey, shortcut: shortcut,
+            onKeyDown: { [weak self] in self?.perform(action) },
+            onKeyUp: action == .dictation ? { [weak self] in self?.onDictationReleased?() } : nil)
     }
 
     /// Rebuilt wholesale, so the map can't drift from what is on disk.
     private func syncModifierTaps() {
         modifierTaps = [:]
+        let dictationBinding = binding(for: .dictation)
+        let holdKey = dictationHoldToTalk ? dictationBinding?.holdKey : nil
         for action in candidateActions {
             guard let binding = binding(for: action), binding.usesModifierTapMonitor else { continue }
+            if action == .dictation, !dictationEnabled { continue }
+            if action == .dictation, dictationHoldToTalk {
+                guard holdKey != nil, conflictOwner(of: binding, excluding: action) == nil else {
+                    continue
+                }
+            }
             modifierTaps[binding] = action
         }
-        modifierTapMonitor.update(bound: Set(modifierTaps.keys))
+        modifierTapMonitor.update(
+            bound: Set(modifierTaps.keys),
+            holdKey: dictationBinding.flatMap { modifierTaps[$0] == .dictation ? holdKey : nil })
     }
 
     private func perform(_ action: HotKeyAction) {
@@ -308,6 +349,7 @@ final class HotKeyManager {
         guard allowsAction?(action) ?? true else { return }
         switch action {
         case .togglePalette: onTogglePalette?()
+        case .dictation: onDictationPressed?()
         case .command(let id): onRunCommand?(id)
         case .app(let bundleID): AppLauncher.toggle(bundleID: bundleID)
         case .settingsPane(let bundleID): AppLauncher.openSettingsPane(bundleID: bundleID)

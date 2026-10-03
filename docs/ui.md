@@ -159,6 +159,8 @@ panel, the shortcut-recorder callout and the Notes switcher, and `menuRow` is de
 `dialogIcon 32` · `hudWidth 200` ·
 `hudHeight 100` · `volumeTrackHeight 6` · `volumeReadout 38`
 
+The opt-in Dictation capsule adds `dictationPanel 144×44`, with 2pt waveform bars separated by 3pt.
+
 Notes adds `noteWindow 520×420` (opening size on a first run only), `noteWindowMinimum 320×220`,
 `noteTitlebar 44`, `noteTitleInset 120`, `noteEditorInset 16`, `noteSearchHeight 34`,
 `noteFooterHeight 28`, `noteGlyph 16`, `noteEmptyGlyph 28`, and `noteHeadingMenu 220×159`.
@@ -822,11 +824,13 @@ See [features/window-layouts.md](features/window-layouts.md#the-editor).
 
 ### The shortcut recorder callout
 
-`ShortcutRecorder` is a **120pt** field showing only the binding — a combo's modifiers collapse into
-one cap (`HotKeyBinding.compactKeycaps`), so any shortcut fits in two chips. Recording is narrated by
-`ShortcutRecorderPopover`, a small **132 × 82** callout above it: caps, one label line, an `esc` cap in
-the top-left corner. Its fixed frame shows the prompt (`⌥ A` at half opacity, "Type a
-shortcut"), live held keys, a pending second Globe tap, or a conflict (rejected caps + owner, orange).
+`ShortcutRecorder` is a **120pt** field showing only the binding. A single modifier binding puts a small
+L/R beside its glyph inside the same cap; double presses show only the two glyphs. The side follows
+the modifier identity macOS reports after remapping. Ordinary combos have no side label. Recording is
+narrated by `ShortcutRecorderPopover`, a small **132 × 82** callout above it: caps, one label line, an
+`esc` cap in the top-left corner. Its fixed frame shows the prompt (`⌥ A` at half opacity, "Type a
+shortcut"), live held keys with their reported side, a pending second modifier tap, or a conflict
+(rejected caps + owner, orange).
 
 - **An ancestor draws it.** The open recorder publishes its bounds via `ShortcutRecorderAnchorKey`;
   `.shortcutRecorderPopoverHost()` sits on `SettingsDetailView` — one host above every pane's

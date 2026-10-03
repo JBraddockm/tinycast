@@ -29,8 +29,8 @@ these gains a successor, the migration is the change — not a wrapper preservin
 Carbon has two deliberate capability-gap uses. The global hotkey engine uses `RegisterEventHotKey`
 because nothing modern can register a system-wide chord, and `CGEventTap` cannot see a lone modifier
 press. `InputSourceSwitcher` uses HIToolbox's TIS APIs because they remain the public mechanism for
-enumerating and selecting keyboard input sources. Neither use is inertia, and every raw C pointer is
-decoded to plain values before it crosses into actor code.
+enumerating and selecting keyboard input sources. Neither use is inertia, and raw C pointers never
+cross an asynchronous actor boundary.
 
 ## Architecture and feature organization
 

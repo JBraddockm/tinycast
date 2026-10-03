@@ -233,6 +233,31 @@ struct CustomCommandTests {
             "a folder yields its script commands in name order and nothing else",
             RaycastScriptImport.scan(directory: scriptDirectory).map(\.name) == ["First", "Second"])
 
+        // Linked scripts import, keeping the link's path so the command follows its target.
+        let linkTarget = scriptDirectory.appendingPathComponent("nested/linked.sh")
+        try? Data("#!/bin/bash\n# @raycast.title Linked\nprintf '%s' 'linked-target-ran'\n".utf8)
+            .write(to: linkTarget)
+        let link = scriptDirectory.appendingPathComponent("c-linked.sh")
+        try? FileManager.default.createSymbolicLink(at: link, withDestinationURL: linkTarget)
+        // Checked, or a link that was never made would pass "doesn't import" for free.
+        let skippedLinksMade =
+            (try? FileManager.default.createSymbolicLink(
+                at: scriptDirectory.appendingPathComponent("d-dangling.sh"),
+                withDestinationURL: scriptDirectory.appendingPathComponent("missing.sh"))) != nil
+            && (try? FileManager.default.createSymbolicLink(
+                at: scriptDirectory.appendingPathComponent("e-folder"),
+                withDestinationURL: scriptDirectory.appendingPathComponent("nested"))) != nil
+        check("the dangling and folder links exist", skippedLinksMade)
+        let withLinks = RaycastScriptImport.scan(directory: scriptDirectory)
+        check(
+            "a linked script imports; a dangling or folder link doesn't",
+            withLinks.map(\.name) == ["First", "Second", "Linked"])
+        let linked = withLinks.first { $0.name == "Linked" }
+        check("a linked script keeps its link's path", linked?.command.contains(link.path) == true)
+        let linkedRun = await ShellCommandRunner.run(
+            linked?.command ?? "", workingDirectory: linked?.workingDirectory)
+        check("a linked script runs its target", linkedRun.standardOutput == "linked-target-ran")
+
         // The whole run, through `"$@"`: an imported script reads its value as data, never as syntax.
         try? Data("#!/bin/bash\n# @raycast.title Echo\nprintf '%s' \"$1\"\n".utf8).write(
             to: scriptDirectory.appendingPathComponent("echo.sh"))

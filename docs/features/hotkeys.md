@@ -4,14 +4,19 @@
 
 - `KeyShortcut` — Sendable model, Carbon keycode + modifiers, layout-aware glyphs via `UCKeyTranslate`.
 - `HotKeyBinding` — what an action is bound to: `.combo(KeyShortcut)`,
-  `.doubleTap(DoubleTapModifier)`, `.globe`, or `.doubleGlobe`.
+  `.doubleTap(DoubleTapModifier)`, sided `.modifier` / `.doubleModifier`, `.globe`, or `.doubleGlobe`.
 - `HotKeyCenter` — the Carbon `RegisterEventHotKey` layer, pausable.
+- Dictation alone also observes Carbon's key-release event for hold-to-talk.
 - `DoubleTapModifier` / `DoubleTapDetector` — the double-tap recognizer.
-- `GlobeTapDetector` / `ModifierTapMonitor` — Globe recognition and the shared modifier-only tap.
+- `ModifierKey` / `ModifierKeyDetector` — reported sides, lone presses, taps and holds.
+- `ModifierTapMonitor` — the shared modifier-only tap, including Dictation's hold/release callbacks.
 
 `HotKeyManager` owns them all: persistence, conflict lookup, and dispatch. Every action reads and
-writes one `HotKeyBinding`, so the four cases share persistence, conflict detection, the recorder and
+writes one `HotKeyBinding`, so all cases share persistence, conflict detection, the recorder and
 the keycap rendering — only the _engine_ differs.
+
+Carbon's dispatcher enters through an explicit `@MainActor` callback. Press and release handlers
+return `OSStatus` synchronously, preserving event order and hold-to-talk release handling.
 
 ## Invariants
 
@@ -25,8 +30,8 @@ the keycap rendering — only the _engine_ differs.
 - **A command that opens a palette mode toggles it.** Every one of them enters through
   `PaletteCoordinator.togglePalette(mode:)`, so a second press closes what the first opened. From a
   launcher row the palette is in `.launcher`, so the row always re-points instead.
-- **`HotKeyBinding` is the one thing an action is bound to, with four cases and two engines.** A
-  `.combo` is a Carbon registration; `.doubleTap`, `.globe` and `.doubleGlobe` are recognized by
+- **`HotKeyBinding` is the one thing an action is bound to, with two engines.** A
+  `.combo` is a Carbon registration; all modifier-only bindings are recognized by
   `ModifierTapMonitor`, because Carbon cannot see a lone modifier at all. Its `Codable` is the
   synthesised one.
 - `KeyShortcut`'s hand-written `init(from:)` is a correctness seam, not a format one: it routes every
@@ -106,15 +111,30 @@ palette.
 
 ## Modifier-only shortcuts
 
-Globe/fn can be bound once (`.globe`) or twice (`.doubleGlobe`). The recorder waits briefly after the
+Every recorder accepts a single or double press of a lone modifier, including Globe/fn. Command,
+Control, Option and Shift remember the Left or Right identity reported by macOS after remapping.
+Single bindings display a small L/R inside the recorder's glyph cap; double bindings display only
+the two modifier glyphs while retaining their side for matching and conflicts. Ordinary key
+combinations remain side-agnostic. `ModifierKeyDetector` uses injected timestamps and device
+flags, so holding both sides or unwinding a chord cannot create a new lone press. Holding a modifier
+while recording saves its single binding when released. Existing generic double-tap bindings keep
+their meaning; conflicts with overlapping sided double taps are refused rather than overwritten.
+
+The recorder waits briefly after the
 first release so another press can select the double binding; otherwise it saves the single one.
-Globally, a single Globe fires on release when no double Globe action is bound. When both are bound,
+Globally, a single modifier fires on release when no double-tap action is bound. When both are bound,
 the single action waits until the double-tap window expires. Another modifier, key, or mouse click
 cancels the gesture, even while a single tap awaits the second. Both the monitor and the recorder
-check the physical `kVK_Function` keycode, not just the fn flag, because F-keys also carry that flag.
+track Globe from the physical `kVK_Function` keycode, not just the fn flag, because F-keys also carry it.
 It shares the double-tap's listen-only monitor, permission warning, lifecycle and pause while
 recording. macOS may perform its own Globe action too; set “Press fn/Globe key to” to “Do Nothing” in
 Keyboard settings if it conflicts. Globe+key chords use Carbon registration, like other combos.
+
+Dictation's hold-to-talk mode reserves its single physical modifier across both tap gestures. It
+starts after 250 ms held alone, so ordinary modifier+key chords do not briefly start recording. Another
+key, modifier or mouse click cancels a pending or active hold; Return and Escape belong to the dictation
+panel while listening. Release finishes the recording. Pausing, rebinding, disabling Dictation,
+session changes and tap teardown cancel any hold. Double-tap bindings require toggle mode.
 
 ## Double-tap modifiers
 
@@ -242,8 +262,8 @@ stops until this session is active again. The HID remap outlives the process, so
 
 The settings recorder (`Features/HotKeys/UI/ShortcutRecorder.swift`) is deliberately **not** a focusable
 control: the active recorder is `HotKeyManager.recordingAction` state, and keys are captured by local
-NSEvent monitors while both engines are paused. It records combos, double-tapped modifiers and single
-or double Globe taps by feeding its `.flagsChanged` / `.keyDown` monitors into the same pure detectors
+NSEvent monitors while both engines are paused. It records combos and single or double modifier taps,
+including their reported side, by feeding its `.flagsChanged` / `.keyDown` monitors into the same pure detectors
 as the global monitor, so recording needs no event tap and no permission.
 
 Setting `recordingAction` is what starts and stops the capture, so there is exactly **one**

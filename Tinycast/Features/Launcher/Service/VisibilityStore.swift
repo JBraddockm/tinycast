@@ -76,7 +76,7 @@ final class VisibilityStore {
         case .settingsPane: isKindEnabled(.systemSettings)
         case .systemAction: isKindEnabled(.systemAction)
         case .command(let id): id.owner == nil ? isKindEnabled(.command) : true
-        case .togglePalette, .quickAction, .customCommand, .windowCommand, .customWindowSize,
+        case .togglePalette, .dictation, .quickAction, .customCommand, .windowCommand, .customWindowSize,
             .windowLayout, .windowRoom, .quicklink, .appleShortcut, .snippet, .extensionCommand:
             true
         }
