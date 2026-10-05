@@ -1,7 +1,7 @@
 # App launcher & root search
 
 `AppIndex.scan()` runs off-main, enumerates the user's search scopes, and dedups by bundle ID (the
-earliest scope wins).
+earliest scope wins; within one folder, the newest `CFBundleShortVersionString` does).
 
 ## Invariants
 
@@ -53,6 +53,12 @@ immediate subfolder, are indexed. That catches vendor-folder installs like
 its `Contents/Applications` and `Contents/Developer/Applications` folders, where Xcode ships
 Instruments, Icon Composer and Simulator, and a subfolder nested deeper than one level still needs
 its own scope.
+
+Within one folder, bundles are listed newest `CFBundleShortVersionString` first, compared as numbers
+so `26.6` outranks `9.4`. A tie or an unreadable version falls back to Finder's name order. Because
+the scan keeps a bundle ID's first copy, two Xcodes in `/Applications` resolve to the newest, every
+scan, and the embedded apps follow their parent. Scope order still comes first: listing an older
+copy as its own earlier scope pins it (#1288).
 
 The defaults cover `/Applications` and `/System/Applications` plus their `Utilities` folders,
 `/System/Library/CoreServices/Applications`, the cryptex apps under
@@ -422,9 +428,10 @@ per-item reset in its Actions menu, and users can clear all learned ranking in G
 ## The empty list
 
 Favorites, then Meetings, then Suggestions, then one section per kind. Meetings sit above
-Suggestions because a meeting is worth opening only until it ends. Each kind section is sorted by
-the tiebreak, so what the user opens comes first and never-used entries still read alphabetically
-below it. The sort runs within each contiguous kind run of the publication order,
+Suggestions because a meeting is worth opening only until it ends. They keep the agenda's start
+order, including in the `Meetings` category listing, regardless of title or past usage. Each remaining
+kind section is sorted by the tiebreak, so what the user opens comes first and never-used entries still
+read alphabetically below it. The sort runs within each contiguous kind run of the publication order,
 so the sectioned view stays 1:1 with the flat selection.
 
 ### Suggestions

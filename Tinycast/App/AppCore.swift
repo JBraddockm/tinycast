@@ -346,7 +346,7 @@ final class AppCore {
             updateChecker.onUpdateAvailable = { [weak self] release in
                 self?.updateCoordinator.presentIfAvailable(release) ?? true
             }
-            updateChecker.start()
+            updateCoordinator.applyAutomaticChecking()
             supportReminders.onDue = { [weak self] in self?.supportCoordinator.presentIfDue() }
             supportReminders.start()
 
@@ -620,6 +620,9 @@ final class AppCore {
     // MARK: - Feature switches
 
     private func observeFeatureSwitches() {
+        track(
+            { _ = $0.automaticallyCheckForUpdates },
+            reproject: { $0.updateCoordinator.applyAutomaticChecking() })
         track(
             {
                 _ = $0.windowManagementEnabled
