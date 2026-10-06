@@ -478,9 +478,11 @@ action is bindable to a global shortcut from Settings › System Actions
 (see [hotkeys.md](hotkeys.md)).
 
 Public AppKit, CoreAudio and workspace APIs are preferred. Actions without a stable public macOS API
-use fixed system tools, Apple Events, Accessibility, or a dynamically resolved Bluetooth power API.
-Those routes run only on explicit activation. Automation, Accessibility or Bluetooth permission is
-requested at first use, and denial produces an alert linking to the relevant System Settings pane.
+use fixed system tools, Apple Events, Accessibility, or dynamically resolved Bluetooth power and
+screen-lock APIs. Those routes run only on explicit activation. **Lock Screen never synthesizes
+⌃⌘Q**: a global hotkey fires on key-down, so its still-held modifiers would merge into the chord.
+Automation, Accessibility or Bluetooth permission is requested at first use, and denial produces an
+alert linking to the relevant System Settings pane.
 Toggle System Appearance changes macOS; Tinycast follows it only while its own Appearance is System.
 
 Restart, Shut Down, Log Out, Empty Trash and Quit All Applications confirm before execution: ↵ runs
@@ -752,6 +754,12 @@ Application and System Settings results expose **Show in Finder** in their ⌘K 
 **⌘↵**. Synthetic command results have no filesystem location, so neither the menu row nor the
 shortcut is available for them. `AppEntry.canRevealInFinder` is the one rule both the menu row and
 the key handler read, so the advertised chord can't drift from the behavior.
+
+`AppLauncher.showInFinder` is every feature's reveal. `activateFileViewerSelecting` leaves the file
+viewer to bring itself forward, and macOS refuses that request while Tinycast is `.regular` (an open
+Settings or About window) yet inactive, which the non-activating palette makes common. Only in that
+state does the reveal also open the viewer named by the global `NSFileViewer` default, Finder when it
+is unset, so every other reveal is exactly the one system call.
 
 ## Dragging an application out
 

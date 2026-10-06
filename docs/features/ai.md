@@ -216,7 +216,7 @@ bottom with the model picker. ⌘J hands a Quick AI conversation to the window.
   shows its spinner meanwhile, and reopening it resumes the same live state. Only Stop, deleting the
   chat, turning AI off or quitting cut a reply short. A reply is the conversation's, which is
   `AppCore`'s, so closing the window cancels nothing either.
-  Codex chats run side by side too: each request gets its own ephemeral app-server thread, and
+  Codex chats run side by side too: each conversation keeps its own ephemeral app-server thread, and
   `CodexTurnRunner` routes every notification and every tool-call question to its turn by
   `threadId`, so a Stop ends only its own. The app-server's server list is fixed at launch, so a
   turn armed with a different one relaunches it and ends the other chats' live threads with a
@@ -393,9 +393,9 @@ already holds it, and Continue in AI Chat (`⌘J`) takes it to the window either
 ### AI Chat
 
 The `AI Chat` command (`command:ai-chat-window`, `HotKeyAction.command(.aiChat)`) opens a titled
-`AppWindowController` window owned by `AIChatCoordinator`, autosaved as `AIChatWindow`. It is built the
-way Settings is — an `AIChatSplitViewController` with a native sidebar item, here collapsible, and a
-unified toolbar whose title is the open chat's — so it takes the system's own sidebar, toolbar and
+`AppWindowController` window owned by `AIChatCoordinator`, autosaved as `AIChatWindow`, and closes it
+again when it is already key, the way Escape does. It is built the way Settings is — an
+`AIChatSplitViewController` with a native sidebar item, here collapsible, and a unified toolbar whose title is the open chat's — so it takes the system's own sidebar, toolbar and
 menus rather than the palette's scrim. `AIChatWindowChrome` owns the toolbar — the sidebar toggle
 and New Chat as two round buttons at the sidebar's trailing edge, then Find in Chat and Actions
 alone at the window's — the title, and one key monitor for ⌘V, ⌘F, ⌘G / ⇧⌘G, ⌘K and the Actions
@@ -671,10 +671,20 @@ was never the process's to begin with. See [MCP](mcp.md) for what goes on the la
 
 `CodexTurnRunner` is the generation half behind `CodexInstalledProvider`.
 
-It creates an ephemeral thread for each request, injects prior user/assistant messages, and
-streams agent-message deltas, plus `item/started` for the reasoning and web-search items that feed the
-bubble's status line. System messages become developer instructions alongside Tinycast's fixed
-boundary, which forbids every tool except the MCP tools an armed turn supplies. Cancellation interrupts the active turn, including one the server has started but
+It keeps an ephemeral thread per conversation while the helper stays running, preserving the web
+search context for follow-ups. A successful reply allows the next request to continue that thread
+only when its prior transcript, model, instructions and web-search permission still match. A
+regenerated, failed or cancelled reply, a trimmed transcript or a changed configuration starts a
+fresh thread and injects the supplied user/assistant history. Turns with attachments are not retained,
+so older attachments still leave the next request. Titles and Quick Actions have no conversation ID
+and always start fresh. Deleting a chat drops its retained context, and resetting or restarting the
+helper clears every retained thread.
+
+It streams agent-message deltas, plus `item/started` for the reasoning and web-search items that feed
+the bubble's status line. System messages become developer instructions alongside Tinycast's fixed
+boundary, which permits only enabled web search and the MCP tools an armed turn supplies.
+Follow-ups use existing sources and search for further detail or verification when needed.
+Cancellation interrupts the active turn, including one the server has started but
 not yet named: Stop arms that thread, and whichever of `turn/started` or the `turn/start` response
 names the turn first spends a single `turn/interrupt` on it.
 
@@ -722,7 +732,7 @@ transport code at all.
 | Cursor command | never | never | never | the global config still loads — ask mode and withheld approval refuse the call |
 | OpenRouter | `plugins: [{id: "web"}]` — OpenRouter's own layer, any model | `image_url` part, only for models whose catalog lists the `image` modality | never yet — its catalog publishes a `file` modality Tinycast does not read | `tools` + `role: "tool"` turns |
 | OpenAI | not offered | `image_url` part, assumed supported | `file` part with `filename` and a `file_data` data URL | `tools` + `role: "tool"` turns |
-| Gemini / compatible | not offered | `image_url` part, assumed supported | never — a gateway that has not implemented the part bills the upload before rejecting it | `tools` + `role: "tool"` turns |
+| Gemini / compatible | not offered | `image_url` part, assumed supported | never — a gateway that has not implemented the part bills the upload before rejecting it | `tools` + `role: "tool"` turns; a call's `extra_content.google.thought_signature` goes back unchanged, or Gemini 3 rejects the next turn |
 | Anthropic | not offered | base64 `image` block | base64 `document` block, ahead of the text block | `tools` + `tool_use` / `tool_result` blocks |
 
 A search is part of the reply, not a status: `item/started` for a `webSearch` item appends a

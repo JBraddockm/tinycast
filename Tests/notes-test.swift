@@ -272,6 +272,40 @@ struct NotesTests {
             "oversized notes retain their size and align the top-right corner",
             NoteWindowPlacement.topRight(oversized, in: visible, inset: 40)
                 == CGRect(x: -160, y: -100, width: 1600, height: 1000))
+
+        let highWindow = CGRect(x: 100, y: 500, width: 440, height: 180)
+        let heights: ClosedRange<CGFloat> = 180...860
+        check(
+            "fitting grows downward and preserves width and the top edge",
+            NoteWindowPlacement.fitting(highWindow, toHeight: 300, within: heights, in: visible)
+                == CGRect(x: 100, y: 380, width: 440, height: 300))
+        check(
+            "fitting moves the window up when it reaches the Dock",
+            NoteWindowPlacement.fitting(window, toHeight: 500, within: heights, in: visible)
+                == CGRect(x: 100, y: 50, width: 440, height: 500))
+        check(
+            "fitting stops at the screen's usable height",
+            NoteWindowPlacement.fitting(highWindow, toHeight: 2000, within: heights, in: visible)
+                == CGRect(x: 100, y: 50, width: 440, height: 850))
+        let tall = CGRect(x: 0, y: 0, width: 2560, height: 1400)
+        let tallWindow = CGRect(x: 100, y: 1000, width: 440, height: 312)
+        check(
+            "fitting stops at the height limit on a tall display",
+            NoteWindowPlacement.fitting(tallWindow, toHeight: 2000, within: heights, in: tall)
+                == CGRect(x: 100, y: 452, width: 440, height: 860))
+        check(
+            "fitting shrinks shorter content and preserves the top edge",
+            NoteWindowPlacement.fitting(window, toHeight: 200, within: heights, in: visible)
+                == CGRect(x: 100, y: 212, width: 440, height: 200))
+        check(
+            "fitting never shrinks below the minimum height",
+            NoteWindowPlacement.fitting(window, toHeight: 40, within: heights, in: visible)
+                == CGRect(x: 100, y: 232, width: 440, height: 180))
+        let externalWindow = CGRect(x: -900, y: 700, width: 500, height: 180)
+        check(
+            "fitting uses the current display's origin and rounds up fractional heights",
+            NoteWindowPlacement.fitting(externalWindow, toHeight: 300.2, within: heights, in: external)
+                == CGRect(x: -900, y: 579, width: 500, height: 301))
     }
 
     private static func testStoreCollectionAndAutosave() async throws {
@@ -498,9 +532,11 @@ struct NotesTests {
             !cancelled && store.source == "Repaired externally" && store.editorEpoch == repairedEpoch)
 
         store.updateSource("Draft after a failed save")
-        try FileManager.default.setAttributes([.posixPermissions: 0o555], ofItemAtPath: repository.notesDirectory.path)
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o555], ofItemAtPath: repository.notesDirectory.path)
         defer {
-            try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: repository.notesDirectory.path)
+            try? FileManager.default.setAttributes(
+                [.posixPermissions: 0o755], ofItemAtPath: repository.notesDirectory.path)
         }
         let failedSave = await store.flush()
         let failedEpoch = store.editorEpoch
@@ -509,12 +545,14 @@ struct NotesTests {
             "reopening preserves a draft whose save failed",
             !failedSave && reopened && store.isDirty
                 && store.source == "Draft after a failed save" && store.editorEpoch == failedEpoch)
-        try FileManager.default.setAttributes([.posixPermissions: 0o000], ofItemAtPath: repository.notesDirectory.path)
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o000], ofItemAtPath: repository.notesDirectory.path)
         let unlisted = await store.start()
         check(
             "an unreadable folder still reopens on the retained draft",
             unlisted && store.isDirty && store.source == "Draft after a failed save")
-        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: repository.notesDirectory.path)
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o755], ofItemAtPath: repository.notesDirectory.path)
         let retried = await store.retrySave()
         let retriedSource = try repository.load(activeID).source
         check(
