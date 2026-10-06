@@ -77,8 +77,8 @@ When a trailing operator keeps a conversion visible, its input is reconstructed 
 display rounding never feeds back into evaluation.
 
 `UnitDef` is an immutable, Sendable reference shared by its aliases and parsed values. The catalog
-stores 152 base definitions as compact text records rather than repeated construction code, then adds
-SI and transfer-rate prefixes once on first use, for 685 aliases. `CalcUnitCatalog` owns this data;
+stores base definitions as compact text records rather than repeated construction code, then adds
+SI and transfer-rate prefixes once on first use. `CalcUnitCatalog` owns this data;
 `CalcUnits` owns conversion policy.
 
 Typed arithmetic precedes simple conversion so `1 / 20ms to hz` divides by a duration,
@@ -605,7 +605,10 @@ Date answers that display and copy identically also reuse their formatted text.
 
 When the launcher or Calculator History query evaluates to a result the card is pinned at the top of
 the list (flat selection index 0, shifting rows by one) and Enter copies the answer + records it to
-`CalculatorHistoryStore`.
+`CalculatorHistoryStore`. ⌘↵ records it too, then `PaletteState.rewriteQuery` makes the answer the
+query with the caret after it, so the next step chains on. Only a `canChain` answer offers it:
+`CalcEngine` clears the flag on every `CalcDateTime` and `CalcTimeZone` answer, because a clock
+typed back reads as local time, and `CalcQuantity` clears it on a boolean.
 
 ## Number format
 
@@ -647,7 +650,9 @@ English path is byte-for-byte what it was.
 
 ## Additional units and transfer rates
 
-`MB/s` means megabytes per second; `Mbps` means megabits per second.
+`MB/s` and `MBps` mean megabytes per second; `Mbps` means megabits per second.
+The uppercase `B` distinguishes byte rates (`Bps`, `kBps` / `KBps`, `MBps`, `GBps`, `TBps`) from bits.
+`500 Mbps in MBps` gives `62.5 MBps`; bare byte rates auto-convert to the matching bit rate.
 `100Mbps to MB/s` gives `12.5 MB/s`, and `1GB / 10MB/s to s` gives `100 s`.
 Binary rates such as `MiB/s` and bit amounts such as `kbit` also work.
 SI prefixes expand for meters, grams, seconds, hertz, newtons, joules, watts and pascals,

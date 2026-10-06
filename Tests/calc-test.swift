@@ -517,6 +517,33 @@ struct CalcTests {
         expectDisplay("100 Mbps to MB/s", "12.5 MB/s")
         expectDisplay("1 MiB/s to Mbps", "8.388608 Mbps")
         expectDisplay("1GB / 10MB/s to s", "100 s")
+        expectDisplay("500 Mbps in MBps", "62.5 MBps")
+        expectCopy("500 Mbps in MBps", "62.5 MBps")
+        expectExpression("500 Mbps in MBps", "500 Mbps")
+        expectBadges(
+            "500 Mbps in MBps", source: "Megabits per Second", target: "Megabytes per Second")
+        expectDisplay("62.5 MBps to Mbps", "500 Mbps")
+        expectDisplay("500Mbps -> MBps", "62.5 MBps")
+        expectDisplay("500 Mbps → MBps", "62.5 MBps")
+        expectDisplay("8 bps to Bps", "1 Bps")
+        expectDisplay("8 Kbps to kBps", "1 kBps")
+        expectDisplay("1 KBps to kbps", "8 Kbps")
+        expectDisplay("1 Gbps to GBps", "0.125 GBps")
+        expectDisplay("1 TBps to Tbps", "8 Tbps")
+        expectDisplay("1 MBps to kBps", "1,000 kBps")
+        expectDisplay("1 GBps to MBps", "1,000 MBps")
+        expectDisplay("1 TBps to GBps", "1,000 GBps")
+        expectDisplay("1 MBps to MB/s", "1 MB/s")
+        expectDisplay("8 Mb/s to MBps", "1 MBps")
+        expectDisplay("1 MiB/s to MBps", "1.048576 MBps")
+        expectDisplay("MBps Mbps", "8 Mbps")
+        expectDisplay("1 Bps", "8 bps")
+        expectDisplay("1 kBps", "8 Kbps")
+        expectDisplay("1 MBps", "8 Mbps")
+        expectDisplay("1 GBps", "8 Gbps")
+        expectDisplay("1 TBps", "8 Tbps")
+        expectDisplay("500 Mbps + 62.5 MBps", "125 MBps")
+        expectDisplay("1GB / 10MBps to s", "100 s")
         expectDisplay("8kbit to B", "1,000 B")
         expectDisplay("1um to nm", "1,000 nm")
         expectDisplay("1 GHz to MHz", "1,000 MHz")
@@ -1094,7 +1121,8 @@ struct CalcTests {
             calendar.timeZone = TimeZone(identifier: home)!
             let expected = CalcResult(
                 expression: "5:30 PM", sourceBadge: "Los Angeles", targetBadge: target,
-                payload: .value(display: time + dayNote, copyText: time))
+                payload: .value(display: time + dayNote, copyText: time),
+                canChain: false)
             for query in [
                 "5:30pm SF", "5:30 pm SF", "17:30 San Francisco", "5:30 PM SFO",
                 "  5:30\tpm\u{00A0}sf  "
@@ -1362,20 +1390,23 @@ struct CalcTests {
         expectDisplayAt("what time is it to Tokyo", "9:18 AM")
         let usaExpected = CalcResult(
             expression: "12:00 PM", sourceBadge: "UTC", targetBadge: "New York",
-            payload: .value(display: "8:00 AM", copyText: "8:00 AM"))
+            payload: .value(display: "8:00 AM", copyText: "8:00 AM"),
+            canChain: false)
         let usaNow = CalcEngine.evaluate("now in usa", now: zoneNow, calendar: clock.calendar)
         check("now in usa", expected: "true", got: "\(usaNow == usaExpected)")
         for query in ["Canada timezone", "Canada time zone", "timezone Canada", "timezone in Canada"] {
             let expected = CalcResult(
                 expression: "12:00 PM", sourceBadge: "UTC", targetBadge: "Toronto",
-                payload: .value(display: "8:00 AM", copyText: "8:00 AM"))
+                payload: .value(display: "8:00 AM", copyText: "8:00 AM"),
+                canChain: false)
             let actual = CalcEngine.evaluate(query, now: zoneNow, calendar: clock.calendar)
             check(query, expected: "true", got: "\(actual == expected)")
         }
         for query in ["Canada time to China", "Canada timezone to China", "Canada time zone to China"] {
             let expected = CalcResult(
                 expression: "8:00 AM", sourceBadge: "Toronto", targetBadge: "Shanghai",
-                payload: .value(display: "8:00 PM", copyText: "8:00 PM"))
+                payload: .value(display: "8:00 PM", copyText: "8:00 PM"),
+                canChain: false)
             let actual = CalcEngine.evaluate(query, now: zoneNow, calendar: clock.calendar)
             check(query, expected: "true", got: "\(actual == expected)")
         }
@@ -1557,6 +1588,7 @@ struct CalcTests {
         expectDisplay("2hr + 30min to min", "150 min")
 
         localeTests()
+        chainTests()
 
         print("\n\(passes) passed, \(failures) failed")
         exit(failures == 0 ? 0 : 1)
@@ -1720,6 +1752,32 @@ struct CalcTests {
         check("history [exponent]", expected: "1,524157875e+16", got: italian.localized("1.524157875e+16"))
         check("history [english]", expected: "1,234.5", got: CalcNumberFormat.english.localized("1,234.5"))
         check("history [search]", expected: "3.8", got: italian.canonical("3,8") ?? "nil")
+    }
+
+    static func chainTests() {
+        for query in [
+            "2^10", "1/3", "100 usd to eur", "10 km to mi", "1m", "255 to hex", "145 mins to timespan",
+            "20% off 500", "2^10 +"
+        ] {
+            check(query + " [chains]", expected: "true", got: chains(evaluate(query)))
+        }
+        for query in [
+            "now + 90 min", "now + 90 min +", "time in Tokyo", "3pm London in Tokyo", "5 > 3",
+            "ratio of 1920 to 1080"
+        ] {
+            check(query + " [chains]", expected: "false", got: chains(evaluate(query)))
+        }
+        check(
+            "now + 90 min [chains, localized]", expected: "false",
+            got: chains(evaluateLocalized("now + 90 min", italian)))
+    }
+
+    static func evaluate(_ query: String) -> CalcResult? {
+        CalcEngine.evaluate(query, now: clock.now, calendar: clock.calendar, rates: fx)
+    }
+
+    static func chains(_ result: CalcResult?) -> String {
+        result.map { "\($0.canChain)" } ?? "nil"
     }
 
     static func evaluateLocalized(_ query: String, _ format: CalcNumberFormat) -> CalcResult? {
