@@ -402,8 +402,8 @@ screens hold (see [palette.md](palette.md)).
   edge without shifting their initial position; hover keeps the shared 10pt menu-row corner. The
   panel opens and closes from its bottom-right attachment with extension-owned opacity and scale
   timing, briefly reaching 1.003; its attached corner matches the footer button. The first action is
-  the primary ↵ action; an action's own `shortcut` is matched against modified keystrokes.
-  `ExtensionCommandScreen.menuContent` hands the whole panel to the palette as a
+  the primary ↵ action; an action's own `shortcut` is matched against modified keystrokes, with the
+  panel open or closed. `ExtensionCommandScreen.menuContent` hands the whole panel to the palette as a
   `PaletteMenuContent`, so the palette never learns the row type — and a row's handler is taken from
   the flattened `ExtensionAction` list rather than the drawn rows, so ↵ and the panel fire the same
   one without resolving an icon per arrow key. Header accessory symbols use the same 14pt Medium
@@ -433,7 +433,8 @@ screens hold (see [palette.md](palette.md)).
 Escape clears a non-empty search field first, and dispatches `onSearchTextChange` as any other edit
 would, so a command that took the search text over sees the empty string. Only over an empty field do
 Escape and a bare backspace pop the extension's own navigation stack, and only leave the command once
-it's at its root. Pushed screens stay mounted, so popping back restores their state.
+it's at its root. Pushed screens stay mounted, so popping back restores their state. Each pushed
+screen starts with an empty search; going back restores the parent's query and selected row.
 
 ## Turning it on
 
@@ -586,6 +587,11 @@ global Show in launcher switch, or this extension's — because the ranker never
 
 ## Deeplinks
 
+`raycast://extensions/<owner>/<extension>?source=webstore`, used by the Store website's Install
+buttons, opens Settings → Extensions and looks up that exact listing to offer the existing Install
+or Reinstall action. Nothing installs or runs until asked. When extensions are disabled, the link
+opens their Settings pane so they can be enabled through the usual consent flow.
+
 `raycast://extensions/<owner>/<extension>/<command>` runs an installed command from outside the app —
 a browser link, another app, a Shortcut — and `tinycast://` mirrors it so our own links never depend
 on Raycast winning the scheme. Both accept Raycast's query parameters: `arguments` as URL-encoded
@@ -594,7 +600,9 @@ command always takes over the palette, so it launches as `userInitiated`. The ow
 scoped install matches by `owner/extension` first and falls back to the bare slug, so short links
 keep working. Anything else on a claimed scheme just reopens the palette, and an unknown command says
 so rather than failing silently. `ExtensionDeepLink` owns the claimed schemes and the parsing,
-covered by `Tests/ext-test.swift`; an extension's own `open("raycast://…")` resolves through the same
+covered by `Tests/ext-test.swift`. Two-segment links without `source=webstore` keep running commands
+as `<extension>/<command>`; three-segment command links keep running even with that parameter.
+An extension's own `open("raycast://…")` resolves through the same
 `ExtensionManager.resolve(_:)` instead of launching Raycast.
 
 For view commands, nonempty `fallbackText` also prefills the search field: lists and grids filter
@@ -729,6 +737,9 @@ that as absence, like Node. Raycast's Visual Studio Code extension leans on the 
 `vscode-remote://` workspace whose stripped pathname exists locally (an SSH host opened at `/`
 always does) would otherwise pass `isFolderEntry` and reach `fileURLToPath`, which took the whole
 Search Recent Projects command down.
+
+Non-recursive `mkdir` is atomic and returns POSIX error codes. `utimes` updates real timestamps,
+so extension lockfiles can detect stale owners and refresh their heartbeat.
 
 A bundle that ships its own HTTP client rather than calling `fetch` — node-fetch travels inside
 `@raycast/utils`, and axios has a Node adapter — reaches the network through `http.request`, so the

@@ -401,9 +401,8 @@ final class ExtensionHostBridge: ExtensionHostAPI {
             return applications(forPath: arguments.first?.stringValue)
 
         case "defaultApplication":
-            guard let path = arguments.first?.stringValue,
-                let url = NSWorkspace.shared.urlForApplication(
-                    toOpen: URL(fileURLWithPath: (path as NSString).expandingTildeInPath))
+            guard let target = arguments.first?.stringValue,
+                let url = NSWorkspace.shared.urlForApplication(toOpen: targetURL(for: target))
             else { throw ExtensionHostError.unsupported("getDefaultApplication") }
             return describe(application: url)
 
@@ -448,10 +447,14 @@ final class ExtensionHostBridge: ExtensionHostAPI {
         }
     }
 
-    private func open(target: String, application: String?) {
-        let url =
-            URL(string: target).flatMap { $0.scheme == nil ? nil : $0 }
+    /// An `https:` target names a scheme handler, not a file: `fileURLWithPath:` would mangle it.
+    private func targetURL(for target: String) -> URL {
+        URL(string: target).flatMap { $0.scheme == nil ? nil : $0 }
             ?? URL(fileURLWithPath: (target as NSString).expandingTildeInPath)
+    }
+
+    private func open(target: String, application: String?) {
+        let url = targetURL(for: target)
         // Extensions address Raycast by scheme; handing that to the workspace would launch Raycast.
         if ExtensionDeepLink.claims(url) {
             openRaycastURL(url)

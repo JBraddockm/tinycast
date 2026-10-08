@@ -683,6 +683,9 @@ caches, TCC grants and login item, so this cannot disturb an installed copy.
 ### System actions and window management
 
 - A confirmation-gated action (Restart, Quit All) confirms, showing the subject's own glyph
+- Restart and Shut Down follow "Reopen windows when logging back in": after logging back in,
+  apps and windows reopen with it on and stay closed with it off. Check both actions and settings
+  from the launcher and a global hotkey
 - Empty Trash confirms while Finder's "Show warning before emptying the Trash" is on, and runs
   without a dialog once it is off
 - Volume actions show the volume HUD; everything else shows the message pill
@@ -705,6 +708,10 @@ caches, TCC grants and login item, so this cannot disturb an installed copy.
 
 ### Extensions
 
+- Open `raycast://extensions/linear/linear?source=webstore` from a browser: Settings → Extensions
+  offers the exact Store listing with Install (or Reinstall). Close it without installing, then open
+  a different Store link and verify its listing replaces the first. Repeat with extensions disabled:
+  Settings opens without looking up, installing or running anything; enabling still asks for consent.
 - Open a view-command deeplink with `fallbackText=beta`, with the palette hidden and already open:
   the field shows `beta`; a locally filtered List/Grid shows matching rows, and a command using
   `onSearchTextChange` receives the query when it mounts. Repeat without fallback text: the field

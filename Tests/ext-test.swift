@@ -192,11 +192,13 @@ struct ExtensionTests {
         manifestChecks()
         renderNodeChecks()
         screenChecks()
+        navigationSearchChecks()
         actionIconChecks()
         oauthUnitChecks()
         deepLinkChecks()
         nodeShimChecks()
         await runtimeChecks()
+        await navigationSearchRuntimeChecks()
         await searchAccessoryRuntimeChecks()
         await nodeContractChecks()
         await bufferEventChecks()
@@ -934,6 +936,59 @@ struct ExtensionTests {
             bare?.ownerOrAuthor == nil && bare?.extensionName == "demo"
                 && bare?.commandName == "search")
 
+        let installURL = URL(string: "raycast://extensions/linear/linear?source=webstore")!
+        let install = ExtensionDeepLink.Route.storeInstall(.init(handle: "linear", name: "linear"))
+        check(
+            "store Install routes by owner and extension",
+            ExtensionDeepLink.route(url: installURL) == install)
+        check("store Install is never parsed as a command", ExtensionDeepLink.parse(url: installURL) == nil)
+        check(
+            "store Install accepts the Tinycast scheme",
+            ExtensionDeepLink.route(
+                url: URL(string: "tinycast://extensions/linear/linear?source=webstore")!) == install)
+        check(
+            "store Install accepts the path-based scheme",
+            ExtensionDeepLink.route(
+                url: URL(string: "com.raycast:/extensions/linear/linear?source=webstore")!) == install)
+        check(
+            "store Install keeps the publisher separate from the slug",
+            ExtensionDeepLink.route(
+                url: URL(string: "raycast://extensions/acme/demo?source=webstore")!)
+                == .storeInstall(.init(handle: "acme", name: "demo")))
+        check(
+            "store Install decodes path and query values",
+            ExtensionDeepLink.route(
+                url: URL(string: "raycast://extensions/ac%6De/de%6Do?source=web%73tore")!)
+                == .storeInstall(.init(handle: "acme", name: "demo")))
+        check(
+            "store Install tolerates other query parameters and a trailing slash",
+            ExtensionDeepLink.route(
+                url: URL(string: "raycast://extensions/linear/linear/?source=webstore&ref=popular")!)
+                == install)
+        check(
+            "command route preserves short links",
+            ExtensionDeepLink.route(url: URL(string: "raycast://extensions/demo/search")!)
+                == bare.map(ExtensionDeepLink.Route.command))
+        check(
+            "a different source preserves short command links",
+            ExtensionDeepLink.parse(url: URL(string: "raycast://extensions/demo/search?source=shortcut")!)
+                == bare)
+        check(
+            "webstore source preserves a fully qualified command link",
+            ExtensionDeepLink.parse(
+                url: URL(string: "raycast://extensions/linear/linear/create-issue?source=webstore")!)
+                == canonical)
+        check(
+            "store route rejects an incomplete Install link",
+            ExtensionDeepLink.route(url: URL(string: "raycast://extensions/linear?source=webstore")!) == nil)
+        check(
+            "store route rejects other schemes",
+            ExtensionDeepLink.route(
+                url: URL(string: "https://extensions/linear/linear?source=webstore")!) == nil)
+        check(
+            "store route rejects OAuth callbacks",
+            ExtensionDeepLink.route(url: URL(string: "raycast://oauth?source=webstore&code=abc")!) == nil)
+
         let args = ExtensionDeepLink.parse(
             url: URL(
                 string:
@@ -984,6 +1039,100 @@ struct ExtensionTests {
         check(
             "deeplink rejects another extension",
             canonical?.matches(manifestName: "other/other") == false)
+    }
+
+    static func navigationSearchChecks() {
+        let parent = ExtensionSearchState.Screen(query: "github", selection: 2)
+        var search = ExtensionSearchState()
+        check("push starts with empty search and first row", search.navigate(to: 2, current: parent) == .init())
+        check("same-depth render leaves search unchanged", search.navigate(to: 2, current: .init()) == nil)
+        check("pop restores parent query and row", search.navigate(to: 1, current: .init()) == parent)
+        search.queryChanged(to: parent.query)
+        check("query landing preserves restored row", search.landingSelection(for: "github", rowCount: 4) == 2)
+        check("repeated landing preserves restored row", search.landingSelection(for: "github", rowCount: 4) == 2)
+        check("fewer rows clamp restored selection", search.landingSelection(for: "github", rowCount: 1) == 0)
+        check("empty parent has a valid landing", search.landingSelection(for: "github", rowCount: 0) == 0)
+        search.queryChanged(to: "git")
+        check("edited query lands on first row", search.landingSelection(for: "git", rowCount: 4) == 0)
+        search.queryChanged(to: "github")
+        check("retyping old query never revives old selection", search.landingSelection(for: "github", rowCount: 4) == 0)
+
+        let child = ExtensionSearchState.Screen(query: "username", selection: 1)
+        _ = search.navigate(to: 2, current: parent)
+        _ = search.navigate(to: 3, current: child)
+        check("nested pop restores immediate parent", search.navigate(to: 2, current: .init()) == child)
+        check("nested pop restores root", search.navigate(to: 1, current: child) == parent)
+        _ = search.navigate(to: 3, current: parent)
+        check("coalesced push gives skipped screen empty search", search.navigate(to: 2, current: .init()) == .init())
+        check("coalesced push preserves root", search.navigate(to: 1, current: .init()) == parent)
+        _ = search.navigate(to: 2, current: parent)
+        _ = search.navigate(to: 3, current: child)
+        check("multi-level pop restores root", search.navigate(to: 1, current: .init()) == parent)
+
+        let empty = ExtensionSearchState.Screen(selection: 3)
+        _ = search.navigate(to: 2, current: empty)
+        check("equal empty queries still restore row", search.navigate(to: 1, current: .init()) == empty)
+        check("invalid depth does not change search", search.navigate(to: 0, current: parent) == nil)
+        search = ExtensionSearchState()
+        check("new session forgets restored selection", search.landingSelection(for: "", rowCount: 4) == 0)
+        check("new session has no previous parents", search.navigate(to: 1, current: child) == nil)
+    }
+
+    @MainActor
+    static func navigationSearchRuntimeChecks() async {
+        let (runtime, host, recorder) = makeRuntime()
+        defer { runtime.shutdown() }
+        do {
+            try await runtime.boot(config: .current(supportDirectory: URL(fileURLWithPath: "/tmp")))
+        } catch {
+            check("navigation runtime boots", false, "\(error)")
+            return
+        }
+        let command = """
+            const { createElement: h } = require("react");
+            const { List, ActionPanel, Action, useNavigation } = require("@raycast/api");
+            function Details() {
+              return h(List, null,
+                h(List.Item, { title: "Username" }), h(List.Item, { title: "Password" }));
+            }
+            exports.default = function Command() {
+              const { push } = useNavigation();
+              return h(List, null, h(List.Item, { title: "GitHub account", actions:
+                h(ActionPanel, null, h(Action, { title: "Show Details", onAction: () => push(h(Details)) })) }));
+            };
+            """
+        await runtime.start(
+            session: "navigation", code: command, file: URL(fileURLWithPath: "/tmp/navigation.js"),
+            mode: .view, context: launchContext())
+        await settle()
+        guard let parent = recorder.trees.last,
+            let item = ExtensionScreen(tree: parent, query: "github").items.first,
+            let handler = ExtensionScreen.actions(in: item.node.node("actions")).first?.handler
+        else {
+            check("navigation fixture renders searchable parent", false)
+            return
+        }
+        let original = ExtensionSearchState.Screen(query: "github", selection: 0)
+        var search = ExtensionSearchState()
+        await runtime.dispatch(session: "navigation", handler: handler, payload: "[]")
+        await settle()
+        guard let details = recorder.trees.last,
+            let pushed = search.navigate(to: details.depth, current: original)
+        else {
+            check("navigation fixture pushes a list", false)
+            return
+        }
+        check("old query reproduces hidden details", ExtensionScreen(tree: details, query: original.query).items.isEmpty)
+        check("push exposes all detail rows", ExtensionScreen(tree: details, query: pushed.query).items.count == 2)
+        check("runtime pops detail list", await runtime.popNavigation(session: "navigation"))
+        await settle()
+        let restored = recorder.trees.last.flatMap {
+            search.navigate(to: $0.depth, current: pushed)
+        }
+        check("runtime pop restores original search", restored == original)
+        check("navigation reports no runtime failures", recorder.failures.isEmpty, recorder.failures.joined(separator: "\n"))
+        check("navigation needs no external calls", host.calls.isEmpty)
+        await runtime.stop(session: "navigation")
     }
 
     // MARK: - End-to-end through JavaScriptCore
@@ -1471,6 +1620,28 @@ struct ExtensionTests {
               assert.equal(fs.readFileSync(moved).subarray(0, 3).toString(), "YaX");
               const listing = "\(directory.path)/listing";
               fs.mkdirSync(listing + "/folder", { recursive: true });
+              assert.equal(code(() => fs.mkdirSync(listing + "/folder")), "EEXIST");
+              assert.equal(code(() => fs.mkdirSync(moved)), "EEXIST");
+              assert.equal(code(() => fs.mkdirSync(listing + "/missing/child")), "ENOENT");
+              assert.equal(await call("mkdir", listing + "/folder").then(
+                () => "none", (error) => error.code), "EEXIST");
+              fs.mkdirSync(listing + "/folder", { recursive: true });
+              fs.utimesSync(listing, new Date(1000000), new Date(2000005));
+              assert.equal(fs.statSync(listing).mtime.getTime(), 2000005);
+              await call("utimes", listing, 3000, 4000.25);
+              assert.equal(fs.statSync(listing).mtime.getTime(), 4000250);
+              await fs.promises.utimes(listing, "5000", "6000.125");
+              assert.equal(fs.statSync(listing).mtime.getTime(), 6000125);
+              for (const stamp of [1700000000001, 1700000000999, Date.now()]) {
+                await call("utimes", listing, new Date(stamp), new Date(stamp));
+                assert.equal(fs.statSync(listing).mtime.getTime(), stamp);
+              }
+              const touched = Date.now();
+              fs.utimesSync(listing, -1, -1);
+              assert(fs.statSync(listing).mtimeMs >= touched);
+              assert(fs.statSync(listing).mtimeMs <= Date.now());
+              assert.equal(code(() => fs.utimesSync(listing + "/missing", 0, 0)), "ENOENT");
+              assert.equal(code(() => fs.utimesSync(listing, Infinity, 0)), "ERR_INVALID_ARG_VALUE");
               fs.writeFileSync(listing + "/entry", "");
               const handle = fs.opendirSync(listing);
               assert.equal(handle.path, listing);
