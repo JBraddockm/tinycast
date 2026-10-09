@@ -211,7 +211,7 @@ struct RootPaletteView: View {
                 },
                 PopoverMenuItem(
                     title: "Quit \(appName)", systemImage: "rectangle.portrait.and.arrow.right",
-                    startsSection: true, isDestructive: true
+                    isDestructive: true
                 ) {
                     NSApp.terminate(nil)
                 }
@@ -231,6 +231,7 @@ struct RootPaletteView: View {
             let filtered = appMenuContent.matching(ActionMenuSearchQuery(vm.menuQuery))
             return PaletteMenuContent(
                 popover: filtered.content, selection: $menuSelection,
+                visibleRows: Theme.Size.appMenuVisibleRows,
                 search: PopoverMenu.Search(
                     placeholder: "Search for actions…", placement: .bottom),
                 onActivate: activateMenuItem, preferredSelection: filtered.bestMatch)
@@ -300,15 +301,6 @@ struct RootPaletteView: View {
                 }
                 // The panel has no title bar, so this thin top margin is the only place left to grab it.
                 .overlay(alignment: .top) { topDragStrip }
-                // Never conditionally mounted: unmounting strands SwiftUI's hover target and eats clicks.
-                .overlay {
-                    Color.black.opacity(0.001)
-                        .contentShape(Rectangle())
-                        // Not a tap: a drifting press must still dismiss, the way a native menu's does.
-                        .gesture(DragGesture(minimumDistance: 0).onChanged { _ in closeMenus() })
-                        .onRightClick { closeMenus() }
-                        .allowsHitTesting(menuOpen)
-                }
                 // The menu lives in its own window; this only reports the one to hang it from.
                 .background(
                     WindowReader {
@@ -461,6 +453,7 @@ struct RootPaletteView: View {
             .onAppear {
                 searchFocused = !screen.hidesSearchField
                 land()
+                focusPendingArgument()
             }
             .modifier(SearchFieldHiding(hidden: hidesSearchField, apply: applySearchFieldHiding))
             // Several paths flip `paletteIsCollapsed`, so resize the window to match.
@@ -772,10 +765,15 @@ struct RootPaletteView: View {
                 Text("Quick AI")
                     .font(metrics.typography.bar)
                     .foregroundStyle(Theme.Colors.textSecondary)
-                KeyCapChip(text: "⇥", style: .outline)
+                SymbolImage(
+                    name: CommandID.quickAI.sfSymbol,
+                    size: metrics.scaled(Theme.Typography.menuSymbolSize), monochrome: true
+                )
+                .foregroundStyle(Theme.Colors.textSecondary)
+                .accessibilityHidden(true)
             }
         }
-        .help("Ask Quick AI what you typed  ⇥")
+        .help("Ask Quick AI")
     }
 
     /// Resolved through `PaletteTabAction`, so the hint cannot promise the wrong destination.
@@ -1081,6 +1079,7 @@ struct RootPaletteView: View {
 
     private func closeMenus() {
         menuPanel.hide()
+        if menuOpen { searchFocused = !screen.hidesSearchField }
         openMenu = nil
         argumentOptionsField = nil
         vm.menuQuery = ""

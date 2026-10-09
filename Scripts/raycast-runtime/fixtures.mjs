@@ -295,6 +295,22 @@ module.exports.default = () => {
 };
 `;
 
+// apple-passwords lazily requires `@raycast/api` through `createRequire`, so it must resolve
+// through the same registry as a top-level require.
+const createRequireSource = `
+import { createRequire } from "module";
+import { Detail } from "@raycast/api";
+
+const requireFromHere = createRequire("/fixtures/package.json");
+
+export default function Command() {
+  const api = requireFromHere("@raycast/api");
+  const path = requireFromHere("node:path");
+  const parts = [String(api.List !== undefined), String(api.ActionPanel !== undefined), path.join("a", "b")];
+  return <Detail markdown={parts.join("\\n")} />;
+}
+`;
+
 // Bundled HTTP clients (axios) construct and probe a Response at module scope, before any component
 // mounts — a host-shaped constructor took the whole command down with them.
 const responseSource = `
@@ -439,6 +455,30 @@ export default async function Command() {
     request.on("error", reject);
     request.end("ping");
   });
+}
+`;
+
+const unixHTTPSource = `
+import http from "node:http";
+
+export default async function Command() {
+  globalThis.__unixHTTP = [];
+  for (const input of [
+    { socketPath: "/var/run/docker.sock", path: "/containers/json?all=1", method: "post" },
+    "http://unused.test/images/json",
+  ]) {
+    const result = await new Promise((resolve, reject) => {
+      const options = typeof input === "string" ? { socketPath: "/tmp/docker.sock" } : {};
+      const request = http.request(input, options, (response) => {
+        const chunks = [];
+        response.on("data", (chunk) => chunks.push(chunk));
+        response.on("end", () => resolve({ status: response.statusCode, hex: Buffer.concat(chunks).toString("hex") }));
+      });
+      request.on("error", reject);
+      request.end(Buffer.from([0, 255, 1]));
+    });
+    globalThis.__unixHTTP.push(result);
+  }
 }
 `;
 
@@ -923,6 +963,12 @@ export async function runFixtures() {
     expected.forEach((value, index) => check(`shim ${index}: ${value}`, markdown[index] === value, markdown[index]));
   });
 
+  await run("createRequire resolves through the module registry", createRequireSource, "view", async (harness) => {
+    const markdown = findNode(harness.state.trees.at(-1), "Detail").props.markdown.split("\n");
+    check("lazily requires @raycast/api", markdown[0] === "true" && markdown[1] === "true", markdown.join(","));
+    check("resolves a Node builtin", markdown[2] === "a/b", markdown[2]);
+  });
+
   await run("Response takes the Web spec's constructor", responseSource, "no-view", async (harness) => {
     const result = harness.call("globalThis.__response");
     const equals = (actual, expected) => JSON.stringify(actual) === JSON.stringify(expected);
@@ -1021,6 +1067,7 @@ export async function runFixtures() {
       const result = harness.call("globalThis.__http");
       const spec = httpSpecs[0] ?? {};
       check("sends one request over the fetch bridge", httpSpecs.length === 1, String(httpSpecs.length));
+      check("ordinary HTTP does not select a Unix socket", spec.socketPath === undefined);
       check("uppercases the method", spec.method === "POST", String(spec.method));
       check("joins a multi-valued header", spec.headers?.["x-probe"] === "one, two", JSON.stringify(spec.headers));
       check("leaves content negotiation to the transport", spec.headers?.["accept-encoding"] === undefined);
@@ -1046,6 +1093,19 @@ export async function runFixtures() {
       },
     },
   );
+
+  const unixSpecs = [];
+  await run("Docker HTTP preserves its Unix socket", unixHTTPSource, "no-view", async (harness) => {
+    check("options preserve Docker's socket path", unixSpecs[0]?.socketPath === "/var/run/docker.sock");
+    check("URL requests preserve the supplied socket", unixSpecs[1]?.socketPath === "/tmp/docker.sock");
+    check("keeps the API path and query", unixSpecs[0]?.url === "http://localhost/containers/json?all=1");
+    check("keeps the request method and binary body", unixSpecs[0]?.method === "POST" && unixSpecs[0]?.bodyBase64 === "AP8B");
+    const result = harness.call("globalThis.__unixHTTP");
+    check("returns HTTP errors and binary bodies", result?.length === 2 && result.every((r) => r.status === 404 && r.hex === "00ff01"));
+  }, { stubs: { "fetch.request": ([spec]) => {
+    unixSpecs.push(spec);
+    return { status: 404, headers: {}, bodyBase64: "AP8B" };
+  } } });
 
   const socketOpens = [];
   const lookups = [];
