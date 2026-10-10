@@ -30,8 +30,10 @@ struct NotesEditorTests {
         testTaskRuleCheckboxesAndLinks()
         testTasks()
         testTaskEdits()
+        testMarkersFollowAWrappedFirstWord()
         testTextHeight(rendersMarkdown: false)
         testTextHeight(rendersMarkdown: true)
+        testHeightBeforeDraw()
         print(failures == 0 ? "Notes editor tests passed" : "\(failures) tests failed")
         exit(failures == 0 ? 0 : 1)
     }
@@ -39,30 +41,108 @@ struct NotesEditorTests {
     private static func testTextHeight(rendersMarkdown: Bool) {
         let input = NoteEditorInput(id: NoteID(rawValue: "Sizing.md"), source: "", epoch: 0)
         let editor = makeEditor(input: input, rendersMarkdown: rendersMarkdown)
-        let emptyHeight = editor.textView.textHeight()
+        let emptyHeight = editor.textView.textHeight(upTo: .infinity)
         check(
             "an empty note measures shorter than the visible area", emptyHeight < editor.textView.frame.height
         )
 
         let lines = String(repeating: "A line of text\n", count: 20)
         editor.textView.insertText(lines, replacementRange: editor.textView.selectedRange())
-        let multilineHeight = editor.textView.textHeight()
+        let multilineHeight = editor.textView.textHeight(upTo: .infinity)
         check("new lines grow the measured height at once", multilineHeight > emptyHeight)
 
         let wrappedText = String(repeating: "wrapped words ", count: 80)
         editor.textView.insertText(wrappedText, replacementRange: editor.textView.selectedRange())
-        let wrappedHeight = editor.textView.textHeight()
+        let wrappedHeight = editor.textView.textHeight(upTo: .infinity)
         check("wrapped text grows the measured height without a newline", wrappedHeight > multilineHeight)
 
         let pasteboard = NSPasteboard.withUniqueName()
         defer { pasteboard.releaseGlobally() }
         paste("\n" + lines, into: editor.textView, from: pasteboard)
-        check("paste grows the measured height", editor.textView.textHeight() > wrappedHeight)
+        check("paste grows the measured height", editor.textView.textHeight(upTo: .infinity) > wrappedHeight)
 
         editor.textView.selectAll(nil)
         editor.textView.deleteBackward(nil)
         check(
-            "deleting the text shrinks the measured height back", editor.textView.textHeight() == emptyHeight)
+            "deleting the text shrinks the measured height back",
+            editor.textView.textHeight(upTo: .infinity) == emptyHeight)
+    }
+
+    /// The fit reads before any draw, so each height here is read right after its edit returns.
+    private static func testHeightBeforeDraw() {
+        let mixed = [
+            "# Title", "Intro", "", "## Section", "- item", "- [ ] task", "1. one", "> quote", "---", "```",
+            "let x = 1", "```", "| a | b |", "| --- | --- |", "| 1 | 2 |", "", "last"
+        ].joined(separator: "\n")
+        let notes = [
+            ("list", "Ideas:\n- First\n- Second\n- Third"), ("mixed", mixed), ("trailing newline", "a\n- b\n")
+        ]
+        for rendersMarkdown in [true, false] {
+            for (name, source) in notes {
+                checkHeightBeforeDraw(
+                    of: "\(rendersMarkdown ? "rendered" : "literal") \(name) note", source: source,
+                    rendersMarkdown: rendersMarkdown)
+            }
+        }
+
+        let long = makeEditor(
+            input: NoteEditorInput(
+                id: NoteID(rawValue: "Long.md"), source: String(repeating: "- Item\n", count: 60), epoch: 0),
+            rendersMarkdown: true)
+        let limit = Theme.Size.noteWindowMaxHeight
+        let measured = long.textView.textHeight(upTo: limit)
+        check("a note taller than the window still measures past its limit", measured >= limit)
+        check(
+            "measuring stops near the limit instead of laying out the rest",
+            measured < laidOutHeight(of: long.textView))
+    }
+
+    private static func checkHeightBeforeDraw(of note: String, source: String, rendersMarkdown: Bool) {
+        let editor = makeEditor(
+            input: NoteEditorInput(id: NoteID(rawValue: "Heights.md"), source: source, epoch: 0),
+            rendersMarkdown: rendersMarkdown)
+        let textView = editor.textView
+        let length = { (textView.string as NSString).length }
+        func edit(_ name: String, at location: Int? = nil, _ change: () -> Void) {
+            if let location { textView.setSelectedRange(NSRange(location: location, length: 0)) }
+            change()
+            let measured = textView.textHeight(upTo: Theme.Size.noteWindowMaxHeight)
+            check(
+                "\(name) in a \(note) measures its height before a draw",
+                measured == laidOutHeight(of: textView))
+        }
+        edit("typing at the end", at: length()) {
+            textView.insertText("x", replacementRange: textView.selectedRange())
+        }
+        edit("Return at the end") { textView.insertNewline(nil) }
+        edit("Return in the middle", at: length() / 2) { textView.insertNewline(nil) }
+        edit("typing in the middle") { textView.insertText("y", replacementRange: textView.selectedRange()) }
+        edit("Delete in the middle") { textView.deleteBackward(nil) }
+        edit("Delete at a line's start") { textView.deleteBackward(nil) }
+        edit("a second Delete there") { textView.deleteBackward(nil) }
+        edit("Return at the start", at: 0) { textView.insertNewline(nil) }
+        edit("undo") { editor.coordinator.editorUndoManager.undo() }
+        edit("switching notes") {
+            editor.coordinator.update(
+                NoteEditorInput(id: NoteID(rawValue: "Other.md"), source: source, epoch: 0))
+        }
+        edit("deleting everything") {
+            textView.selectAll(nil)
+            textView.deleteBackward(nil)
+        }
+        withExtendedLifetime(editor) {}
+    }
+
+    /// Where the last line sits once the whole note is laid out, as a draw would leave it.
+    private static func laidOutHeight(of textView: NSTextView) -> CGFloat {
+        guard let manager = textView.textLayoutManager else { return -1 }
+        manager.ensureLayout(for: manager.documentRange)
+        var bottom: CGFloat = 0
+        manager.enumerateTextLayoutFragments(from: manager.documentRange.endLocation, options: [.reverse]) {
+            bottom = $0.layoutFragmentFrame.maxY
+            return false
+        }
+        return bottom + textView.textContainerInset.height * 2
     }
 
     private static func testLiteralEditingAndNativeCommands(rendersMarkdown: Bool) {
@@ -427,7 +507,7 @@ struct NotesEditorTests {
         let second = text.range(of: "- [x] second").location
         if let top = fragments[0], let bottom = fragments[second] {
             let box = { (fragment: NSTextLayoutFragment) -> CGRect in
-                let line = fragment.textLineFragments.first?.typographicBounds ?? .zero
+                let line = (fragment as? NoteBlockLayoutFragment)?.firstLine ?? .zero
                 return NoteCheckboxGeometry.rect(
                     level: 0, firstLineHeight: line.height,
                     bodyPointSize: NoteMarkdownTypography.body.pointSize
@@ -559,7 +639,7 @@ struct NotesEditorTests {
             "consecutive code rows abut with no seam",
             fenceFrame != nil && fenceFrame?.maxY == codeFrame?.minY)
         if let task = fragment("- [ ] open") as? NoteBlockLayoutFragment {
-            let firstLine = task.textLineFragments.first?.typographicBounds ?? .zero
+            let firstLine = task.firstLine
             let box = NoteCheckboxGeometry.rect(
                 level: 0, firstLineHeight: firstLine.height,
                 bodyPointSize: NoteMarkdownTypography.body.pointSize)
@@ -872,11 +952,48 @@ struct NotesEditorTests {
             ?? NSEvent()
     }
 
+    /// A first word too wide for the line strands the hidden marker on a hairline above it.
+    private static func testMarkersFollowAWrappedFirstWord() {
+        let word = String(repeating: "wrap", count: 40)
+        let source = "- \(word)\n- [ ] \(word)\n1. \(word)"
+        let taskStart = (source as NSString).range(of: "- [ ]").location
+        let orderedStart = (source as NSString).range(of: "1. ").location
+        var changes: [String] = []
+        let editor = makeEditor(
+            input: NoteEditorInput(id: NoteID(rawValue: "LongWords.md"), source: source, epoch: 0),
+            rendersMarkdown: true, onSourceChange: { changes.append($0) })
+        let fragments = layoutFragments(in: editor.textView)
+        guard let bullet = fragments[0] as? NoteBlockLayoutFragment,
+            let task = fragments[taskStart] as? NoteBlockLayoutFragment,
+            let ordered = fragments[orderedStart] as? NoteBlockLayoutFragment,
+            [bullet, task, ordered].allSatisfy({ $0.textLineFragments.count > 1 })
+        else { return check("long first words wrap inside their list items", false) }
+        check(
+            "a long first word leaves the hidden marker on a hairline",
+            bullet.textLineFragments[0].typographicBounds.height < 1)
+        check(
+            "the bullet lines up with the first line of text",
+            bullet.firstLine == bullet.textLineFragments[1].typographicBounds)
+        let orderedText = ordered.textLineFragments[1]
+        check(
+            "the number sits on the first line of text's baseline",
+            ordered.firstBaseline == orderedText.typographicBounds.minY + orderedText.glyphOrigin.y)
+
+        let text = task.textLineFragments[1].typographicBounds
+        let box = NoteCheckboxGeometry.rect(
+            level: 0, firstLineHeight: text.height, bodyPointSize: NoteMarkdownTypography.body.pointSize)
+        let lowerEdge = CGPoint(x: box.midX, y: task.layoutFragmentFrame.minY + text.minY + box.maxY - 1)
+        check(
+            "a checkbox under a long first word clicks where it is drawn",
+            editor.textView.toggleTask(atContainerPoint: lowerEdge))
+        check("clicking it checks that task", changes.last?.contains("- [x] ") == true)
+    }
+
     private static func checkboxCenter(in textView: NSTextView, lineStart: Int) -> CGPoint? {
         guard let fragment = layoutFragments(in: textView)[lineStart] as? NoteBlockLayoutFragment else {
             return nil
         }
-        let firstLine = fragment.textLineFragments.first?.typographicBounds ?? .zero
+        let firstLine = fragment.firstLine
         let box = NoteCheckboxGeometry.rect(
             level: 0, firstLineHeight: firstLine.height, bodyPointSize: NoteMarkdownTypography.body.pointSize)
         return CGPoint(x: box.midX, y: fragment.layoutFragmentFrame.minY + firstLine.minY + box.midY)

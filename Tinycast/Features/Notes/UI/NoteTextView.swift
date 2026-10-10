@@ -56,16 +56,17 @@ final class NoteTextView: NSTextView, InjectableTextView {
     }
 
     /// The frame never gets shorter than the clip view, so only the layout knows the text's height.
-    func textHeight() -> CGFloat {
+    func textHeight(upTo limit: CGFloat) -> CGFloat {
         guard let textLayoutManager else { return frame.height }
-        var bottom: CGFloat = 0
+        var height: CGFloat = 0
+        // Summed: until the next draw, the lines below an edit keep their old origins.
         textLayoutManager.enumerateTextLayoutFragments(
-            from: textLayoutManager.documentRange.endLocation, options: [.reverse, .ensuresLayout]
+            from: textLayoutManager.documentRange.location, options: [.ensuresLayout]
         ) { fragment in
-            bottom = fragment.layoutFragmentFrame.maxY
-            return false
+            height += fragment.layoutFragmentFrame.height
+            return height < limit
         }
-        return bottom + textContainerInset.height * 2
+        return height + textContainerInset.height * 2
     }
 
     override func draw(_ dirtyRect: NSRect) {
@@ -263,7 +264,7 @@ final class NoteTextView: NSTextView, InjectableTextView {
             let fragment = textLayoutManager?.textLayoutFragment(for: point) as? NoteBlockLayoutFragment,
             case .task(let level, _) = fragment.decoration.shape
         else { return nil }
-        let firstLine = fragment.textLineFragments.first?.typographicBounds ?? .zero
+        let firstLine = fragment.firstLine
         let box = NoteCheckboxGeometry.rect(
             level: level, firstLineHeight: firstLine.height,
             bodyPointSize: fragment.decoration.bodyPointSize
