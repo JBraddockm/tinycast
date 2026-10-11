@@ -675,6 +675,42 @@ struct SnippetsTests {
         check(
             "the reader's clipboard is restored afterwards",
             backing.string(forType: .string) == "Original")
+
+        let manager = ClipboardManager()
+        let paused = TextInjector(clipboardManager: manager, settings: AppSettings())
+        seed("Original")
+        let probe = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(60))
+            let pausesAtCopy = manager.pauses
+            let item = NSPasteboardItem()
+            item.setString("the selection", forType: .string)
+            backing.clearContents()
+            _ = backing.writeObjects([item])
+            return pausesAtCopy
+        }
+        _ = await paused.copySelection(from: nil, pasteboard: pasteboard)
+        let pausesAtCopy = await probe.value
+        check("history is paused while the borrowed copy lands", pausesAtCopy == 1)
+        check("the restore is baselined before history resumes", manager.syncedWhilePaused)
+        check("a landed copy resumes history", manager.pauses == 0)
+        _ = await paused.copySelection(from: nil, pasteboard: pasteboard)
+        check("a copy that never lands resumes history", manager.pauses == 0)
+
+        // Two borrows in flight: the later one must not read the earlier one's restore as a copy.
+        seed("Secret")
+        let first = Task { @MainActor in
+            await injector.copySelection(from: nil, pasteboard: pasteboard)
+        }
+        try? await Task.sleep(for: .milliseconds(100))
+        let second = await injector.copySelection(from: nil, pasteboard: pasteboard)
+        let earlier = await first.value
+        check(
+            "overlapping borrows never return the clipboard as a selection: "
+                + "\(earlier ?? "nil"), \(second ?? "nil")",
+            earlier == nil && second == nil)
+        check(
+            "overlapping borrows leave the clipboard as it was",
+            backing.string(forType: .string) == "Secret")
     }
 
     /// Our panels never activate, so the frontmost app is not where the typist's caret is.
@@ -1579,17 +1615,21 @@ struct SnippetsTests {
             SnippetTemplateEngine.expand(aliasSnippet, snippets: [], context: context).text
                 == "[a b&c]")
 
-        // usesSelection drives the selection-fallback setting.
         check(
-            "usesSelection sees both spellings",
-            SnippetTemplateEngine.usesSelection("a {selection} b")
-                && SnippetTemplateEngine.usesSelection("a {selectedText} b"))
+            "readsSelection sees both spellings",
+            expand("a {selection} b").readsSelection && expand("a {selectedText} b").readsSelection)
         check(
-            "usesSelection is false for a template that reads no selection",
-            !SnippetTemplateEngine.usesSelection("{clipboard} {date}"))
+            "readsSelection is false for a template that reads no selection",
+            !expand("{clipboard} {date}").readsSelection)
         check(
-            "usesSelection parses rather than searches, so a malformed token does not count",
-            !SnippetTemplateEngine.usesSelection("{selection offset=1}"))
+            "readsSelection parses rather than searches, so a malformed token does not count",
+            !expand("{selection offset=1}").readsSelection)
+        let quoting = record("/tmp/quoting.md", Snippet(name: "Quoting", text: "> {selection}"))
+        let quoted = record("/tmp/quoted.md", Snippet(name: "Quoted", text: "{snippet:Quoting}"))
+        check(
+            "readsSelection reaches into a nested snippet",
+            SnippetTemplateEngine.expand(quoted, snippets: [quoting, quoted], context: context)
+                .readsSelection)
 
         // {query} is Raycast's spelling of {argument}.
         check(
@@ -2033,7 +2073,13 @@ private final class StubPasteboard: PasteboardAccess {
 final class ClipboardManager {
     static let internalType = NSPasteboard.PasteboardType("com.tinycast.internal")
     func prepareForTinycastPasteboardMutation() {}
-    func synchronizeAfterTinycastPasteboardMutation(changeCount: Int) {}
+    private(set) var pauses = 0
+    private(set) var syncedWhilePaused = false
+    func synchronizeAfterTinycastPasteboardMutation(changeCount: Int) {
+        syncedWhilePaused = pauses > 0
+    }
+    func pauseCapture() { pauses += 1 }
+    func resumeCapture() { pauses -= 1 }
 }
 
 @MainActor

@@ -45,6 +45,8 @@ enum SettingsFileSchema {
         case .hyperKey: return bind(settings, \.hyperKey)
         case .hyperKeyIncludesShift: return bind(settings, \.hyperKeyIncludesShift)
         case .hyperKeyQuickPress: return bind(settings, \.hyperKeyQuickPress)
+        case .hyperKeySecureInputCompatibility:
+            return bind(settings, \.hyperKeySecureInputCompatibility)
         case .calcNumberStyle: return bind(settings, \.calcNumberStyle)
         case .launcherShowsSuggestions: return bind(settings, \.launcherShowsSuggestions)
         case .rootSearchSensitivity: return bind(settings, \.rootSearchSensitivity)
@@ -62,7 +64,7 @@ enum SettingsFileSchema {
         case .quicklinksEnabled: return bind(settings, \.quicklinksEnabled)
         case .quicklinksShowInLauncher: return bind(settings, \.quicklinksShowInLauncher)
         case .quicklinkOpensNewWindow: return bind(settings, \.quicklinkOpensNewWindow)
-        case .quicklinkSelectionFallback: return bind(settings, \.quicklinkSelectionFallback)
+        case .quicklinkPassesSelectedText: return bind(settings, \.quicklinkPassesSelectedText)
         case .quicklinkConfirmsBeforeDelete: return bind(settings, \.quicklinkConfirmsBeforeDelete)
         case .quicklinkCommands: return launcher.commandsBinding(for: key, owner: .quicklinks)
         case .appleShortcutsEnabled: return bind(settings, \.appleShortcutsEnabled)
@@ -163,7 +165,6 @@ extension HyperKeyPhysicalKey: SettingsFileRawValue {}
 extension HyperKeyQuickPress: SettingsFileRawValue {}
 extension CalcNumberStyle: SettingsFileRawValue {}
 extension SearchSensitivity: SettingsFileRawValue {}
-extension QuicklinkSelectionFallback: SettingsFileRawValue {}
 extension WindowCycle: SettingsFileRawValue {}
 extension ClipboardDefaultAction: SettingsFileRawValue {}
 extension EmojiSkinTone: SettingsFileRawValue {}

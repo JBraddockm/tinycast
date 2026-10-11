@@ -9,9 +9,14 @@ struct QuicklinkCoordinatorTests {
 
     static func main() async throws {
         try await missingSelection()
+        try await missingSelectionWithoutAccessibility()
         try await readableSelection()
-        try await clipboardFallback()
-        try await combinedArguments()
+        try await copiedSelection()
+        try await argumentsBeforeSelection()
+        try await defaultAppOverride()
+        try await hotKeySelectedText()
+        try await hotKeySelectedTextTargets()
+        try await hotKeyCopiesOnce()
         try await plainLink()
         try copying()
         try editing()
@@ -25,38 +30,34 @@ struct QuicklinkCoordinatorTests {
         for token in ["selection", "selectedText"] {
             let fixture = try Fixture(link: "https://de.wikipedia.org/w/index.php?search={\(token)}")
             defer { fixture.cleanUp() }
-            fixture.coordinator.openQuicklink(id: fixture.link.id, forcingDefaultApp: true)
+            fixture.coordinator.openQuicklinkFromHotKey(id: fixture.link.id)
             try await Task.sleep(for: .milliseconds(1))
-            expect(QuicklinkLauncher.opened.isEmpty, "an unreadable \(token) never opens an empty search")
-            expect(fixture.window.isVisible, "an unreadable \(token) shows Search Quicklinks")
-            expect(fixture.core.palette.selection == 1, "the prompt selects the requested quicklink")
+            expect(QuicklinkLauncher.opened.isEmpty, "an empty \(token) never opens an empty search")
+            expect(fixture.palette.shows == 0, "an empty \(token) asks for nothing")
             expect(
-                fixture.core.palette.pendingArgumentEntryID == fixture.link.entryID,
-                "the prompt requests argument focus after showing the palette")
-            expect(
-                fixture.accessory()?.firstIncompleteField == "Selected Text",
-                "the selection field receives focus")
-
-            fixture.core.palette.pendingArgumentEntryID = nil
-            fixture.coordinator.openQuicklink(id: fixture.link.id)
-            try await Task.sleep(for: .milliseconds(1))
-            expect(QuicklinkLauncher.opened.isEmpty, "submitting the empty selection field keeps prompting")
-            fixture.coordinator.openQuicklink(id: fixture.link.id, values: ["Selected Text": "Swift & macOS"])
-            await waitForOpen()
-            expect(
-                QuicklinkLauncher.opened.first?.link
-                    == "https://de.wikipedia.org/w/index.php?search=Swift%20%26%20macOS",
-                "manual selection is encoded once")
-            expect(QuicklinkLauncher.opened.first?.app == nil, "the default-app override survives the prompt")
-            expect(!fixture.window.isVisible, "a completed prompt closes the palette")
+                fixture.core.messages == ["Couldn’t get the selected text"],
+                "an empty \(token) reports the failure")
+            expect(fixture.injector.copies == 1, "an unreadable \(token) is tried once with ⌘C")
         }
+    }
+
+    static func missingSelectionWithoutAccessibility() async throws {
+        let fixture = try Fixture()
+        defer { fixture.cleanUp() }
+        Permissions.isTrusted = false
+        defer { Permissions.isTrusted = true }
+        fixture.coordinator.openQuicklink(id: fixture.link.id)
+        try await Task.sleep(for: .milliseconds(1))
+        expect(
+            fixture.core.messages == ["Allow Tinycast to use Accessibility in System Settings"],
+            "without Accessibility the failure names the permission")
     }
 
     static func readableSelection() async throws {
         let fixture = try Fixture()
         defer { fixture.cleanUp() }
         fixture.injector.selection = "selected text"
-        expect(fixture.accessory()?.firstIncompleteField == nil, "a normal selection chip stays optional")
+        expect(fixture.accessory() == nil, "{selection} adds no field to the header")
         fixture.coordinator.openQuicklink(id: fixture.link.id)
         await waitForOpen()
         expect(
@@ -64,6 +65,7 @@ struct QuicklinkCoordinatorTests {
             "a readable selection opens immediately")
         expect(fixture.palette.shows == 0, "a readable selection needs no prompt")
         expect(QuicklinkLauncher.opened.first?.app == "com.example.browser", "the saved handler is used")
+        expect(fixture.injector.copies == 0, "a readable selection never sends ⌘C")
 
         QuicklinkLauncher.opened = []
         fixture.window.isVisible = true
@@ -72,43 +74,130 @@ struct QuicklinkCoordinatorTests {
         expect(fixture.injector.target == .previous, "palette activation reads the previous app")
     }
 
-    static func clipboardFallback() async throws {
+    static func copiedSelection() async throws {
         let fixture = try Fixture()
         defer { fixture.cleanUp() }
-        fixture.settings.quicklinkSelectionFallback = .clipboard
+        fixture.injector.copied = "Swift & macOS"
+        fixture.window.isVisible = true
         fixture.coordinator.openQuicklink(id: fixture.link.id)
         await waitForOpen()
         expect(
-            QuicklinkLauncher.opened.first?.link == "https://example.com/?q=clipboard%20text",
-            "clipboard fallback still opens without prompting")
-        expect(fixture.palette.shows == 0, "clipboard fallback never requests selection input")
-        expect(fixture.accessory() == nil, "clipboard fallback has no selection chip")
+            QuicklinkLauncher.opened.first?.link == "https://example.com/?q=Swift%20%26%20macOS",
+            "a selection only ⌘C can read still opens the link")
+        expect(!fixture.window.isVisible, "the palette steps aside so the ⌘C reaches the app")
     }
 
-    static func combinedArguments() async throws {
-        let fixture = try Fixture(link: "https://example.com/?q={selection}&site={argument name=\"Site\"}")
+    static let selectionAndSite = "https://example.com/?q={selection}&site={argument name=\"Site\"}"
+
+    static func argumentsBeforeSelection() async throws {
+        let fixture = try Fixture(link: selectionAndSite)
         defer { fixture.cleanUp() }
+        fixture.coordinator.openQuicklink(id: fixture.link.id)
+        try await Task.sleep(for: .milliseconds(1))
+        expect(
+            fixture.accessory()?.firstIncompleteField == "Site" && fixture.core.messages.isEmpty,
+            "a missing argument is asked for before the selection is judged")
+        expect(fixture.injector.copies == 0, "no ⌘C is sent while arguments are still owed")
+
         fixture.coordinator.openQuicklink(id: fixture.link.id, values: ["Site": "swift.org"])
         try await Task.sleep(for: .milliseconds(1))
-        expect(QuicklinkLauncher.opened.isEmpty, "filled arguments cannot bypass a missing selection")
         expect(
-            fixture.accessory()?.firstIncompleteField == "Selected Text",
-            "filled arguments leave selection focused")
-        expect(
-            fixture.core.palette.commandArguments[PaletteState.argumentKey(fixture.link.entryID, "Site")]
-                == "swift.org",
-            "the selection prompt preserves entered arguments")
+            QuicklinkLauncher.opened.isEmpty
+                && fixture.core.messages == ["Couldn’t get the selected text"],
+            "filled arguments cannot bypass a missing selection")
 
-        fixture.coordinator.openQuicklink(id: fixture.link.id, values: ["Selected Text": "Swift"])
-        expect(
-            fixture.accessory()?.firstIncompleteField == "Site",
-            "a required argument is focused before selection")
-        fixture.coordinator.openQuicklink(
-            id: fixture.link.id, values: ["Selected Text": "Swift", "Site": "swift.org"])
+        fixture.injector.selection = "Swift"
+        fixture.coordinator.openQuicklink(id: fixture.link.id, values: ["Site": "swift.org"])
         await waitForOpen()
         expect(
             QuicklinkLauncher.opened.first?.link == "https://example.com/?q=Swift&site=swift.org",
             "selection and declared arguments resolve together")
+    }
+
+    static func defaultAppOverride() async throws {
+        let fixture = try Fixture(link: selectionAndSite)
+        defer { fixture.cleanUp() }
+        fixture.injector.selection = "Swift"
+        fixture.coordinator.openQuicklink(id: fixture.link.id, forcingDefaultApp: true)
+        try await Task.sleep(for: .milliseconds(1))
+        fixture.coordinator.openQuicklink(id: fixture.link.id, values: ["Site": "swift.org"])
+        await waitForOpen()
+        expect(
+            QuicklinkLauncher.opened.first?.app == nil,
+            "the default-app override survives the argument prompt")
+    }
+
+    static func hotKeySelectedText() async throws {
+        let fixture = try Fixture(link: "https://example.com/?q={argument name=\"Query\"}")
+        defer { fixture.cleanUp() }
+        fixture.injector.selection = "  Swift & macOS\n"
+        fixture.coordinator.openQuicklinkFromHotKey(id: fixture.link.id)
+        try await Task.sleep(for: .milliseconds(1))
+        expect(QuicklinkLauncher.opened.isEmpty, "off by default, a shortcut still asks for the argument")
+
+        fixture.settings.quicklinkPassesSelectedText = true
+        fixture.coordinator.openQuicklink(id: fixture.link.id)
+        try await Task.sleep(for: .milliseconds(1))
+        expect(QuicklinkLauncher.opened.isEmpty, "only a shortcut passes the selected text")
+
+        fixture.coordinator.openQuicklinkFromHotKey(id: fixture.link.id)
+        await waitForOpen()
+        expect(
+            QuicklinkLauncher.opened.first?.link == "https://example.com/?q=Swift%20%26%20macOS",
+            "a shortcut passes the trimmed selected text as the argument")
+
+        QuicklinkLauncher.opened = []
+        fixture.injector.selection = " \n"
+        fixture.coordinator.openQuicklinkFromHotKey(id: fixture.link.id)
+        try await Task.sleep(for: .milliseconds(1))
+        expect(QuicklinkLauncher.opened.isEmpty, "blank selected text leaves the argument to be asked for")
+    }
+
+    static func hotKeySelectedTextTargets() async throws {
+        let twoFields = try Fixture(
+            link: "https://example.com/?a={argument name=\"A\"}&b={argument name=\"B\"}")
+        defer { twoFields.cleanUp() }
+        twoFields.settings.quicklinkPassesSelectedText = true
+        twoFields.injector.selection = "Swift"
+        twoFields.coordinator.openQuicklinkFromHotKey(id: twoFields.link.id)
+        try await Task.sleep(for: .milliseconds(1))
+        expect(
+            twoFields.core.palette.commandArguments[PaletteState.argumentKey(twoFields.link.entryID, "A")]
+                == "Swift" && twoFields.accessory()?.firstIncompleteField == "B",
+            "only the first argument takes the selected text")
+
+        let dropdownFirst = try Fixture(
+            link: "https://example.com/?e={argument name=\"Engine\" options=\"web, news\"}&q={argument}")
+        defer { dropdownFirst.cleanUp() }
+        dropdownFirst.settings.quicklinkPassesSelectedText = true
+        dropdownFirst.injector.selection = "Swift"
+        dropdownFirst.coordinator.openQuicklinkFromHotKey(id: dropdownFirst.link.id)
+        try await Task.sleep(for: .milliseconds(1))
+        expect(
+            dropdownFirst.core.palette.commandArguments.isEmpty,
+            "a first argument with options is never filled from the selection")
+    }
+
+    static func hotKeyCopiesOnce() async throws {
+        let fixture = try Fixture(link: "https://example.com/?q={argument name=\"Query\"}")
+        defer { fixture.cleanUp() }
+        fixture.settings.quicklinkPassesSelectedText = true
+        fixture.injector.copied = "Swift"
+        fixture.coordinator.openQuicklinkFromHotKey(id: fixture.link.id)
+        await waitForOpen()
+        expect(
+            QuicklinkLauncher.opened.first?.link == "https://example.com/?q=Swift",
+            "a shortcut passes a selection only ⌘C can read")
+
+        let both = try Fixture(
+            link: "https://example.com/?q={argument name=\"Query\" default=\"swift\"}&t={selection}")
+        defer { both.cleanUp() }
+        both.settings.quicklinkPassesSelectedText = true
+        both.coordinator.openQuicklinkFromHotKey(id: both.link.id)
+        try await Task.sleep(for: .milliseconds(1))
+        expect(
+            both.injector.copies == 1 && both.core.messages == ["Couldn’t get the selected text"],
+            "one shortcut press sends at most one ⌘C")
     }
 
     static func plainLink() async throws {
@@ -126,6 +215,7 @@ struct QuicklinkCoordinatorTests {
         expect(
             QuicklinkLauncher.opened.first?.link == fixture.link.link,
             "a plain link opens without selection input")
+        expect(fixture.injector.copies == 0, "a link that reads no selection never sends ⌘C")
     }
 
     static func copying() throws {
@@ -292,7 +382,7 @@ struct QuicklinkCoordinatorTests {
 final class AppSettings {
     var quicklinksEnabled = true
     var quicklinksShowInLauncher = true
-    var quicklinkSelectionFallback = QuicklinkSelectionFallback.ask
+    var quicklinkPassesSelectedText = false
     var quicklinkOpensNewWindow = false
     var quicklinkConfirmsBeforeDelete = false
     var interfaceSize = InterfaceSize()
@@ -308,12 +398,22 @@ final class AppIndex {
     func setCommandsListed(_ commands: Set<CommandID>, _ listed: Bool) {}
 }
 
-enum InjectionTarget: Equatable { case frontmost, previous; static func current() -> Self? { .frontmost } }
+enum InjectionTarget: Equatable {
+    case frontmost, previous
+    static func current() -> Self? { .frontmost }
+    var externalApp: NSRunningApplication? { .current }
+}
 
 @MainActor
 final class TextInjector {
     var selection = ""
+    var copied: String?
+    var copies = 0
     var target: InjectionTarget?
+    func copySelection(from app: NSRunningApplication?) async -> String? {
+        copies += 1
+        return copied
+    }
     func captureExpansionContext(
         target: InjectionTarget?, clipboardHistory: [String]
     ) -> SnippetTemplateEngine.ExpansionContext {
@@ -406,7 +506,13 @@ final class AppCore {
         confirmations += 1
         return false
     }
-    func showMessage(_ message: String) { messages.append(message) }
+    func showMessage(_ message: String, tone: DialogTone = .success) { messages.append(message) }
+}
+
+@MainActor
+enum Permissions {
+    static var isTrusted = true
+    static func isAccessibilityTrusted() -> Bool { isTrusted }
 }
 
 enum BackupActions {

@@ -100,10 +100,9 @@ to the palette and are described in
 [palette.md](palette.md#inline-row-arguments); what quicklinks own is which fields appear and what an
 answer means.
 
-`promptedArguments(for:)` is the one place that decides: the `{argument}`s the link declares, read
-straight off the template by `SnippetTemplateEngine.declaredArguments(in:)` — a pure parse, so nothing
-is expanded and no clipboard is read to draw a chip — plus the synthetic **"Selected Text"** field when
-the setting says ask. An argument with a `default=` is still offered, as an optional chip: left
+The fields are exactly the `{argument}`s the link declares, read straight off the template by
+`SnippetTemplateEngine.declaredArguments(in:)` — a pure parse, so nothing is expanded and no clipboard
+is read to draw a chip. An argument with a `default=` is still offered, as an optional chip: left
 empty, the default fills it, so a default is a starting value rather than a fixed one. It stays owed
 if any occurrence of that name lacks a `default=`, because expansion falls back per occurrence.
 `QuicklinkArgumentsAccessory` turns that list into the strip; a field declaring `options=` is chosen
@@ -114,16 +113,16 @@ given the row's identity, so that memory starts clean on the next quicklink. The
 glyph, then the chips, right after the typed text — and `.besideSearchField` on Search Quicklinks,
 where the field stays a filter with its prompt intact and the row below already carries the glyph.
 
-**"Selected Text" is asked for up front, not after a failed read.** A chip cannot capture a selection,
-so the field appears whenever the link reads `{selection}` and the setting is `.ask`.
-`QuicklinkCoordinator.selectionArgument` stays optional during ordinary navigation so ↵ can read
-the frontmost app's selection without requiring typed input first. If that read returns nothing and
-the field is empty, opening shows Search Quicklinks with the field focused and waits for input.
-A typed value supplies the missing selection. Drawing the strip never captures anything.
+**`{selection}` is never a field, and an empty one fails.** It is read when the link opens, after
+every owed argument is in, through the two tiers in
+[quick-actions.md](quick-actions.md#reading-the-selection): Accessibility, then a ⌘C. The ⌘C is sent
+at most once per open, only when the expansion reads `{selection}`, and with the palette hidden
+first, since it holds key. When neither tier yields text, nothing opens: the HUD says "Couldn’t get
+the selected text", or names the Accessibility permission when Tinycast lacks it.
 
-`openQuicklink(id:forcingDefaultApp:values:)` is the single funnel, and it captures the expansion
-context on **every** call rather than holding one across a session, so `{clipboard}`, `{selection}` and
-`{date}` are read at the moment the link opens. Reached from a global shortcut with the palette closed
+`openQuicklink(id:forcingDefaultApp:values:)` and `openQuicklinkFromHotKey(id:)` share one private
+funnel, which captures the expansion context on **every** call rather than holding one across a
+session, so `{clipboard}`, `{selection}` and `{date}` are read at the moment the link opens. Reached from a global shortcut with the palette closed
 too: the frontmost app is recorded first, the way `runSystemAction` does, so the selection comes from
 the window the user was actually in.
 
@@ -140,12 +139,14 @@ keyed by the quicklink it applies to.
 **A launcher fallback fills the first argument.** Declaring a placeholder is exactly what puts a
 quicklink in the `Use “…” with…` section (see [launcher.md](launcher.md#fallbacks));
 `openQuicklink(id:filling:)` assigns the query to the first argument still owed — the first declared
-one when every argument has a default — and opens at once when that was the only one owed. It is
-never the "Selected Text" field: that one is not an `{argument}` and is resolved by replacing the
-context, so seeding it there would expand to nothing.
+one when every argument has a default — and opens at once when that was the only one owed.
 
-When a template reads the selection and the app in front exposes nothing readable, **Settings →
-Quicklinks** decides what happens: substitute the clipboard, or ask for it through the chip above.
+**Pass selected text as argument** (off by default) lets a quicklink's **own shortcut** fill its
+**first** argument with the trimmed selection, read through the same two tiers. It applies only when
+that argument is typed rather than chosen from `options=`, and a blank selection fills nothing, so
+the usual prompt appears. Any other argument still owed is asked for beside it. Palette activation
+and fallback rows never read the selection into an argument; only `openQuicklinkFromHotKey(id:)`
+does. A ⌘C tried there is not tried again for `{selection}` in the same open.
 
 ## Opening
 

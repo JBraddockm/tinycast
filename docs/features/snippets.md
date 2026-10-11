@@ -159,6 +159,11 @@ Arguments are unique and requested in first-appearance order, including argument
 snippets. Inserted clipboard, selection, and argument values are literal: token-shaped text inside a
 value is not expanded again.
 
+`{selection}` is read through Accessibility. When that reads nothing, a snippet you insert yourself —
+from the launcher, Search Snippets or its shortcut — falls back to a ⌘C, as described in
+[quick-actions.md](quick-actions.md#reading-the-selection). Keyword expansion never sends one: a typed
+keyword leaves nothing selected.
+
 Snippet references are case-insensitive. Duplicate names or keywords resolve deterministically by
 file-path identity. Nested references support five levels, detect cycles by file identity, and leave
 the original reference token visible when a target is missing, cyclic, or beyond the depth limit.

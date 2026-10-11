@@ -74,7 +74,7 @@ fit the table.
 | `Service`     | A stateless capability other types call                                       |
 | `Provider`    | Supplies values on demand, owning no policy about their use                   |
 | `Monitor`     | Watches an external stream and reports changes; owns no policy                |
-| `Scanner`     | Reads the filesystem to produce candidates                                    |
+| `Scanner`     | Reads the filesystem or system state to produce candidates                    |
 | `Runner`      | Performs one effectful operation on request                                   |
 | `Launcher`    | An `NSWorkspace.open` wrapper specifically                                    |
 | `Center`      | The Carbon registration layer specifically                                    |
@@ -85,12 +85,14 @@ fit the table.
 | `Index`       | A searchable collection, rebuilt as its inputs change                         |
 | `Engine`      | A pure evaluator: input → output                                              |
 | `Policy`      | A pure decision — no state, no effects                                        |
+| `Remapper`    | Keeps one HID key mapping on every matching device, including later arrivals  |
 
 `Manager` is the one worth thinking twice about. It means _lifecycle plus policy_, which is a lot for one
-type, so there are only two: `ClipboardManager` (polls, and owns the capture policy and the paste-side
-handshake) and `HotKeyManager` (persists bindings, and drives Carbon registration and double-tap
-dispatch). A third is fine if it genuinely owns both halves — but check first whether `Store`, `Monitor`
-or `Coordinator` describes it better, because usually one of them does.
+type, so there are only three: `ClipboardManager` (polls, and owns the capture policy and the
+paste-side handshake), `HotKeyManager` (persists bindings, and drives Carbon registration and
+double-tap dispatch) and `HyperKeyManager` (drives the tap, the remap and their pauses, and owns the
+conflict and Secure Input policy). Another is fine if it genuinely owns both halves — but check first
+whether `Store`, `Monitor` or `Coordinator` describes it better, because usually one of them does.
 
 `Registry` and `ViewModel` are retired: a static table is a `Catalog`, shared app state is a `State`.
 SwiftUI-layer names (`View`, `Screen`, `Card`, `Row`, `Sheet`) are a separate vocabulary and are not

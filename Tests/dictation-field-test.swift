@@ -322,6 +322,8 @@ final class ClipboardManager {
     static let internalType = NSPasteboard.PasteboardType("com.tinycast.internal")
     func prepareForTinycastPasteboardMutation() {}
     func synchronizeAfterTinycastPasteboardMutation(changeCount: Int) {}
+    func pauseCapture() {}
+    func resumeCapture() {}
 }
 
 enum Permissions {

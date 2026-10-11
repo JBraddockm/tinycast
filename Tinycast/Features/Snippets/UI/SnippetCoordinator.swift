@@ -268,7 +268,6 @@ final class SnippetCoordinator {
         if automaticGeneration == nil {
             guard injector.prepareInteractiveExpansion(target: target) else { return }
         }
-        let confirmation = record.snippet.showsConfirmation ? "Inserted \(record.snippet.name)" : nil
         let context = injector.captureExpansionContext(
             target: target,
             clipboardHistory: clipboardHistoryForExpansion())
@@ -276,6 +275,49 @@ final class SnippetCoordinator {
             record,
             snippets: records,
             context: context)
+        // A typed keyword leaves nothing selected, so only an insertion asked for borrows a ⌘C.
+        guard automaticGeneration == nil, result.readsSelection, context.selection.isEmpty,
+            let app = target?.externalApp
+        else {
+            finishExpansion(
+                record,
+                records: records,
+                context: context,
+                result: result,
+                target: target,
+                expectedKeyword: expectedKeyword,
+                keywordLength: keywordLength,
+                automaticGeneration: automaticGeneration)
+            return
+        }
+        Task {
+            var context = context
+            context.selection = await injector.copySelection(from: app) ?? ""
+            let records = store.snippets
+            guard let record = records.first(where: { $0.id == id }) else { return }
+            finishExpansion(
+                record,
+                records: records,
+                context: context,
+                result: SnippetTemplateEngine.expand(record, snippets: records, context: context),
+                target: target,
+                expectedKeyword: nil,
+                keywordLength: 0,
+                automaticGeneration: nil)
+        }
+    }
+
+    private func finishExpansion(
+        _ record: StoredSnippet,
+        records: [StoredSnippet],
+        context: SnippetTemplateEngine.ExpansionContext,
+        result: SnippetTemplateEngine.ExpansionResult,
+        target: InjectionTarget?,
+        expectedKeyword: String?,
+        keywordLength: Int,
+        automaticGeneration: UInt?
+    ) {
+        let confirmation = record.snippet.showsConfirmation ? "Inserted \(record.snippet.name)" : nil
         if !result.missingArguments.isEmpty {
             promptSnippetArguments(
                 record: record,

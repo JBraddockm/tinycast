@@ -122,7 +122,9 @@ If a change touches anything in the right column, the harness on the left is man
 | `form-input-test` | Native field/textarea sizing, editing alignment, placeholders, Tab, Unicode selection, undo and code fonts |
 | `palette-placement-test` | `DesignSystem/Theme.swift`, `Palette/PalettePlacement.swift` |
 | `palette-menu-click-test` | `Palette/PalettePanel.swift` — complete click-away presses and subsequent control activation |
-| `hotkey-test` | `HotKeys/Model/DoubleTapModifier.swift`, `DoubleTapDetector.swift`, `ModifierKey.swift`, `ModifierKeyDetector.swift`, `HotKeyBinding.swift`, `HotKeySpelling.swift`, `HyperKey.swift`, `HotKeyAction.swift`, `Service/KeyShortcut.swift`, and the command→action mapping in `Launcher/Model/CommandID.swift` |
+| `hotkey-test` | `HotKeys/Model/DoubleTapModifier.swift`, `DoubleTapDetector.swift`, `ModifierKey.swift`, `ModifierKeyDetector.swift`, `HotKeyBinding.swift`, `HotKeySpelling.swift`, `HyperKey.swift`, `HIDKeyMapping.swift`, `HotKeyAction.swift`, `Service/KeyShortcut.swift`, and the command→action mapping in `Launcher/Model/CommandID.swift` |
+| `hyper-key-test` | `HotKeys/Model/HIDKeyMapping.swift`, `HyperKeyConflictPolicy.swift`, `Service/KeyboardRemapper.swift` — mapping ownership, refused writes, crash recovery, device reconnection, conflict severities, Modifier Keys and Karabiner parsing |
+| `hotkey-dispatch-test` | `HotKeys/Service/HotKeyManager.swift` — Secure Input side isolation, shared Control registrations, press/release routing, recording and cancellation; isolated preferences and simulated Carbon registration |
 | `dictation-test` | `Dictation/Model/DictationModel.swift`, `DictationTextFormatter.swift` — model paths and text formatting |
 | `dictation-field-test` | Composer rebinding and teardown, field-scoped dictation cancellation, and queued insertion validity; synthetic capture and real AppKit editors |
 | `dictation-volume-test` | Volume recovery across fade steps, user changes, output switching, failed writes and cancellation; injected audio controls only |
@@ -479,6 +481,19 @@ caches, TCC grants and login item, so this cannot disturb an installed copy.
 - Recording captures a shortcut, and the old binding does not fire while recording
 - A conflicting binding is rejected and names its current owner
 - A double-tap binding fires; Hyper Key remaps and its status dot is green
+- Each Hyper Key choice — Caps Lock and all eight Left/Right modifiers — sends the chord, and Quick
+  Press is offered for Caps Lock only. Plug in a second keyboard: Caps Lock is Hyper on it too
+- Lock the screen: Caps Lock types capitals in the password field; unlocking restores Hyper. Sleep
+  and wake do the same
+- With Hyperkey running, the status reads Blocked and a HUD names it; quitting Hyperkey restores
+  Hyper without a relaunch. Diagnostics… lists BetterTouchTool as a warning when it runs
+- Remap Caps Lock in Keyboard ▸ Modifier Keys: Diagnostics… reports it with the keyboard's name
+- In a password field, Hyper with Caps Lock shows the Secure Input HUD. Turn on Secure Input
+  Compatibility: a Hyper shortcut now fires there, and Diagnostics… names the Secure Input holder
+- Quit Tinycast: Caps Lock types capitals again on every keyboard, the built-in one included
+- With Karabiner-Elements running and Caps Lock left alone there, Hyper with Caps Lock still works;
+  quit Tinycast and Karabiner's own remaps keep working. Remap Caps Lock in Karabiner instead:
+  Diagnostics… reports a Karabiner conflict
 - Every binding survives quit and relaunch
 - `Enable Commands` off leaves every pane-owned command listed, searchable and firing — Notes,
   Clipboard, Emoji, File Search, Snippets, Quicklinks, Calendar, AI and the two layout commands
@@ -495,12 +510,16 @@ caches, TCC grants and login item, so this cannot disturb an installed copy.
 ### Quicklinks
 
 - A quicklink opens its destination; `{argument}` prompts in order and Backspace steps back
-- `{selection}` falls back per the Settings choice
-- With "Ask for it" and no selection, a quicklink's hotkey focuses "Selected Text": typing fills that
-  field and Return opens the link. Check the first palette opening after launch, reopening, and an
-  already-open palette; repeat with a required `{argument}` and confirm the first missing field wins
-- Opening Search Quicklinks normally focuses search; a readable selection and clipboard fallback open
-  directly. Custom-command argument prompts still focus their first missing field
+- `{selection}` with nothing selected opens nothing and shows "Couldn’t get the selected text". With
+  a required `{argument}` too, the argument is asked for first
+- In an app Accessibility can't read (a terminal, an Electron app), a `{selection}` quicklink still
+  opens with the selected text, the clipboard holds what it held before, and Clipboard History gains
+  no entry for the selection. Repeat it ten times to be sure
+- With **Pass selected text as argument** on, select text and press a quicklink's shortcut: its first
+  free-text argument is filled and the link opens. Blank selection or an `options=` first argument still
+  prompts; Return on the row in the launcher never fills from the selection
+- Opening Search Quicklinks normally focuses search; a readable selection opens directly.
+  Custom-command argument prompts still focus their first missing field
 - In the launcher and Search Quicklinks, open Actions with ⌘K and close with ⌘K or Escape. Immediately
   type a query, use the arrows and press Return; the palette must accept keyboard input again
 - Pin, duplicate, delete and Open with Default all behave; import and export round-trip
@@ -654,6 +673,8 @@ caches, TCC grants and login item, so this cannot disturb an installed copy.
 - Enabling shows the consent dialog **before** the Accessibility prompt
 - Declining leaves the feature off and prompts for nothing
 - After enabling, a keyword expands in a text field; an argument-bearing snippet prompts then delivers
+- A `{selection}` snippet inserted from Search Snippets or its shortcut wraps text selected in an app
+  Accessibility can't read, and the clipboard is restored afterwards
 - Editing a snippet file externally reloads it
 
 ### Calculator and currency

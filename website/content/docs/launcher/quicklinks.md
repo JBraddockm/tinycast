@@ -8,13 +8,13 @@ give it a shortcut, and have it ask for a value, like a search term.
 
 Turn quicklinks on in **Settings → Quicklinks**. They're **off** by default.
 
-| Setting                       | Default    |
-| ----------------------------- | ---------- |
-| Enable quicklinks             | Off        |
-| Show in launcher              | On         |
-| Open in a new window          | Off        |
-| When there's no selected text | Ask for it |
-| Confirm before deleting       | On         |
+| Setting                        | Default |
+| ------------------------------ | ------- |
+| Enable quicklinks              | Off     |
+| Show in launcher               | On      |
+| Open in a new window           | Off     |
+| Pass selected text as argument | Off     |
+| Confirm before deleting        | On      |
 
 While the feature is off, there's no Quicklinks section, no quicklink commands, and nothing opens.
 **Your shortcuts stay saved**, so turning the feature back on restores all of them.
@@ -97,11 +97,16 @@ selected and its first empty field ready for typing.
 
 ### When there is no selection
 
-If a link uses `{selection}`, the **When there's no selected text** setting decides what happens:
+If a link uses `{selection}` and no text is selected, **the quicklink doesn't open**. Tinycast shows
+"Couldn’t get the selected text" instead. If Tinycast doesn't have Accessibility permission, the
+message asks you to allow it in System Settings.
 
-- **Ask for it** (default): a **Selected Text** field appears. If you leave it empty, any real
-  selection is still used; if you type something, your text replaces it.
-- **Use the clipboard**: the clipboard contents are used instead of a selection.
+### Selected text from a shortcut
+
+Turn on **Pass selected text as argument** to fill a quicklink's first argument with the text you
+selected, when you open it with **its own shortcut**. Select a word, press the shortcut, and the
+search opens. This works only when the first argument is one you type, not a list of options. If
+nothing is selected, or the quicklink needs more values, the usual fields appear.
 
 ## As a fallback
 

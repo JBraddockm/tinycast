@@ -181,7 +181,7 @@ struct LauncherScreen: PaletteScreen {
     private func argumentValues(for entry: AppEntry) -> [String: String] {
         if entry.kind == .quicklink {
             guard let quicklink = quicklink(for: entry) else { return [:] }
-            return QuicklinkArgumentsAccessory.values(for: quicklink, core: core, vm: vm)
+            return QuicklinkArgumentsAccessory.values(for: quicklink, vm: vm)
         }
         if entry.kind == .customCommand {
             guard let command = core.customCommands.command(entryID: entry.id) else { return [:] }

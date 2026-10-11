@@ -34,14 +34,14 @@ struct QuicklinkListScreen: PaletteScreen {
         guard let quicklink = quicklink(at: selection) else { return nil }
         return QuicklinkActionsMenu.content(
             quicklink: quicklink, core: core,
-            values: QuicklinkArgumentsAccessory.values(for: quicklink, core: core, vm: vm))
+            values: QuicklinkArgumentsAccessory.values(for: quicklink, vm: vm))
     }
 
     func activate(at selection: Int) {
         guard let quicklink = quicklink(at: selection) else { return }
         core.quicklinkCoordinator.openQuicklink(
             id: quicklink.id,
-            values: QuicklinkArgumentsAccessory.values(for: quicklink, core: core, vm: vm))
+            values: QuicklinkArgumentsAccessory.values(for: quicklink, vm: vm))
     }
 
     /// The header's argument fields, which is where a templated link collects its values.
@@ -61,7 +61,7 @@ struct QuicklinkListScreen: PaletteScreen {
         }
         core.quicklinkCoordinator.openQuicklink(
             id: quicklink.id, forcingDefaultApp: true,
-            values: QuicklinkArgumentsAccessory.values(for: quicklink, core: core, vm: vm))
+            values: QuicklinkArgumentsAccessory.values(for: quicklink, vm: vm))
         return true
     }
 

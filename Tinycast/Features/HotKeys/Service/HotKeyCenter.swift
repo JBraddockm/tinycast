@@ -18,7 +18,8 @@ private func hotKeyCarbonEventHandler(
     guard error == noErr else { return error }
     let center = Unmanaged<HotKeyCenter>.fromOpaque(userData).takeUnretainedValue()
     let kind = GetEventKind(event)
-    return center.handle(hotKeyID, kind: kind)
+    let flagsRaw = CopyEventCGEvent(event)?.takeRetainedValue().flags.rawValue ?? 0
+    return center.handle(hotKeyID, kind: kind, flagsRaw: flagsRaw)
 }
 
 /// The Carbon layer only; which shortcuts exist is `HotKeyManager`'s business.
@@ -26,7 +27,7 @@ private func hotKeyCarbonEventHandler(
 final class HotKeyCenter {
     private struct Entry {
         let shortcut: KeyShortcut
-        let onKeyDown: () -> Void
+        let onKeyDown: (UInt64) -> Void
         let onKeyUp: (() -> Void)?
         let carbonID: UInt32
         var ref: EventHotKeyRef?
@@ -51,7 +52,7 @@ final class HotKeyCenter {
 
     /// Registers `shortcut` under `id`, dropping any previous one so no combo leaks.
     func register(
-        id: String, shortcut: KeyShortcut, onKeyDown: @escaping () -> Void,
+        id: String, shortcut: KeyShortcut, onKeyDown: @escaping (UInt64) -> Void,
         onKeyUp: (() -> Void)? = nil
     ) {
         unregister(id: id)
@@ -117,14 +118,14 @@ final class HotKeyCenter {
         )
     }
 
-    fileprivate func handle(_ hotKeyID: EventHotKeyID, kind: UInt32) -> OSStatus {
+    fileprivate func handle(_ hotKeyID: EventHotKeyID, kind: UInt32, flagsRaw: UInt64) -> OSStatus {
         guard
             hotKeyID.signature == signature,
             let key = idToKey[hotKeyID.id],
             let entry = entries[key]
         else { return OSStatus(eventNotHandledErr) }
         if kind == kEventHotKeyPressed {
-            entry.onKeyDown()
+            entry.onKeyDown(flagsRaw)
         } else if kind == kEventHotKeyReleased {
             guard let onKeyUp = entry.onKeyUp else { return OSStatus(eventNotHandledErr) }
             onKeyUp()

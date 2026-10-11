@@ -71,8 +71,9 @@ Consequences worth knowing:
   and onboarding unseen. Grant and bind once; it persists across rebuilds, because the fixed build path
   and the `Tinycast Self-Signed` identity keep the TCC grant alive.
 - Don't bind the same global hotkey in both — whichever registered first wins.
-- The Hyper Key's Caps Lock remap is `hidutil` state, which is **system-wide, not per-bundle**: quitting
-  one build clears the remap for the other, which then needs a rebind or a relaunch to restore it.
+- The Hyper Key's Caps Lock remap lives on the keyboards, which are **shared, not per-bundle**:
+  enable Hyper in one build at a time so their keyboard owners do not compete. An identical mapping
+  already installed by another build is left unowned.
 
 ## Editor
 

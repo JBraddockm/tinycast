@@ -87,13 +87,9 @@ struct QuicklinksSettingsView: View {
                 SettingsRowTitle(.quicklinksBehaviour, "Open in a new window")
                 Text("Where the app supports it.")
             }
-            Picker(selection: $settings.quicklinkSelectionFallback) {
-                ForEach(QuicklinkSelectionFallback.allCases) { option in
-                    Text(option.title).tag(option)
-                }
-            } label: {
-                SettingsRowTitle(.quicklinksBehaviour, "When there's no selected text")
-                Text("For links that use {selection}.")
+            Toggle(isOn: $settings.quicklinkPassesSelectedText) {
+                SettingsRowTitle(.quicklinksBehaviour, "Pass selected text as argument")
+                Text("Fills the first argument when a shortcut opens the quicklink.")
             }
             Toggle(isOn: $settings.quicklinkConfirmsBeforeDelete) {
                 SettingsRowTitle(.quicklinksBehaviour, "Confirm before deleting")

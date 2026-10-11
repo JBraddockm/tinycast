@@ -50,4 +50,6 @@ enum ModifierKey: String, CaseIterable, Codable, Sendable {
         if globeDown { held.insert(.globe) }
         return held
     }
+
+    func isHeld(in flags: UInt64) -> Bool { deviceMask & flags != 0 }
 }
