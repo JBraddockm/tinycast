@@ -9,7 +9,6 @@ struct ShortcutRecorderAnchorKey: PreferenceKey {
     }
 }
 
-/// The callout above the field: what to press, what is held, or what is in the way.
 struct ShortcutRecorderPopover: View {
     let placement: CalloutPlacement
 
@@ -187,7 +186,6 @@ private struct ShortcutRecorderPopoverLayer: View {
 }
 
 extension View {
-    /// Hosts the shortcut recorder's callout for every recorder inside this view.
     func shortcutRecorderPopoverHost() -> some View {
         modifier(ShortcutRecorderPopoverHost())
     }

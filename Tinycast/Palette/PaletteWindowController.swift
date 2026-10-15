@@ -28,7 +28,6 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
         return true
     }
 
-    /// The centre line and its height detents for a drag in flight.
     private struct DragSession {
         var home: CGPoint
         var screenFrame: CGRect
@@ -151,7 +150,9 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
     }
 
     func hide(restoreFocus: Bool) {
+        NotesPanel.refusesInheritedKey = previousOwnWindow?.isVisible != true
         panel?.orderOut(nil)
+        NotesPanel.refusesInheritedKey = false
         commandEscapeTap.disable()
         core.inputSourceSwitcher.endSession()
         core.calendarCoordinator.paletteDidHide()
@@ -177,7 +178,6 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
         }
     }
 
-    /// Pop to Root Search: reset now, or after the delay unless a reopen consumes it.
     private func schedulePopToRoot() {
         guard !core.extensions.isSigningIn else { return }
         popToRootTimer?.invalidate()
@@ -218,13 +218,11 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
         return true
     }
 
-    /// Paste into the previous app while the palette stays frontmost.
     @discardableResult
     func pasteKeepingWindowOpen(_ item: ClipboardItem, store: ClipboardStore) -> Bool {
         Paster.pasteInPlace(item, store: store, into: previousApp)
     }
 
-    /// String flavor of the above, for emoji/symbol pastes.
     func pasteStringKeepingWindowOpen(_ text: String) {
         Paster.pasteStringInPlace(text, into: previousApp)
     }
@@ -523,7 +521,6 @@ final class PaletteWindowController: NSObject, NSWindowDelegate {
             minimumVisible: Theme.Size.paletteMinimumVisible)
     }
 
-    /// The untouched placement on one display; the summon path and the drop guides share it.
     private func defaultAnchor(on screen: NSScreen) -> CGPoint {
         PalettePlacement.defaultAnchor(
             in: screen.visibleFrame, width: metrics.size.panelWidth,

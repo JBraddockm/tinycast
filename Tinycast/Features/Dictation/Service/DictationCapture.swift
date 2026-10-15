@@ -93,6 +93,11 @@ final class DictationCapture {
         collector = nil
         return samples
     }
+
+    func snapshot() -> [Float] {
+        guard session != nil else { return [] }
+        return collector?.snapshot() ?? []
+    }
 }
 
 // Configuration stays on main; only start/stop run off-main, in sequence.
@@ -159,4 +164,6 @@ private final class AudioCollector: NSObject, AVCaptureAudioDataOutputSampleBuff
     }
 
     func finish() -> [Float] { queue.sync { samples } }
+
+    func snapshot() -> [Float] { queue.sync { samples } }
 }

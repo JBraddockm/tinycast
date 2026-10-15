@@ -164,6 +164,10 @@ struct DictationSettingsView: View {
                     } label: {
                         SettingsRowTitle(.dictationOutput, "When finished")
                     }
+                    Toggle(isOn: $settings.dictationLiveInsertion) {
+                        SettingsRowTitle(.dictationOutput, "Insert while recording")
+                        Text("Paste each chunk as you speak, instead of only when finished.")
+                    }
                     Toggle(isOn: $settings.dictationAdaptsCapitalization) {
                         SettingsRowTitle(.dictationOutput, "Adapt capitalization")
                         Text("Match the first letter to the text before the cursor.")

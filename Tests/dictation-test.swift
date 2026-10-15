@@ -47,6 +47,20 @@ struct DictationTest {
                 "world",
                 context: Context(
                     before: document.prefix(7), after: document.suffix(6))), " World ")
+        check(DictationTextFormatter.stripEcho(" world peace", after: "Hello world"), " peace")
+        check(DictationTextFormatter.stripEcho("theatre tickets", after: "said the"), "theatre tickets")
+        check(DictationTextFormatter.stripEcho(" world", after: "Hello world"), "")
+        check(DictationTextFormatter.stripEcho("good morning", after: "Hello world"), "good morning")
+        check(DictationTextFormatter.stripEcho(" hello", after: ""), " hello")
+        check(
+            DictationTextFormatter.stripEcho("Für, Jonathan", after: "kein kuchen für"),
+            " Jonathan")
+        check(
+            DictationTextFormatter.stripEcho("ein Kuchen für Jonathan", after: "aber kein Kuchen für"),
+            " Jonathan")
+        check(
+            DictationTextFormatter.stripEcho("äh also weiter gehts", after: "und dann"),
+            "äh also weiter gehts")
         check(DictationModel.redux.folderName, "parakeet-redux")
         check(DictationModel.ultra.folderName, "parakeet-ultra")
         check(DictationModel.redux.title, "Parakeet · Redux")

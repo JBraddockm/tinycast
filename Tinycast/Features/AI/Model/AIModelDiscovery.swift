@@ -129,6 +129,14 @@ enum AIModelDiscovery {
             .map(\.element)
     }
 
+    static func exactMatch(_ models: [Model], query: String) -> Model? {
+        let query = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else { return nil }
+        // An ID outranks a display name, as in search, so Return adds the top row.
+        return models.first { $0.id.caseInsensitiveCompare(query) == .orderedSame }
+            ?? models.first { $0.name.caseInsensitiveCompare(query) == .orderedSame }
+    }
+
     private static func catalogURL(
         provider: AIProviderKind, baseURL: URL, usesNativeGemini: Bool
     ) -> URL? {

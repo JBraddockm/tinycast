@@ -20,6 +20,10 @@ final class DictationCoordinator {
     @ObservationIgnored private var enableTask: Task<Void, Never>?
     @ObservationIgnored private var startTask: Task<Void, Never>?
     @ObservationIgnored private var transcriptionTask: Task<Void, Never>?
+    @ObservationIgnored private var liveTask: Task<Void, Never>?
+    @ObservationIgnored private var liveOffset = 0
+    @ObservationIgnored private var liveText = ""
+    @ObservationIgnored private var liveDeliveryFailed = false
     @ObservationIgnored private var stopTask: Task<Void, Never>?
     @ObservationIgnored private var finishWhenStarted = false
     @ObservationIgnored private var target: InjectionTarget?
@@ -140,6 +144,8 @@ final class DictationCoordinator {
         let current = token
         phase = .starting
         finishWhenStarted = false
+        liveOffset = 0
+        liveText = ""
         self.target = target
         audioDucker.begin()
         startTask = Task { [weak self] in
@@ -152,6 +158,7 @@ final class DictationCoordinator {
                 }
                 phase = .listening
                 panel.show()
+                startLiveInsertion(token: current)
                 if finishWhenStarted { accept() }
             } catch {
                 guard token == current else { return }
@@ -173,31 +180,44 @@ final class DictationCoordinator {
         panel.state.phase = .transcribing
         field?.isTranscribing = true
         audioDucker.end()
+        // A cancelled chunk keeps its audio: the final pass starts at liveOffset, losing nothing.
+        let pendingLive = liveTask
+        liveTask = nil
+        pendingLive?.cancel()
         let current = token
         let model = settings.dictationModel
         let language = settings.dictationLanguage
         transcriptionTask = Task { [weak self] in
             guard let self else { return }
+            await pendingLive?.value
             let samples = await capture.stop()
+            // Queued chunks land first: reset would drop them, and the remainder spaces after them.
+            if !liveText.isEmpty { await injector.drain() }
             guard token == current else { return }
-            guard samples.count >= 1_600 else {
-                reset(cancelTranscription: false)
-                showMessage("No speech was recorded", .danger)
+            let tail = liveOffset < samples.count ? Array(samples[liveOffset...]) : []
+            let destination = field == nil ? settings.dictationDestination : .paste
+            if tail.count < 1_600 {
+                if liveText.isEmpty {
+                    reset(cancelTranscription: false)
+                    showMessage("No speech was recorded", .danger)
+                } else {
+                    finishWithoutRemainder(destination)
+                }
                 return
             }
             do {
                 let transcript = try await models.transcribe(
-                    samples, model: model,
+                    tail, model: model,
                     language: language)
                 guard token == current else { return }
                 // A mic belongs to its field: the text goes in there, never to the clipboard.
-                let destination = field == nil ? settings.dictationDestination : .paste
-                let context = destination.pastes ? DictationInsertionContext.read(in: target) : nil
+                let context = destination.pastes ? insertionContext() : nil
                 let text = DictationTextFormatter.format(
                     transcript, context: context,
                     adaptCapitalization: settings.dictationAdaptsCapitalization)
                 let target = self.target
-                guard !text.isEmpty else { reset(cancelTranscription: false); return }
+                let assembled = liveText + text
+                guard !text.isEmpty else { finishWithoutRemainder(destination); return }
                 panel.close()
                 if destination.pastes {
                     injector.deliver(
@@ -206,13 +226,17 @@ final class DictationCoordinator {
                         isValid: { [weak self] in self?.token == current },
                         onDelivered: { [weak self] in
                             guard let self, token == current else { return }
-                            if destination.copies { Paster.copyPlainText(text) }
+                            let lost = liveDeliveryFailed
+                            if destination.copies { Paster.copyPlainText(assembled) }
                             reset(cancelTranscription: false)
+                            if lost, destination.pastes {
+                                showMessage("Couldn't paste some dictation into this app", .danger)
+                            }
                         },
                         onFailed: { [weak self] in
                             guard let self, token == current else { return }
                             reset(cancelTranscription: false)
-                            if destination.copies { Paster.copyPlainText(text) }
+                            if destination.copies { Paster.copyPlainText(assembled) }
                             showMessage("Couldn't paste dictation into this app", .danger)
                         })
                 } else {
@@ -227,6 +251,80 @@ final class DictationCoordinator {
         }
     }
 
+    private func finishWithoutRemainder(_ destination: DictationDestination) {
+        let text = liveText
+        let lost = liveDeliveryFailed
+        reset(cancelTranscription: false)
+        if !text.isEmpty, destination.copies { Paster.copyPlainText(text) }
+        if lost, destination.pastes { showMessage("Couldn't paste some dictation into this app", .danger) }
+    }
+
+    /// Chunks already pasted only make sense where text is pasted at all.
+    private var insertionPastes: Bool {
+        field == nil ? settings.dictationDestination.pastes : true
+    }
+
+    /// Chunk spacing from the caret, else from pasted text, so chunks never glue without a space.
+    private func insertionContext() -> DictationTextFormatter.Context? {
+        if let context = DictationInsertionContext.read(in: target) { return context }
+        guard !liveText.isEmpty else { return nil }
+        return DictationTextFormatter.Context(before: liveText.suffix(512), after: Substring())
+    }
+
+    private func startLiveInsertion(token current: UUID) {
+        guard insertionPastes, settings.dictationLiveInsertion else { return }
+        liveTask = Task { [weak self] in
+            guard let self else { return }
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(2))
+                guard !Task.isCancelled, token == current, phase == .listening else { return }
+                guard settings.dictationLiveInsertion else { return }
+                await flushLiveChunk(token: current)
+            }
+        }
+    }
+
+    private func flushLiveChunk(token current: UUID) async {
+        let snapshot = capture.snapshot()
+        guard token == current else { return }
+        let fresh = snapshot.count - liveOffset
+        guard fresh >= DictationAudioChunks.minimumLiveSamples else { return }
+        guard
+            fresh >= DictationAudioChunks.maximumLiveSamples
+                || DictationAudioChunks.endsInPause(in: snapshot, from: liveOffset, to: snapshot.count)
+        else { return }
+        let end = DictationAudioChunks.liveCut(in: snapshot, from: liveOffset, to: snapshot.count)
+        guard end > liveOffset else { return }
+        let overlap = DictationAudioChunks.liveOverlapStart(in: snapshot, before: liveOffset)
+        let segment = Array(snapshot[overlap..<end])
+        do {
+            let transcript = try await models.transcribe(
+                segment, model: settings.dictationModel,
+                language: settings.dictationLanguage)
+            guard token == current else { return }
+            liveOffset = end
+            let context = insertionContext()
+            let text = DictationTextFormatter.format(
+                transcript, context: context,
+                adaptCapitalization: settings.dictationAdaptsCapitalization)
+            let stripped = DictationTextFormatter.stripEcho(text, after: liveText)
+            guard !stripped.isEmpty else { return }
+            liveText += stripped
+            let target = self.target
+            injector.deliver(
+                InjectedText(stripped), target: target, expectedKeyword: nil,
+                keywordLength: 0, automaticGeneration: nil,
+                isValid: { [weak self] in self?.token == current },
+                onDelivered: {},
+                onFailed: { [weak self] in
+                    guard let self, token == current else { return }
+                    liveDeliveryFailed = true
+                })
+        } catch {
+            // The final pass starts at liveOffset, so it covers what this chunk left behind.
+        }
+    }
+
     func cancel(in editor: any InjectableTextView) {
         guard let target = target?.ownEditor, target === editor else { return }
         cancel()
@@ -236,6 +334,7 @@ final class DictationCoordinator {
         guard phase != .stopping, phase != .idle || !settings.dictationEnabled else { return }
         let pendingStart = startTask
         let pendingTranscription = transcriptionTask
+        let pendingLive = liveTask
         reset()
         phase = .stopping
         let current = token
@@ -244,6 +343,7 @@ final class DictationCoordinator {
             await pendingStart?.value
             _ = await capture.stop()
             await pendingTranscription?.value
+            await pendingLive?.value
             if !settings.dictationEnabled { await models.stop() }
             if token == current { phase = .idle; stopTask = nil }
         }
@@ -259,6 +359,11 @@ final class DictationCoordinator {
     private func reset(cancelTranscription: Bool = true) {
         token = UUID()
         if cancelTranscription { transcriptionTask?.cancel() }
+        liveTask?.cancel()
+        liveTask = nil
+        liveOffset = 0
+        liveText = ""
+        liveDeliveryFailed = false
         startTask = nil
         transcriptionTask = nil
         phase = .idle

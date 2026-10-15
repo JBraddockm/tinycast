@@ -58,6 +58,7 @@ enum SettingsFileKey: String, CaseIterable, Sendable {
     case dictationMicrophone = "dictation.microphone"
     case dictationDestination = "dictation.destination"
     case dictationAdaptsCapitalization = "dictation.adaptsCapitalization"
+    case dictationLiveInsertion = "dictation.liveInsertion"
     case dictationIdleRelease = "dictation.releaseAfterMinutes"
     case dictationLanguage = "dictation.language"
     case fileSearchEnabled = "fileSearch.enabled"
@@ -111,10 +112,8 @@ enum SettingsFileKey: String, CaseIterable, Sendable {
     case calendarCommands = "calendar.commands"
     case extensionsShowInLauncher = "extensions.showInLauncher"
 
-    /// The top-level object the key sits in.
     var section: String { String(rawValue.prefix { $0 != "." }) }
 
-    /// The key's name inside its section.
     var name: String { String(rawValue.drop { $0 != "." }.dropFirst()) }
 
     /// Every section, in file order.

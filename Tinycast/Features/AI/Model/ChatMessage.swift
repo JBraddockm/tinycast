@@ -60,7 +60,6 @@ struct ChatMessage: Identifiable, Equatable, Sendable {
     /// The next search or call's place among the reply's: with no text between, offsets tie.
     var nextSequence: Int { searches.count + toolUses.count }
 
-    /// Every block joined, for find and for a transcript copied out whole.
     var reasoningText: String {
         reasoning.map(\.text).joined(separator: "\n\n")
     }
@@ -149,6 +148,11 @@ struct ChatReasoning: Equatable, Hashable, Sendable {
     let textOffset: Int
     /// Until the answer resumed, or the reply ended; nil while it is still thinking.
     var duration: TimeInterval?
+
+    var displayText: String {
+        guard let last = text.lastIndex(where: { !$0.isWhitespace }) else { return "" }
+        return String(text[...last])
+    }
 }
 
 enum ChatSegment: Equatable, Hashable {

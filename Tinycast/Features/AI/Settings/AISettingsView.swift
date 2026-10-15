@@ -94,7 +94,6 @@ struct AISettingsView: View {
             : "Only the selected provider is contacted."
     }
 
-    /// Why the on-device route is missing from the picker, or `nil` when it is there.
     private var appleIntelligenceReason: String? {
         guard #available(macOS 26.0, *) else {
             return nil
@@ -149,7 +148,8 @@ struct AISettingsView: View {
             Picker(selection: $settings.opensTo) {
                 ForEach(AIOpensTo.allCases) { Text($0.title).tag($0) }
             } label: {
-                SettingsRowTitle(.aiConversations, "Quick AI opens to")
+                SettingsRowTitle(.aiConversations, "Opens to")
+                Text("What Quick AI and the AI Chat window show when you open them.")
             }
             if settings.opensTo == .recent {
                 Picker(selection: $settings.newChatAfter) {

@@ -100,7 +100,7 @@ groups. See "Section headers" below.
 
 ### Radius (`Theme.Radius`)
 
-`panel 26` · `row 10` · `formField 12` · `card 10` · `dialog 20` · `dialogSymbol 16` · `menuPanel 16` · `menu 6` · `menuRow 10` · `barControl 8` · `thumbnail 6` · `keyCap 6` · `recorderKeyCap 4`
+`panel 26` · `row 10` · `formField 12` · `card 10` · `codeBlock 14` · `dialog 20` · `dialogSymbol 16` · `menuPanel 16` · `menu 6` · `menuRow 10` · `barControl 8` · `thumbnail 6` · `keyCap 6` · `recorderKeyCap 4`
 
 `formField` dresses the native Snippet, Quicklink, Event and Custom Command editor fields; it does not change settings controls
 or extension forms.
@@ -179,7 +179,7 @@ Notes adds `noteWindow 440×180` (opening size on a first run, and the floor), `
 
 AI Chat adds `aiChatWindow 960×660` (opening size), `aiChatWindowMinimum 680×440`, a sidebar of
 `aiChatSidebarMinimum 240`–`aiChatSidebarMaximum 340`, `aiChatDetailMinimum 440`,
-`aiChatReadingWidth 760` for the transcript and composer column, a composer of at most
+`aiChatReadingWidth 960` for the transcript and composer column, a composer of at most
 `aiChatComposerMaxLines 15` lines or `aiChatComposerHeightFraction 0.30` of the pane,
 `aiChatComposerControl 28` for every control on its row and `aiChatComposerGlyph 16` for their glyph
 slot, `chatContextGauge 14` for the composer's context ring, and `chatContextCard 300` for the card it
@@ -237,6 +237,10 @@ is an `adaptive` pair, not a `ramp`. So is `composerSendInk`, black 0.85 on the 
 on the light one.
 `brand`, `primaryAction`, `destructive`, `success` and `dropGuideArmed` are fixed hues and adapt on
 their own.
+`Theme.Colors.Syntax` holds the code-colouring palette AI Chat paints into a fenced block — `keyword`,
+`string`, `number`, `comment`, `type`, `function`, `constant`, `attribute`, `property`, `inserted`
+and `deleted`. Each is an `adaptive` pair, a bright hue on the dark surface and a deeper one on the
+light, and it is the only place a syntax colour is chosen.
 
 Beyond these, `.secondary`/`.tertiary` foreground styles are fine for SF Symbols (they resolve against
 the environment's appearance). **Selection always beats hover** when a row is both.
@@ -356,12 +360,17 @@ a `controlSurface` fill at `Radius.barControl` under the pointer. Send is a soli
 The title bar keeps the system's own toolbar band, as any document window's does. The context card
 the gauge raises on hover is glass over a solid `windowBackgroundColor`, because it rises over
 transcript text, and sits in the transcript's own frame at its bottom edge, so no window size can
-push it off screen. A reply's choices are `.glass` capsules that rise out of the composer's top
-edge. Find marks words in `Colors.findMatch` / `findCurrent`, the system yellow, with
+push it off screen. A reply's choices are frosted capsules, centred, that rise out of the composer's
+top edge. Find marks words in `Colors.findMatch` / `findCurrent`, the system yellow, with
 `findCurrentInk` black on the solid one in both appearances. Transcript lines sit
-`spacing.chatLine 4` apart on both surfaces. The transcript itself is the palette's `ChatTranscriptView`
+`spacing.chatLine 4` apart on both surfaces. A source chip is a frosted capsule like a choice, led
+by a `chatSourceBadge 18` number disc. Jump to Latest is a `chatJumpToLatest 30` arrow disc at the
+transcript's bottom edge. The transcript itself is the palette's `ChatTranscriptView`
 with `surface: .window`, which leaves out `edgeDissolve` and `thinScrollbar` — both are measured
-against the palette's bars — and caps the column at `aiChatReadingWidth`, centred.
+against the palette's bars — and caps the column at `aiChatReadingWidth`, centred. Its gutter sits
+outside that cap, as the composer's does, so a reply, its code blocks and the composer share both
+edges; a window reply takes no inset of its own, while the palette keeps `spacing.sm` to line up
+with its header's chevron.
 
 ---
 

@@ -2,7 +2,6 @@ import Foundation
 
 /// What `SettingsBackup.SettingsData` carries, written out so a new setting has to be considered.
 enum SettingsBackupCoverage {
-    /// Each `SettingsData` field paired with the `AppSettings` key it mirrors.
     static let mirrored: [String: AppSettingsKey] = [
         "clipboardEnabled": .clipboardEnabled,
         "clipboardRetentionDays": .clipboardRetention,
@@ -84,6 +83,8 @@ enum SettingsBackupCoverage {
         AppSettingsKey.dictationDestination.rawValue:
             "An import must not change where dictated text is sent.",
         AppSettingsKey.dictationAdaptsCapitalization.rawValue:
+            "Dictation preferences stay local until backup supports them.",
+        AppSettingsKey.dictationLiveInsertion.rawValue:
             "Dictation preferences stay local until backup supports them.",
         AppSettingsKey.dictationIdleRelease.rawValue:
             "Dictation memory use stays a device-local preference.",
