@@ -18,15 +18,17 @@ final class FileIndexer {
     private(set) var hasIndex = false
     @ObservationIgnored let index = FileIndex()
     @ObservationIgnored var onIndexChanged: (() -> Void)?
+    @ObservationIgnored var onRecentChanged: (() -> Void)?
     @ObservationIgnored private var policy: FileSearchPolicy?
     @ObservationIgnored private var isEnabled = false
     @ObservationIgnored private var watcher: FileSystemWatcher?
     @ObservationIgnored private var buildTask: Task<Void, Never>?
-    @ObservationIgnored private var countRefresh: Task<Void, Never>?
+    @ObservationIgnored private var liveRefresh: Task<Void, Never>?
+    @ObservationIgnored private var isRecentStale = false
     @ObservationIgnored private let directory = AppPaths.applicationSupport()
         .appending(path: "FileIndex", directoryHint: .isDirectory)
     @ObservationIgnored private let events = DispatchQueue(
-        label: "com.tinycast.file-index.events", qos: .userInitiated)
+        label: "com.tinycast.file-index.events", qos: .utility)
 
     private var indexURL: URL { directory.appending(path: FileIndexSnapshot.fileName) }
 
@@ -94,8 +96,9 @@ final class FileIndexer {
     private func deactivate() {
         buildTask?.cancel()
         buildTask = nil
-        countRefresh?.cancel()
-        countRefresh = nil
+        liveRefresh?.cancel()
+        liveRefresh = nil
+        isRecentStale = false
         watcher = nil
         index.replace(with: nil, policy: nil)
         hasIndex = false
@@ -117,12 +120,18 @@ final class FileIndexer {
         let index = index
         let roots = snapshot.roots
         let apply: @Sendable ([FileSystemWatcher.Event]) -> Void = { [weak self] batch in
-            let before = index.itemCount
+            let countBefore = index.itemCount
+            let recentBefore = index.recentRevision
             let needsRebuild = Self.handle(batch, roots: roots, index: index)
-            // Most batches change nothing countable, and those need no trip to the main actor.
-            guard needsRebuild || index.itemCount != before else { return }
+            let recentChanged = index.recentRevision != recentBefore
+            // Most batches touch neither the count nor Recent, and need no trip to the main actor.
+            guard needsRebuild || recentChanged || index.itemCount != countBefore else { return }
             Task { @MainActor in
-                if needsRebuild { self?.requestRebuild() } else { self?.scheduleCountRefresh() }
+                if needsRebuild {
+                    self?.requestRebuild()
+                } else {
+                    self?.scheduleLiveRefresh(recentChanged: recentChanged)
+                }
             }
         }
         watcher = FileSystemWatcher(
@@ -147,11 +156,13 @@ final class FileIndexer {
             }
             folders[path] = (folders[path] ?? false) || recursive
         }
-        var needsRebuild = false
-        for (path, recursive) in folders where index.apply(folder: path, recursive: recursive) {
-            needsRebuild = true
+        return Signposts.interval("FileIndexer.update") {
+            var needsRebuild = false
+            for (path, recursive) in folders where index.apply(folder: path, recursive: recursive) {
+                needsRebuild = true
+            }
+            return needsRebuild
         }
-        return needsRebuild
     }
 
     private func requestRebuild() {
@@ -159,13 +170,18 @@ final class FileIndexer {
         build(after: .zero)
     }
 
-    /// At most once a second, so a burst of disk activity redraws the count once.
-    private func scheduleCountRefresh() {
-        guard countRefresh == nil else { return }
-        countRefresh = Task { [weak self] in
+    /// At most once a second, so a burst of disk activity redraws the count and Recent once.
+    private func scheduleLiveRefresh(recentChanged: Bool) {
+        if recentChanged { isRecentStale = true }
+        guard liveRefresh == nil else { return }
+        liveRefresh = Task { [weak self] in
             try? await Task.sleep(for: .seconds(1))
             guard let self, !Task.isCancelled else { return }
-            countRefresh = nil
+            liveRefresh = nil
+            if isRecentStale {
+                isRecentStale = false
+                onRecentChanged?()
+            }
             guard case .ready(let items, let builtAt) = status else { return }
             let count = index.itemCount
             if count != items { status = .ready(items: count, builtAt: builtAt) }

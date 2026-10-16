@@ -284,6 +284,7 @@ enum SettingsSearchCatalog {
         .init(.aiDefault, "Default model", keywords: ["llm", "gpt", "claude", "grok"]),
         .init(.aiDefault, "Reasoning effort", keywords: ["thinking", "effort", "deepseek"]),
         .init(.aiChat, "Web search", keywords: ["browse", "internet"]),
+        .init(.aiChat, "Suggested replies", keywords: ["choices", "chips", "follow-up", "buttons"]),
         .init(.aiChat, "Tool call rounds", keywords: ["mcp", "tools", "limit", "loop", "agent", "unlimited"]),
         .init(
             .aiConversations, "Opens to",
@@ -350,7 +351,7 @@ enum SettingsSearchCatalog {
             keywords: ["files", "folders", "find", "disk"]),
         .init(
             .fileSearchFileSearch, "Enable File Search",
-            keywords: ["index", "disk"]),
+            keywords: ["index", "disk", "show in launcher", "root search"]),
         .init(
             group: .fileSearchFullDiskAccess, "Full Disk Access",
             keywords: ["permission", "privacy", "grant", "fda"]),

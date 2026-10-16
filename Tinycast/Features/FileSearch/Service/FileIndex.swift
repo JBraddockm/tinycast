@@ -12,6 +12,8 @@ final class FileIndex: Sendable {
         let mtime: UInt32
         let prior: Int8
         let mask: UInt64
+
+        var isRecent: Bool { prior == 2 && !isDirectory }
     }
 
     private struct State: Sendable {
@@ -21,41 +23,47 @@ final class FileIndex: Sendable {
         var deadCount = 0
         var added: [String: Added] = [:]
         var addedChildren: [String: Set<String>] = [:]
+        var recentRevision = 0
 
         var changeCount: Int { deadCount + added.count }
 
         func isDead(_ index: Int) -> Bool { dead[index >> 6] & (1 << UInt64(index & 63)) != 0 }
 
         mutating func kill(_ index: Int, in snapshot: FileIndexSnapshot) {
-            markDead(index)
+            markDead(index, in: snapshot)
             guard snapshot.isDirectory(index) else { return }
-            for descendant in snapshot.subtree(of: index) { markDead(descendant) }
+            for descendant in snapshot.subtree(of: index) { markDead(descendant, in: snapshot) }
         }
 
-        private mutating func markDead(_ index: Int) {
+        private mutating func markDead(_ index: Int, in snapshot: FileIndexSnapshot) {
             let bit: UInt64 = 1 << UInt64(index & 63)
             guard dead[index >> 6] & bit == 0 else { return }
             dead[index >> 6] |= bit
             deadCount += 1
+            if snapshot.prior[index] == 2, !snapshot.isDirectory(index) { recentRevision &+= 1 }
         }
 
         mutating func add(_ path: String, _ child: FileIndexCrawler.Child) {
             var name = child.name
             let mask = name.withUTF8(FileSearchQuery.nameMask)
-            added[path] = Added(
+            let entry = Added(
                 name: child.name, isDirectory: child.isDirectory, mtime: child.mtime,
                 prior: child.prior, mask: mask)
+            added[path] = entry
             addedChildren[parentPath(of: path), default: []].insert(child.name)
+            if entry.isRecent { recentRevision &+= 1 }
         }
 
         mutating func remove(_ path: String, isDirectory: Bool) {
             if let entry = added.removeValue(forKey: path) {
                 addedChildren[parentPath(of: path)]?.remove(entry.name)
+                if entry.isRecent { recentRevision &+= 1 }
             }
             guard isDirectory else { return }
             let prefix = path == "/" ? "/" : path + "/"
             for key in added.keys.filter({ $0.hasPrefix(prefix) }) {
-                added.removeValue(forKey: key)
+                let entry = added.removeValue(forKey: key)
+                if entry?.isRecent == true { recentRevision &+= 1 }
             }
             for key in addedChildren.keys.filter({ $0 == path || $0.hasPrefix(prefix) }) {
                 addedChildren.removeValue(forKey: key)
@@ -74,6 +82,9 @@ final class FileIndex: Sendable {
             return snapshot.entryCount - snapshot.rootCount - state.deadCount + state.added.count
         }
     }
+
+    /// Moves only when a file Recent can list comes, goes or is saved.
+    var recentRevision: Int { state.withLock { $0.recentRevision } }
 
     func replace(with snapshot: FileIndexSnapshot?, policy: FileSearchPolicy?) {
         let words = ((snapshot?.entryCount ?? 0) + 63) / 64
@@ -146,7 +157,7 @@ final class FileIndex: Sendable {
             Ranked(score: hit.score, path: snapshot.path(of: hit.index), isDirectory: false)
         }
         var types = TypeFilter(filter: filter)
-        for (path, entry) in state.added where entry.prior == 2 && !entry.isDirectory {
+        for (path, entry) in state.added where entry.isRecent {
             var name = entry.name
             guard name.withUTF8({ types.accepts(name: $0, isDirectory: false) }) else { continue }
             ranked.append(Ranked(score: Int(entry.mtime), path: path, isDirectory: false))
@@ -209,8 +220,23 @@ final class FileIndex: Sendable {
     /// Idempotent, so a replayed or duplicate event is harmless; true asks for a rebuild.
     @discardableResult
     func apply(folder path: String, recursive: Bool = false) -> Bool {
+        guard let (snapshot, changes) = diff(folder: path, recursive: recursive) else { return false }
+        return state.withLock { state in
+            // A rebuild landed meanwhile; it replays this event from its own start.
+            guard state.snapshot === snapshot else { return false }
+            for index in changes.kills { state.kill(index, in: snapshot) }
+            for removal in changes.removals { state.remove(removal.path, isDirectory: removal.isDirectory) }
+            for (childPath, child) in changes.additions { state.add(childPath, child) }
+            return state.changeCount > Self.rebuildThreshold
+        }
+    }
+
+    /// Its copy of the state dies on return, so `apply` writes the overlay without copying it.
+    private func diff(
+        folder path: String, recursive: Bool
+    ) -> (FileIndexSnapshot, FolderDiff.Changes)? {
         let current = state.withLock { $0 }
-        guard let snapshot = current.snapshot, let policy = current.policy else { return false }
+        guard let snapshot = current.snapshot, let policy = current.policy else { return nil }
         let overlay = current.added[path]
         let base =
             overlay == nil
@@ -219,7 +245,7 @@ final class FileIndex: Sendable {
             } : nil
         guard
             let prior = overlay?.isDirectory == true ? overlay?.prior : base.map({ snapshot.prior[$0] })
-        else { return false }
+        else { return nil }
 
         var diff = FolderDiff(folder: path, state: current, snapshot: snapshot, policy: policy)
         let listed = lister.withLock { lister in
@@ -227,26 +253,25 @@ final class FileIndex: Sendable {
                 ? diff.rescan(base: base, prior: prior, using: lister)
                 : diff.compare(base: base, prior: prior, using: lister)
         }
-        guard listed, !diff.isEmpty else { return false }
-        return state.withLock { state in
-            // A rebuild landed meanwhile; it replays this event from its own start.
-            guard state.snapshot === snapshot else { return false }
-            for index in diff.kills { state.kill(index, in: snapshot) }
-            for removal in diff.removals { state.remove(removal.path, isDirectory: removal.isDirectory) }
-            for (childPath, child) in diff.additions { state.add(childPath, child) }
-            return state.changeCount > Self.rebuildThreshold
-        }
+        guard listed, !diff.changes.isEmpty else { return nil }
+        return (snapshot, diff.changes)
     }
 
     /// One folder's changes. A row that did not change costs a `memcmp` and allocates nothing.
     private struct FolderDiff {
+        struct Changes {
+            var kills: [Int] = []
+            var removals: [(path: String, isDirectory: Bool)] = []
+            var additions: [(String, FileIndexCrawler.Child)] = []
+
+            var isEmpty: Bool { kills.isEmpty && removals.isEmpty && additions.isEmpty }
+        }
+
         let folder: String
         let state: State
         let snapshot: FileIndexSnapshot
         let policy: FileSearchPolicy
-        private(set) var kills: [Int] = []
-        private(set) var removals: [(path: String, isDirectory: Bool)] = []
-        private(set) var additions: [(String, FileIndexCrawler.Child)] = []
+        private(set) var changes = Changes()
         /// Walked once the listing is released, since walking reuses the same lister.
         private var newFolders: [(path: String, prior: Int8)] = []
 
@@ -256,8 +281,6 @@ final class FileIndex: Sendable {
             self.snapshot = snapshot
             self.policy = policy
         }
-
-        var isEmpty: Bool { kills.isEmpty && removals.isEmpty && additions.isEmpty }
 
         /// Both sides are sorted by name bytes, so one merge pass finds every difference.
         mutating func compare(base: Int?, prior: Int8, using lister: FileIndexCrawler.Lister) -> Bool {
@@ -332,7 +355,7 @@ final class FileIndex: Sendable {
                 return
             }
             if added.isDirectory != entry.isDirectory {
-                removals.append((path, added.isDirectory))
+                changes.removals.append((path, added.isDirectory))
                 add(entry, named: name)
             } else if !entry.isDirectory, added.prior == 2, added.mtime != entry.mtime {
                 add(entry, named: name)
@@ -345,26 +368,26 @@ final class FileIndex: Sendable {
 
         /// A vanished folder also takes whatever the overlay added beneath it.
         private mutating func kill(_ row: Int) {
-            kills.append(row)
+            changes.kills.append(row)
             guard snapshot.isDirectory(row) else { return }
-            removals.append((FileIndexCrawler.path(folder, snapshot.nameString(row)), true))
+            changes.removals.append((FileIndexCrawler.path(folder, snapshot.nameString(row)), true))
         }
 
         private mutating func removeAdded(_ name: String) {
             let path = FileIndexCrawler.path(folder, name)
-            removals.append((path, state.added[path]?.isDirectory ?? false))
+            changes.removals.append((path, state.added[path]?.isDirectory ?? false))
         }
 
         private mutating func add(_ entry: FileIndexCrawler.Entry, named name: String) {
             let child = FileIndexCrawler.Child(entry, name: name, parent: folder, policy: policy)
             let path = FileIndexCrawler.path(folder, name)
-            additions.append((path, child))
+            changes.additions.append((path, child))
             if child.isDirectory { newFolders.append((path, child.prior)) }
         }
 
         private mutating func walkNewFolders(using lister: FileIndexCrawler.Lister) {
             for (path, prior) in newFolders {
-                additions += lister.walk(path, prior: prior, policy: policy)
+                changes.additions += lister.walk(path, prior: prior, policy: policy)
             }
             newFolders = []
         }

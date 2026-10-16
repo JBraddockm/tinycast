@@ -28,9 +28,11 @@ struct FileSearchTests {
 
     static func main() {
         queryMatching()
+        launcherQuery()
         ranking()
         typeFilter()
         ignoreRules()
+        ignorePathMatching()
         policy()
         scopes()
         resultModel()
@@ -38,6 +40,12 @@ struct FileSearchTests {
 
         print(failures == 0 ? "File search tests passed" : "\(failures) file search tests failed")
         exit(failures == 0 ? 0 : 1)
+    }
+
+    static func launcherQuery() {
+        expect(!FileSearchQuery.answersLauncher("ab"), "two characters are too few for the launcher")
+        expect(FileSearchQuery.answersLauncher("abc"), "three characters reach the launcher")
+        expect(!FileSearchQuery.answersLauncher("  ab \n"), "surrounding whitespace does not count")
     }
 
     static func queryMatching() {
@@ -147,12 +155,61 @@ struct FileSearchTests {
 
         let shipped = FileSearchIgnoreList(
             patterns: FileSearchIgnoreList.defaults, homeDirectory: home)
-        for name in FileSearchIgnoreList.defaults {
+        for name in FileSearchIgnoreList.defaults where !name.contains("/") {
             expect(shipped.excludes(name: name, path: "/x/\(name)"), "\(name) is skipped")
         }
+        for path in ["/Users/test/Library/Caches", "/Library/Caches", "/private/var/folders"] {
+            expect(
+                shipped.excludes(name: URL(filePath: path).lastPathComponent, path: path),
+                "\(path) is skipped")
+        }
+        expect(
+            !shipped.excludes(name: "Caches", path: "/Users/test/Developer/Caches"),
+            "a caches folder elsewhere is indexed")
         expect(
             !shipped.excludes(name: ".git", path: "/x/.git"),
             "hidden folders are indexed unless a pattern says otherwise")
+    }
+
+    static func ignorePathMatching() {
+        func check(_ patterns: [String], name: String, path: String, excluded: Bool, builds: Int) {
+            let list = FileSearchIgnoreList(patterns: patterns, homeDirectory: home)
+            var pathBuilds = 0
+            let found = name.withCString { name in
+                list.excludes(name: name, length: strlen(name)) {
+                    pathBuilds += 1
+                    return path
+                }
+            }
+            expect(found == excluded, "\(patterns) preserve matching for \(path)")
+            expect(pathBuilds == builds, "\(patterns) build the path \(builds) times for \(name)")
+        }
+
+        check(
+            FileSearchIgnoreList.defaults, name: "notes.txt", path: "/Users/test/notes.txt",
+            excluded: false, builds: 0)
+        check(
+            FileSearchIgnoreList.defaults, name: "CACHES", path: "/users/TEST/library/CACHES",
+            excluded: true, builds: 1)
+        check(
+            FileSearchIgnoreList.defaults, name: "Caches", path: "/Users/test/Developer/Caches",
+            excluded: false, builds: 1)
+        check(
+            ["Archive", "/x/Caches"], name: "Archive", path: "/x/Archive",
+            excluded: true, builds: 0)
+        check(
+            ["*.tmp", "/x/Caches"], name: "scratch.tmp", path: "/x/scratch.tmp",
+            excluded: true, builds: 0)
+        check(
+            ["/Users/*/Library/Caches"], name: "Caches", path: "/Users/test/Library/Caches",
+            excluded: true, builds: 1)
+        check(
+            ["**/Cache/*.bin"], name: "blob.bin", path: "/x/Cache/nested/blob.bin",
+            excluded: true, builds: 1)
+        check(["/x/[a/b]"], name: "a", path: "/x/a", excluded: true, builds: 1)
+        check(["/x/cache\\?"], name: "cache?", path: "/x/cache?", excluded: true, builds: 1)
+        check(["/x/\\*/cache"], name: "cache", path: "/x/*/cache", excluded: true, builds: 1)
+        check(["/x/Reports/"], name: "Reports", path: "/x/Reports", excluded: false, builds: 1)
     }
 
     static func policy() {

@@ -107,7 +107,20 @@ in-memory history).
 
 Image capture (TIFF→PNG re-encode + blob write) runs off the main actor via detached tasks; row
 inserts, original-text search, and pruning stay on the main actor.
-Image copy uses Foundation’s `mappedIfSafe` hint before publishing the original PNG and marker.
+Image copy uses Foundation’s `mappedIfSafe` hint before publishing the original PNG, its file URL
+and marker. The file URL is what a terminal pastes, as the path, since it ignores image data; there
+is deliberately no `.string`, which a rich text field would take over the image.
+
+**Tiles and previews decode a copy, not the blob.** A PNG can't decode partially, so a 64px tile of a
+6K screenshot cost its full bitmap. The first draw of an owned image has `ClipboardTextHelper` write
+the `ImageDerivative` copy it needs, 256px for a row or 1080px for the preview, to
+`images/.thumbnails/` (excluded from backup); later draws decode those. Without a readable copy, from a
+failed or timed-out helper or a size past 1080px, the original is decoded in the app as before.
+Copies are made and deleted on one serial `ImageDerivative.queue`, so a copy's delete waits out the
+copy in flight; the blob itself is still deleted at once. The helper's wait runs on that queue, off
+the cooperative pool, with a 10 s deadline and the caller's cancellation. `load` sweeps copies whose
+blob is gone, which a quit before the queue ran can leave. Copies are keyed by the blob's whole file
+name. An image outside `images/`, such as a Raycast import, never gets copies.
 
 **A backup reads the whole table, not `items`.** `forEachStoredItem(inDatabaseAt:)` is `nonisolated`
 and opens a second connection, because the resident window stops at 1000 rows while the table is

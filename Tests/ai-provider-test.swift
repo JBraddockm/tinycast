@@ -18,19 +18,24 @@ struct AIProviderTests {
     static func instructionsFollowTheSetting() {
         for prompt in [nil, "", "   \n\t "] as [String?] {
             expect(
-                AIInstructions.compose(userPrompt: prompt, isEnabled: true) == AIPreamble.text,
-                "an absent or blank user prompt sends the preamble alone")
+                AIInstructions.compose(userPrompt: prompt, isEnabled: true, offersChoices: false)
+                    == AIPreamble.text,
+                "an absent or blank user prompt with choices off sends the preamble alone")
         }
         expect(
-            AIInstructions.compose(userPrompt: "  Answer only in haiku.  ", isEnabled: true)
-                == AIPreamble.text + "\n\nAnswer only in haiku.",
-            "instructions put the preamble before the trimmed user prompt with a blank line")
+            AIInstructions.compose(
+                userPrompt: "  Answer only in haiku.  ", isEnabled: true, offersChoices: true)
+                == AIPreamble.text + "\n\n" + AIPreamble.choices + "\n\nAnswer only in haiku.",
+            "instructions put the preamble and its choices before the trimmed user prompt")
         for prompt in [nil, "Answer only in haiku."] as [String?] {
             expect(
-                AIInstructions.compose(userPrompt: prompt, isEnabled: false) == nil,
-                "disabled instructions withhold both the preamble and the user prompt")
+                AIInstructions.compose(userPrompt: prompt, isEnabled: false, offersChoices: true)
+                    == nil,
+                "disabled instructions withhold the preamble, its choices and the user prompt")
         }
-        expect(AIPreamble.text.count < 1_800, "the preamble stays within its per-turn budget")
+        expect(
+            (AIPreamble.text + AIPreamble.choices).count < 1_800,
+            "the preamble stays within its per-turn budget")
     }
 
     /// A wrong document shape must fail here rather than mid-conversation.
@@ -135,6 +140,7 @@ struct AIProviderTests {
         codexElicitationsAreOnlyToolCalls()
         claudeControlFramesAnswerOneTool()
         aGatewayOffersNoneAsItsReasoningEffort()
+        declaredLevelsNeverReachAVendorOrOutliveTheirDeclaration()
 
         print("\(passes) passed, \(failures) failed")
         if failures > 0 { exit(1) }
@@ -369,7 +375,7 @@ struct AIProviderTests {
     /// A body that named the default would 400 on every endpoint without a thinking mode.
     static func aGatewayOffersNoneAsItsReasoningEffort() {
         let gateway = AIConnection(
-            provider: .openAI, baseURL: "https://api.fusioncode.app/v1", models: ["m"])
+            provider: .openAI, baseURL: "https://gateway.example/v1", models: ["m"])
         expect(
             gateway.reasoningOptions(for: "m")?.efforts == ["default", "none"],
             "a preset pointed away from its own API offers the one effort a gateway can honour")
@@ -392,7 +398,7 @@ struct AIProviderTests {
             "a published catalog always wins over the synthesized switch")
 
         let turn = AIRequest(messages: [AIMessage(role: .user, text: "hi")])
-        let url = URL(string: "https://api.fusioncode.app/v1")!
+        let url = URL(string: "https://gateway.example/v1")!
         let on = AIRequestBody.make(
             turn,
             configuration: AIHTTPConfiguration(provider: .openAI, baseURL: url, model: "m"))
@@ -406,6 +412,87 @@ struct AIProviderTests {
         expect(
             (off["thinking"] as? [String: String])?["type"] == "disabled",
             "None asks the endpoint to answer directly")
+        expect(off["reasoning_effort"] == nil, "None sends no effort field beside it")
+
+        var declared = AIConnection(
+            provider: .openAI, baseURL: "https://gateway.example/v1", models: ["m"])
+        declared.declareLevels(["high", "low", "bogus"], for: "m")
+        expect(
+            declared.reasoningOptions(for: "m")?.efforts == ["default", "low", "high", "none"],
+            "declared levels sit in ladder order between Default and None, and strangers drop")
+        expect(
+            declared.reasoningOptions(for: "m")?.resolvedEffort(nil) == "default",
+            "a declaration leaves reasoning alone until the reader picks a level")
+        expect(declared.declaredLevels(for: "m") == ["low", "high"], "the declaration reads back")
+        declared.declareLevels([], for: "m")
+        expect(
+            declared.reasoningOptions(for: "m")?.efforts == ["default", "none"],
+            "clearing it returns to the Default/None pair")
+
+        let level = AIRequestBody.make(
+            turn,
+            configuration: AIHTTPConfiguration(
+                provider: .openAI, baseURL: url, model: "m", effort: "low"))
+        expect(
+            level["reasoning_effort"] as? String == "low",
+            "a declared level goes out as OpenAI's own reasoning_effort")
+        expect(level["reasoning"] == nil, "and not as OpenRouter's reasoning object")
+        let unset = AIRequestBody.make(
+            turn,
+            configuration: AIHTTPConfiguration(
+                provider: .openAI, baseURL: url, model: "m", effort: "default"))
+        expect(unset["reasoning_effort"] == nil, "Default still sends no field")
+    }
+
+    static func declaredLevelsNeverReachAVendorOrOutliveTheirDeclaration() {
+        var gateway = AIConnection(
+            provider: .openAI, baseURL: "https://gateway.example/v1", models: ["m"])
+        gateway.declareLevels(["low", "high"], for: "m")
+        expect(gateway.offeredEffort("high", for: "m") == "high", "a declared level is sent")
+        expect(gateway.offeredEffort(nil, for: "m") == nil, "no saved effort sends none")
+
+        gateway.declareLevels(["low"], for: "m")
+        expect(
+            gateway.offeredEffort("high", for: "m") == nil,
+            "a chat still holding an unticked level stops sending it")
+
+        var vendor = gateway
+        vendor.baseURL = AIProviderKind.openAI.defaultBaseURL
+        expect(
+            vendor.reasoningOptions(for: "m") == nil,
+            "levels declared for a gateway are not offered once the URL is the vendor's own")
+        expect(vendor.offeredEffort("low", for: "m") == nil, "nor sent to the vendor")
+
+        let openRouter = AIConnection(
+            id: UUID(), provider: .openRouter, models: ["m"],
+            reasoningOptions: ["m": .init(efforts: ["high", "low"], defaultEffort: "high")])
+        expect(
+            openRouter.offeredEffort("high", for: "m") == "high",
+            "OpenRouter's own catalog still reaches its default URL")
+        expect(
+            openRouter.offeredEffort("xhigh", for: "m") == nil,
+            "a level its catalog dropped is not sent")
+        expect(
+            AIConnection(provider: .openAI, models: ["m"]).offeredEffort("high", for: "m") == nil,
+            "an old OpenRouter effort left on a vendor connection is not sent")
+
+        var retargeted = gateway
+        retargeted.dropDeclaredLevels()
+        expect(
+            retargeted.reasoningOptions == nil,
+            "levels declared for one gateway are dropped when the URL moves")
+        var movedOpenRouter = openRouter
+        movedOpenRouter.dropDeclaredLevels()
+        expect(
+            movedOpenRouter.reasoningOptions == openRouter.reasoningOptions,
+            "OpenRouter's catalog is no declaration, so a moved URL keeps it")
+
+        expect(gateway.takesDeclaredLevels, "a gateway takes declared levels")
+        expect(!vendor.takesDeclaredLevels, "a vendor URL does not")
+        expect(
+            !AIConnection(provider: .openRouter, baseURL: "https://proxy.example/v1")
+                .takesDeclaredLevels,
+            "OpenRouter at any URL does not, because its catalog names the levels")
     }
 
     static func providerPresetsResolveEndpoints() {

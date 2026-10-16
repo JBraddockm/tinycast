@@ -122,13 +122,15 @@ bottom with the model picker. ⌘J hands a Quick AI conversation to the window.
   sometimes wraps that label in a bare fence of its own and adds a stray one after the list, so the
   bare fence right on the label and any fence closing or trailing the list go with them, and no
   empty code box is left behind. A label inside a fence with a language, or any other open code
-  block, is code and stays. `ChatSuggestionChips` draws the options as glass capsules, each wrapped
-  row centred (`ChatFlowLayout(centersRows:)`): in the window they rise out of the
-  composer, sitting on its top edge until the reader starts typing; in Quick AI they close the
+  block, is code and stays. `ChatSuggestionChips` draws the options as glass capsules in a
+  leading-aligned `ChatFlowLayout`: in the window they rise out of the composer, sitting on its top edge until the reader starts typing; in Quick AI they close the
   transcript. A click sends the option as the reader's next message, through the same `send` a
   typed one takes. Older replies lose their chips, since only the last question is still open. It is text in, text out, so it
   works on every route — and not at all with the system prompt switched off, which drops the
-  preamble that describes it.
+  preamble that describes it. Settings → AI → Suggested replies (`aiChoices`, on by default) turns
+  them off on purpose: `AIInstructions.compose` leaves `AIPreamble.choices` out, so no turn asks for
+  them, and neither surface draws chips. A fence a model writes anyway is still lifted out of the
+  prose.
 - **Token usage belongs to the reply that reported it.** `AIUsage` carries input, output, cached
   prompt and thinking tokens, and the model's window and cost where a route says them — Claude's CLI
   reports all of it, the Anthropic API its cache, OpenAI-shaped routes their reasoning tokens and
@@ -358,10 +360,17 @@ and `None`. `takesThinkingField` decides who gets that pair: an OpenAI-shaped pr
 not that preset's own, because a preset pointed away from its own API is a gateway, and a gateway is
 the only destination Tinycast can offer the switch to honestly. Picking `None` sends
 `"thinking": {"type": "disabled"}`, which is how DeepSeek and the endpoints that copied its contract
-answer without reasoning first. A vendor API is never offered the pair and so is never sent a field it
-does not define — which matters precisely because the preset alone says nothing about the destination
-when every base URL is editable. Only `None` is ever written, so every other body is the one it always
-was, and the choice rides in `AIModelSelection.effort` like every other route's.
+answer without reasoning first. A vendor API is never offered the pair, nor levels declared while its
+base URL pointed elsewhere, and so is never sent a field it does not define — which matters precisely
+because the preset alone says nothing about the destination when every base URL is editable. A
+gateway's model may also carry levels the reader declares in the connection editor (`minimal`, `low`,
+`medium`, `high`, never inferred), kept between `Default` and `None`; a picked level is sent as
+OpenAI's `reasoning_effort`. OpenRouter is left out at any URL (`takesDeclaredLevels`), because its
+catalog already names each model's levels. A chat and a Quick Action keep their own effort, so
+`AIProviderFactory` sends only one the model still offers (`offeredEffort`): an unticked level, or one
+left behind by a changed provider, is dropped rather than sent. With nothing declared the only field
+ever written is the `None` one, so every other body is the one it always was, and the choice rides in
+`AIModelSelection.effort` like every other route's.
 
 ## Provider interface
 
@@ -507,7 +516,9 @@ and the Actions menu's own chords, and dies with the window.
   shape — never blinks off crossing between rows.
   The context menu pins, renames in place, copies or exports the chat as Markdown
   (`ChatSession.markdownTranscript`), and deletes one or all through `DialogController`; ⌫ deletes
-  the selected chat the same way.
+  the selected chat the same way. Renaming swaps only the row's title for a field: a `ForEach` row
+  that is itself an `if`/`else` makes the sidebar `List` diff in quadratic time, which held the main
+  thread for seconds on opening the window and on every selection with a few thousand chats.
 - **Transcript**: `ChatTranscriptView` with `surface: .window`, which drops the palette's edge
   dissolve and thin scrollbar (both are measured against the palette's bars) and centres the column
   at `aiChatReadingWidth`. The last finished reply offers Regenerate beside Copy: `AIChatState`
@@ -657,8 +668,8 @@ window, and every chat action either surface sends — is the nineteenth feature
 - A long reply streams with the transcript pinned to its end, through a growing composer, a window
   resize and the chips arriving; scrolling up stops it at once, and Jump to Latest resumes it.
 - A reasoning fold ends on its last line of text, with no empty stretch under it, in both surfaces.
-- Suggested replies are centred glass capsules, and when they wrap each row is centred. Source chips
-  under a cited reply match them, the number first in its own disc.
+- Suggested replies are leading-aligned glass capsules, and wrapped rows start at the same edge.
+  Source chips under a cited reply match them, the number first in its own disc.
 - A failed reply keeps what was written in the normal colour; only the closing note is red.
 - Code blocks have rounded corners, in Dark and Light, and are coloured: ask for a snippet each in
   Swift, Python, shell, JSON, SQL, a diff and HTML; a `diff` shows additions green and removals red,

@@ -26,6 +26,7 @@ final class FileSearchCoordinator {
         self.windowController = windowController
         self.core = core
         indexer.onIndexChanged = { [weak session] in session?.refresh() }
+        indexer.onRecentChanged = { [weak session] in session?.refreshRecent() }
     }
 
     func applyEnabled() {
@@ -42,6 +43,30 @@ final class FileSearchCoordinator {
                 scopes: settings.fileSearchScopes,
                 ignorePatterns: settings.fileSearchIgnorePatterns,
                 homeDirectory: FileManager.default.homeDirectoryForCurrentUser))
+    }
+
+    var showsFilesInLauncher: Bool {
+        settings.fileSearchEnabled && settings.fileSearchShowInLauncher
+    }
+
+    /// Borrows the screen's session, so Search Files then opens on the request already answered.
+    func searchFromLauncher(_ query: String) {
+        guard showsFilesInLauncher, FileSearchQuery.answersLauncher(query) else {
+            session.cancel()
+            return
+        }
+        session.search(query)
+    }
+
+    /// Checks the switch before reading the session, so with it off the launcher observes nothing.
+    func launcherFiles(for query: String) -> [FileSearchResult] {
+        guard showsFilesInLauncher, FileSearchQuery.answersLauncher(query) else { return [] }
+        return Array(session.results.prefix(FileSearchQuery.launcherLimit))
+    }
+
+    func applyLauncherFiles() {
+        guard palette.mode == .launcher else { return }
+        searchFromLauncher(palette.query)
     }
 
     func rebuildIndex() {
