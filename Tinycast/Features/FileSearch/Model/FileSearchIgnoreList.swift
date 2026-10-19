@@ -5,9 +5,17 @@ import Foundation
 struct FileSearchIgnoreList: Sendable, Equatable {
     /// Compiled in, not stored, so changing the shipped rules reaches existing installs.
     static let defaults = [
-        "node_modules", "DerivedData", "build", "dist", "target", "Pods", ".next", "~/Library/Caches",
-        "/Library/Caches", "/private/var/folders"
+        "node_modules", ".git", ".build", "build", "dist", "target", "DerivedData", "Pods", ".next",
+        ".venv", "*.photoslibrary", "~/.Trash", "~/.cache", "~/.npm", "~/Library/Application Support",
+        "~/Library/Caches", "~/Library/Containers", "~/Library/Developer", "~/Library/Group Containers",
+        "~/Library/Mail", "/Library/Caches", "/private/var/folders"
     ]
+
+    /// A shipped rule is governed by `removedDefaults` alone, even when `added` repeats it.
+    static func patterns(added: [String], removedDefaults: [String]) -> [String] {
+        var seen = Set(defaults)
+        return defaults.filter { !removedDefaults.contains($0) } + added.filter { seen.insert($0).inserted }
+    }
 
     private let literalNames: [Glob]
     private let nameGlobs: [Glob]

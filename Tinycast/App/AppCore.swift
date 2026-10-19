@@ -99,10 +99,13 @@ final class AppCore {
         audioDucker: dictationAudioDucker,
         confirmEnable: { [unowned self] in
             await self.confirm(
-                title: "Enable Dictation?",
-                message: "Tinycast needs microphone access for dictation and Accessibility to paste into "
-                    + "other apps. Audio is processed on this Mac.",
-                symbol: "waveform", confirmTitle: "Continue", tone: .neutral,
+                title: String(localized: "Enable Dictation?"),
+                message: String(
+                    localized: """
+                        Tinycast needs microphone access for dictation and Accessibility to paste into \
+                        other apps. Audio is processed on this Mac.
+                        """),
+                symbol: "waveform", confirmTitle: String(localized: "Continue"), tone: .neutral,
                 confirmRole: .standard)
         },
         showMessage: { [unowned self] in self.showMessage($0, tone: $1) })
@@ -247,6 +250,9 @@ final class AppCore {
             isShowingDialog = isPresenting
         })
     private let healthTicker = HealthTicker()
+    /// Resolved once by AppKit, so it is what this process shows until it relaunches.
+    private let launchLocalization = Bundle.main.preferredLocalizations.first
+    private var relaunchRequested = false
 
     private init() {
         let launcherRanking = LauncherRankingStore()
@@ -283,7 +289,7 @@ final class AppCore {
             applyAppearance()
             observeEffectiveAppearance()
             pinnedEmoji.onPersistenceFailure = { [weak self] in
-                self?.showMessage("Couldn't save Emoji & Symbols pins", tone: .danger)
+                self?.showMessage(String(localized: "Couldn't save Emoji & Symbols pins"), tone: .danger)
             }
 
             appIndex.start(settings: settings)
@@ -343,7 +349,7 @@ final class AppCore {
             updateCoordinator.applyEnabled()
             calendarCoordinator.applyEnabled()
             Task { await appIndex.refresh() }
-            Task { await emojiIndex.load(languages: Locale.preferredLanguages) }
+            Task { await emojiIndex.load(languages: SystemLanguages.preferred) }
             currencyRates.start()
             updateChecker.onUpdateAvailable = { [weak self] release in
                 self?.updateCoordinator.presentIfAvailable(release) ?? true
@@ -535,7 +541,9 @@ final class AppCore {
             return
         }
         guard clipboardStore.setTextSearchEnabled(true) else {
-            showMessage("Couldn't enable text recognition for clipboard history.", tone: .danger)
+            showMessage(
+                String(localized: "Couldn't enable text recognition for clipboard history."),
+                tone: .danger)
             return
         }
         clipboardStore.setTextSearchActive(palette.isVisible)
@@ -549,6 +557,15 @@ final class AppCore {
             self?.clipboardCoordinator.followSearchResults(query: query, previous: previous, current: current)
         }
         indexer.start()
+    }
+
+    func relaunch() {
+        guard !relaunchRequested else { return }
+        relaunchRequested = true
+        // AppKit's termination loop must start outside a Swift task or dispatch callback.
+        RunLoop.main.perform(inModes: [.common]) {
+            MainActor.assumeIsolated { NSApp.terminate(nil) }
+        }
     }
 
     func prepareForTermination() {
@@ -569,6 +586,7 @@ final class AppCore {
         mcpOAuth.stop()
         mcp.stop()
         installedAI.stop()
+        if relaunchRequested { RelaunchRunner.relaunchAfterExit(Bundle.main.bundleURL) }
     }
 
     /// Only the tool whose own path or variables changed is checked again; the rest keep running.
@@ -613,7 +631,8 @@ final class AppCore {
             against: aiSettings.connections, fallback: aiSettings.defaultModel)
         guard let selection = quickActionSettings.model(for: action) ?? aiSettings.defaultModel
         else {
-            throw AIProviderError.unavailable("Choose a model in Settings \u{2192} Quick Actions.")
+            throw AIProviderError.unavailable(
+                String(localized: "Choose a model in Settings \u{2192} Quick Actions."))
         }
         return try AIProviderFactory.make(
             selection: selection, settings: aiSettings, subscription: chatGPTSubscription,
@@ -719,6 +738,7 @@ final class AppCore {
             {
                 _ = $0.fileSearchScopes
                 _ = $0.fileSearchIgnorePatterns
+                _ = $0.fileSearchRemovedDefaultPatterns
             }, reproject: { $0.fileSearchCoordinator.applyPolicy() })
         track({ _ = $0.snippetsEnabled }, reproject: { $0.snippetCoordinator.applySnippetsEnabled() })
         // Not a feature switch, but the same re-projection: a combo has the chord's ⇧ bit baked in.
@@ -727,6 +747,7 @@ final class AppCore {
             { _ = $0.snippetsShowInLauncher },
             reproject: { $0.snippetCoordinator.applySnippetsLauncherPresence() })
         track({ _ = $0.appearance }, reproject: { $0.applyAppearance() })
+        track({ _ = $0.language }, reproject: { $0.offerLanguageRelaunch() })
         track({ _ = $0.interfaceSize }, reproject: { $0.windowController.applyInterfaceSize() })
         // Settings panes did these on change; settings.json can change them with no pane open.
         track(
@@ -745,6 +766,23 @@ final class AppCore {
     /// `.system` resolves to `nil`, so AppKit follows macOS with nothing polling.
     private func applyAppearance() {
         NSApp.appearance = settings.appearance.nsAppearance
+    }
+
+    private var isLanguagePending: Bool { settings.language.rawValue != launchLocalization }
+
+    private func offerLanguageRelaunch() {
+        guard isLanguagePending else { return }
+        Task {
+            guard
+                await confirm(
+                    title: String(localized: "Relaunch Tinycast?"),
+                    message: String(localized: "The new language applies after Tinycast relaunches."),
+                    symbol: "globe", confirmTitle: String(localized: "Relaunch"), tone: .neutral,
+                    confirmRole: .standard, dismissTitle: String(localized: "Later")),
+                isLanguagePending
+            else { return }
+            relaunch()
+        }
     }
 
     /// IconCache is told here, not from `applyAppearance()`, which never fires under `.system`.
@@ -883,7 +921,7 @@ final class AppCore {
     func confirm(
         title: String, message: String?, symbol: String?, confirmTitle: String,
         tone: DialogTone = .danger, confirmRole: DialogAction.Role = .destructive,
-        dismissTitle: String = "Cancel"
+        dismissTitle: String = String(localized: "Cancel")
     ) async -> Bool {
         await dialogs.confirm(
             title: title, message: message, symbol: symbol, tone: tone, confirmTitle: confirmTitle,

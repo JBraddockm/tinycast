@@ -28,13 +28,15 @@ struct CameraPreviewView: View {
                 Text(meeting.title)
                     .font(Theme.Typography.rowTitle)
                     .lineLimit(1)
-                Text(UpcomingWindow.countdown(to: meeting.start, now: now))
+                Text(UpcomingWindow.countdown(to: meeting.start, now: now, locale: .current))
                     .font(Theme.Typography.rowTrailing)
                     .foregroundStyle(Theme.Colors.textSecondary)
             }
             Spacer(minLength: Theme.Spacing.md)
-            CameraButton(title: "Cancel", keyCap: "esc", emphasis: .secondary, onActivate: onCancel)
-            CameraButton(title: "Join", keyCap: "↵", onActivate: onJoin)
+            CameraButton(
+                title: String(localized: "Cancel"), keyCap: "esc", emphasis: .secondary,
+                onActivate: onCancel)
+            CameraButton(title: String(localized: "Join"), keyCap: "↵", onActivate: onJoin)
         }
         .padding(Theme.Spacing.xl)
     }

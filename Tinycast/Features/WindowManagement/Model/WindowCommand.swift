@@ -63,20 +63,21 @@ struct WindowCommand: Identifiable, Hashable, Sendable {
 
         var title: String {
             switch self {
-            case .halves: return "Halves"
-            case .quarters: return "Quarters"
-            case .fourths: return "Fourths"
-            case .thirds: return "Thirds"
-            case .sizing: return "Sizing"
-            case .moving: return "Moving"
-            case .fullscreen: return "Fullscreen"
-            case .spaces: return "Spaces"
+            case .halves: return String(localized: "Halves")
+            case .quarters: return String(localized: "Quarters")
+            case .fourths: return String(localized: "Fourths")
+            case .thirds: return String(localized: "Thirds")
+            case .sizing: return String(localized: "Sizing")
+            case .moving: return String(localized: "Moving")
+            case .fullscreen: return String(localized: "Fullscreen")
+            case .spaces: return String(localized: "Spaces")
             }
         }
     }
 
     let id: ID
     let name: String
+    let englishName: String
     let sfSymbol: String
     let kind: Kind
     let group: Group
@@ -89,9 +90,10 @@ struct WindowCommand: Identifiable, Hashable, Sendable {
 
 enum WindowCommandCatalog {
     static let all: [WindowCommand] = WindowCommand.ID.allCases.map { id in
-        WindowCommand(
-            id: id, name: name(for: id), sfSymbol: symbol(for: id), kind: kind(for: id),
-            group: group(for: id), cyclesOnRepeat: cyclesOnRepeat.contains(id),
+        let name = name(for: id)
+        return WindowCommand(
+            id: id, name: String(localized: name), englishName: name.key, sfSymbol: symbol(for: id),
+            kind: kind(for: id), group: group(for: id), cyclesOnRepeat: cyclesOnRepeat.contains(id),
             resizes: !movesOnly.contains(id))
     }
 
@@ -116,7 +118,7 @@ enum WindowCommandCatalog {
 
     static let movesOnly: Set<WindowCommand.ID> = [.moveLeft, .moveRight, .moveUp, .moveDown]
 
-    private static func name(for id: WindowCommand.ID) -> String {
+    private static func name(for id: WindowCommand.ID) -> LocalizedStringResource {
         switch id {
         case .leftHalf: return "Left Half"
         case .rightHalf: return "Right Half"

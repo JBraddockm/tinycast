@@ -27,11 +27,16 @@ struct AppInstallationTest {
             .appendingPathComponent("tinycast-installations-\(UUID())").resolvingSymlinksInPath()
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }
-        try await testIndex(root)
-        if ProcessInfo.processInfo.environment["TINYCAST_TEST_APP_LAUNCH"] == "1"
-            || CommandLine.arguments.contains("--launch")
-        {
-            try await testLaunch(root)
+        if let argument = CommandLine.arguments.firstIndex(of: "--localized-index") {
+            try await testLocalizedIndex(root, language: CommandLine.arguments[argument + 1])
+        } else {
+            try await testIndex(root)
+            try await testLanguageOverride(root)
+            if ProcessInfo.processInfo.environment["TINYCAST_TEST_APP_LAUNCH"] == "1"
+                || CommandLine.arguments.contains("--launch")
+            {
+                try await testLaunch(root)
+            }
         }
         print(failures == 0 ? "ALL PASSED" : "\(failures) FAILED")
     }
@@ -156,6 +161,94 @@ struct AppInstallationTest {
         await ranking.flush()
     }
 
+    private static func testLanguageOverride(_ root: URL) async throws {
+        let system = Set(
+            SystemLanguages.preferred.compactMap { $0.split(separator: "-").first.map(String.init) })
+        guard
+            let language = ["ru", "ja", "ko", "de", "fr", "es", "pt", "it", "nl", "sv"]
+                .first(where: { !system.contains($0) }),
+            let executable = Bundle.main.executableURL
+        else { throw CocoaError(.fileReadCorruptFile) }
+        let app = root.appendingPathComponent("LanguageProbe.app", isDirectory: true)
+        try makeApp(app, id: "com.tinycast.language-probe.\(UUID())", version: "1.0")
+        let infoURL = app.appendingPathComponent("Contents/Info.plist")
+        guard
+            var info = try PropertyListSerialization.propertyList(
+                from: Data(contentsOf: infoURL), format: nil) as? [String: Any]
+        else { throw CocoaError(.fileReadCorruptFile) }
+        info["CFBundleDevelopmentRegion"] = "en"
+        info["CFBundleLocalizations"] = ["en", language]
+        try PropertyListSerialization.data(fromPropertyList: info, format: .xml, options: 0).write(
+            to: infoURL)
+        let macOS = app.appendingPathComponent("Contents/MacOS", isDirectory: true)
+        try FileManager.default.createDirectory(at: macOS, withIntermediateDirectories: true)
+        let probe = macOS.appendingPathComponent("Fixture")
+        try FileManager.default.copyItem(at: executable, to: probe)
+        check(
+            "app language does not change installed-app names or search terms",
+            try await runProgram(
+                probe.path, ["--localized-index", language, "-AppleLanguages", "(\(language))"]) == 0)
+    }
+
+    private static func testLocalizedIndex(_ root: URL, language: String) async throws {
+        check(
+            "the probe runs in its requested language", Bundle.main.preferredLocalizations.first == language)
+        let app = root.appendingPathComponent("Localized.app", isDirectory: true)
+        let id = "com.tinycast.localized-fixture.\(UUID())"
+        try makeApp(app, id: id, version: "1.0")
+        let infoURL = app.appendingPathComponent("Contents/Info.plist")
+        guard
+            var info = try PropertyListSerialization.propertyList(
+                from: Data(contentsOf: infoURL), format: nil) as? [String: Any]
+        else { throw CocoaError(.fileReadCorruptFile) }
+        info["CFBundleDevelopmentRegion"] = "en"
+        info["CFBundleDisplayName"] = "DeclaredFixtureName"
+        try PropertyListSerialization.data(fromPropertyList: info, format: .xml, options: 0).write(
+            to: infoURL)
+        for (code, name) in [("en", "SystemLanguageFixture"), (language, "InterfaceOnlyFixture")] {
+            let folder = app.appendingPathComponent("Contents/Resources/\(code).lproj", isDirectory: true)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            try PropertyListSerialization.data(
+                fromPropertyList: ["CFBundleDisplayName": name], format: .xml, options: 0
+            )
+            .write(to: folder.appendingPathComponent("InfoPlist.strings"))
+        }
+        check(
+            "the fixture exposes an interface-localized declaration",
+            Bundle(url: app)?.installedAppName == "InterfaceOnlyFixture")
+        let domain = "tinycast.language-index-test.\(UUID())"
+        let defaults = UserDefaults(suiteName: domain)!
+        defer { defaults.removePersistentDomain(forName: domain) }
+        let aliases = AliasStore(defaults: defaults)
+        let visibility = VisibilityStore(defaults: defaults)
+        let ranking = LauncherRankingStore(fileURL: root.appendingPathComponent("ranking.json"))
+        let settings = AppSettings()
+        settings.searchScopes = [app.path]
+        let index = AppIndex(ranking: ranking, aliases: aliases)
+        index.start(settings: settings)
+        await index.refresh()
+        check("app names follow macOS languages", index.apps.first?.name == "SystemLanguageFixture")
+        check(
+            "the original declaration remains indexed", index.apps.first?.keywords == ["DeclaredFixtureName"])
+        let favorites = FavoritesStore()
+        let hotKeys = HotKeyManager()
+        func results(_ query: String) -> [AppEntry] {
+            index.orderedResults(
+                query: query, visibility: visibility, favorites: favorites, hotKeys: hotKeys
+            ).entries
+        }
+        check(
+            "the original declaration remains searchable",
+            results("DeclaredFixtureName").contains { $0.bundleID == id })
+        check(
+            "system-language names remain searchable",
+            results("SystemLanguageFixture").contains { $0.bundleID == id })
+        check(
+            "interface-only names stay out of search",
+            !results("InterfaceOnlyFixture").contains { $0.bundleID == id })
+        await ranking.flush()
+    }
+
     private static func testLaunch(_ root: URL) async throws {
         let id = "com.tinycast.installation-fixture.\(UUID().uuidString.lowercased())"
         let first = root.appendingPathComponent("First.app", isDirectory: true)
@@ -171,6 +264,26 @@ struct AppInstallationTest {
                 let marker = bundle.deletingLastPathComponent()
                     .appendingPathComponent(bundle.lastPathComponent + ".ready")
                 try! Data().write(to: marker)
+            }
+
+            func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+                let bundle = Bundle.main.bundleURL
+                let marker = bundle.deletingLastPathComponent()
+                    .appendingPathComponent(bundle.lastPathComponent + ".refuse-quit")
+                if FileManager.default.fileExists(atPath: marker.path) { return .terminateCancel }
+                let delayed = bundle.deletingLastPathComponent()
+                    .appendingPathComponent(bundle.lastPathComponent + ".delay-quit")
+                if FileManager.default.fileExists(atPath: delayed.path) {
+                    Task {
+                        try? await Task.sleep(for: .milliseconds(250))
+                        let completed = bundle.deletingLastPathComponent()
+                            .appendingPathComponent(bundle.lastPathComponent + ".quit-completed")
+                        try! Data().write(to: completed)
+                        sender.reply(toApplicationShouldTerminate: true)
+                    }
+                    return .terminateLater
+                }
+                return .terminateNow
             }
 
             func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
@@ -266,7 +379,19 @@ struct AppInstallationTest {
         AppLauncher.launch(second, allowsRunningApplicationSubstitution: false)
         try await Task.sleep(for: .milliseconds(300))
         check("reopening reuses the selected installation", running(second)?.processIdentifier == secondPID)
-        check("Quit finds the selected version", AppLauncher.quit(bundleID: id, url: second))
+        let delayed = root.appendingPathComponent("Second.app.delay-quit")
+        try Data().write(to: delayed)
+        check(
+            "waiting for an accessory app to quit succeeds",
+            await AppLauncher.quitAwaitingExit(bundleID: id, url: second))
+        check(
+            "the quit wait includes the app's final writes",
+            FileManager.default.fileExists(
+                atPath: root.appendingPathComponent("Second.app.quit-completed").path))
+        try FileManager.default.removeItem(at: delayed)
+        check(
+            "waiting for an absent installation succeeds",
+            await AppLauncher.quitAwaitingExit(bundleID: id, url: second))
         check(
             "Quit leaves its sibling running",
             await waitUntil { running(second) == nil && running(first) != nil })
@@ -278,21 +403,33 @@ struct AppInstallationTest {
         AppLauncher.launch(second, allowsRunningApplicationSubstitution: false)
         check("the second installation can reopen", await waitUntil { running(second) != nil })
         let siblingPID = running(second)?.processIdentifier
-        if receivesEvents {
-            let firstPID = running(first)?.processIdentifier
-            await AppLauncher.restart(bundleID: id, url: first)
-            check(
-                "Restart reopens the selected version",
-                await waitUntil {
-                    running(first).map { $0.processIdentifier != firstPID } ?? false
-                })
-            check(
-                "Restart leaves the sibling process alone", running(second)?.processIdentifier == siblingPID)
-        }
+        let restartedPID = running(first)?.processIdentifier
+        await AppLauncher.restart(bundleID: id, url: first)
+        check(
+            "Restart reopens the selected version without workspace notifications",
+            await waitUntil {
+                running(first).map { $0.processIdentifier != restartedPID } ?? false
+            })
+        check(
+            "Restart leaves the sibling process alone", running(second)?.processIdentifier == siblingPID)
         let canceled = Task { await AppLauncher.restart(bundleID: id, url: second) }
         canceled.cancel()
         await canceled.value
         check("a canceled restart leaves the app running", running(second)?.processIdentifier == siblingPID)
+        let refusal = root.appendingPathComponent("Second.app.refuse-quit")
+        try Data().write(to: refusal)
+        let started = ContinuousClock.now
+        check(
+            "a refused quit times out without claiming success",
+            await !AppLauncher.quitAwaitingExit(bundleID: id, url: second))
+        check("a refused quit retains the grace period", ContinuousClock.now - started >= .seconds(5))
+        check("a refused quit leaves the app alive", running(second)?.processIdentifier == siblingPID)
+        try FileManager.default.removeItem(at: refusal)
+        let canceledQuit = Task { await AppLauncher.quitAwaitingExit(bundleID: id, url: second) }
+        canceledQuit.cancel()
+        check("a canceled quit fails", await !canceledQuit.value)
+        try await Task.sleep(for: .milliseconds(300))
+        check("a canceled quit leaves the app running", running(second)?.processIdentifier == siblingPID)
         _ = AppLauncher.quit(bundleID: id, url: second, force: true)
         check(
             "Force Quit targets the selected path",
@@ -397,6 +534,7 @@ struct SystemAction: Sendable {
     var id = ID.fixture
     var entryID = ""
     var name = ""
+    var englishName = ""
     var sfSymbol = ""
 }
 enum SystemActionCatalog {
@@ -408,6 +546,7 @@ struct WindowCommand: Sendable {
     var id = ID.fixture
     var entryID = ""
     var name = ""
+    var englishName = ""
     var sfSymbol = ""
 }
 enum WindowCommandCatalog {

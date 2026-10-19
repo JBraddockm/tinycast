@@ -1,9 +1,16 @@
+import Foundation
+
 /// One `Section` inside a pane, named once so the catalog and the pane cannot disagree: the search
 /// result carries the anchor, the pane's `.settingsAnchor(_:)` marks the section it scrolls to.
 struct SettingsAnchor: Hashable, Sendable {
     let tab: SettingsTab
     /// The `Section`'s own header text, which is also what a result's breadcrumb reads.
     let title: String
+
+    init(tab: SettingsTab, title: LocalizedStringResource) {
+        self.tab = tab
+        self.title = String(localized: title)
+    }
 }
 
 // Named `<pane><Section>` throughout, so the constant for a section is always guessable from it.
@@ -31,7 +38,9 @@ extension SettingsAnchor {
     static let quicklinksImportExport = Self(tab: .quicklinks, title: "Import & Export")
 
     static let appleShortcutsAppleShortcuts = Self(tab: .appleShortcuts, title: "Apple Shortcuts")
-    static let appleShortcutsShortcuts = Self(tab: .appleShortcuts, title: "Shortcuts")
+    static let appleShortcutsShortcuts = Self(
+        tab: .appleShortcuts,
+        title: LocalizedStringResource("apple-shortcuts-section", defaultValue: "Shortcuts"))
 
     static let fallbacksFallbacks = Self(tab: .fallbacks, title: "Fallbacks")
 
@@ -105,6 +114,7 @@ extension SettingsAnchor {
     static let extensionsStorage = Self(tab: .extensions, title: "Storage")
 
     static let permissionsAccessibility = Self(tab: .permissions, title: "Accessibility")
+    static let permissionsFullDiskAccess = Self(tab: .permissions, title: "Full Disk Access")
     static let permissionsCalendars = Self(tab: .permissions, title: "Calendars")
     static let permissionsMicrophone = Self(tab: .permissions, title: "Microphone")
 

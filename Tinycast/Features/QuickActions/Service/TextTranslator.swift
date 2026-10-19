@@ -14,15 +14,15 @@ enum TextTranslator {
         var errorDescription: String? {
             switch self {
             case .undetectableSource:
-                return "The language of the selected text could not be identified."
+                return String(localized: "The language of the selected text could not be identified.")
             case .unsupported:
-                return "Apple's translator does not support this language pair."
+                return String(localized: "Apple's translator does not support this language pair.")
             case .notInstalled(let language):
                 return "\(language) needs to be downloaded before it can be used."
             case .osUnsupported:
                 return "Translation requires macOS 26 or later."
             case .failed:
-                return "The text could not be translated."
+                return String(localized: "The text could not be translated.")
             }
         }
     }
