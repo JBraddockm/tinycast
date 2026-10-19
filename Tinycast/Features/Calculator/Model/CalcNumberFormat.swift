@@ -136,7 +136,8 @@ struct CalcNumberFormat: Equatable, Sendable {
         }
         return CalcResult(
             expression: localizedExpression(result.expression), sourceBadge: result.sourceBadge,
-            targetBadge: result.targetBadge, payload: payload, canChain: result.canChain)
+            targetBadge: result.targetBadge, payload: payload, canChain: result.canChain,
+            isCurrency: result.isCurrency)
     }
 
     private func rewrite(_ text: String, separatingArguments: Bool) -> String {

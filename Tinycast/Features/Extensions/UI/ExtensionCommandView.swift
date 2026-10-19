@@ -248,7 +248,7 @@ enum ExtensionActionsMenu {
                     // Read rather than injected: a panel is rebuilt each time it opens.
                     isDark: NSApp.effectiveAppearance.isDark,
                     isDestructive: action.isDestructive),
-                shortcut: action.shortcutCaps?.joined(),
+                shortcutCaps: action.shortcutCaps ?? [],
                 isDestructive: action.isDestructive,
                 startsSection: action.startsSection)
         }

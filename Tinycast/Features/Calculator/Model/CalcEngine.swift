@@ -30,16 +30,18 @@ struct CalcResult: Equatable, Sendable {
     let payload: Payload
     /// False when the copy text, typed back as a query, is not this answer: dates, times, booleans.
     let canChain: Bool
+    let isCurrency: Bool
 
     init(
         expression: String, sourceBadge: String? = nil, targetBadge: String? = nil, payload: Payload,
-        canChain: Bool = true
+        canChain: Bool = true, isCurrency: Bool = false
     ) {
         self.expression = expression
         self.sourceBadge = sourceBadge
         self.targetBadge = targetBadge
         self.payload = payload
         self.canChain = canChain
+        self.isCurrency = isCurrency
     }
 
     /// True only for a copyable value; an error card has no primary action and no actions menu.
@@ -136,7 +138,8 @@ enum CalcEngine {
                     targetBadge: to.name,
                     payload: .value(
                         display: "\(CalcFormatter.grouped(amount)) \(to.code)",
-                        copyText: "\(amount) \(to.code)"))
+                        copyText: "\(amount) \(to.code)"),
+                    isCurrency: true)
             case .mismatch(let from, let to):
                 return CalcResult(
                     expression: query,
@@ -251,7 +254,8 @@ enum CalcEngine {
             sourceBadge: result.sourceBadge,
             targetBadge: result.targetBadge,
             payload: result.payload,
-            canChain: result.canChain)
+            canChain: result.canChain,
+            isCurrency: result.isCurrency)
     }
 
     private static func unchained(_ result: CalcResult) -> CalcResult {

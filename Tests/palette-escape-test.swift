@@ -130,17 +130,17 @@ struct PaletteEscapeTests {
             .closeMenu,
             "a menu still outranks the argument field beneath it")
 
-        // ⌘⎋ never reaches the responder chain, so what counts as the chord is decided in the tap.
+        // ⌘esc never reaches the responder chain, so the tap decides what counts as the chord.
         expectChord(
             CommandEscapeTap.isChord(keyCode: Int64(kVK_Escape), flags: [.maskCommand]),
-            true, "a bare ⌘⎋ is the root-search chord")
+            true, "a bare ⌘esc is the root-search chord")
         expectChord(
             CommandEscapeTap.isChord(keyCode: Int64(kVK_Escape), flags: []),
             false, "an unmodified Escape belongs to the palette's own handler")
         expectChord(
             CommandEscapeTap.isChord(
                 keyCode: Int64(kVK_Escape), flags: [.maskCommand, .maskAlternate]),
-            false, "⌥⌘⎋ is Force Quit and must pass straight through")
+            false, "⌥⌘esc is Force Quit and must pass straight through")
         expectChord(
             CommandEscapeTap.isChord(
                 keyCode: Int64(kVK_Escape), flags: [.maskCommand, .maskShift]),

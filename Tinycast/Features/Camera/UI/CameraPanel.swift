@@ -28,7 +28,7 @@ final class CameraPanel: NSPanel {
         isOpaque = false
         backgroundColor = .clear
         hasShadow = true
-        animationBehavior = .none
+        animationBehavior = .documentWindow
         isReleasedWhenClosed = false
         isRestorable = false
         contentView = content

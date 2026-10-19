@@ -15,7 +15,6 @@ struct CameraView: View {
         .background(Theme.Colors.panelScrim)
         .background(GlassEffectView())
         .clipShape(RoundedRectangle(cornerRadius: Theme.Radius.dialog, style: .continuous))
-        .panelEntrance()
     }
 
     private var isLive: Bool {
@@ -39,11 +38,11 @@ struct CameraView: View {
                 }
             }
             Spacer(minLength: Theme.Spacing.md)
-            CameraButton(title: String(localized: "Close"), keyCap: "esc", emphasis: .secondary) {
+            CameraButton(title: String(localized: "Close"), keyCaps: ["esc"], emphasis: .secondary) {
                 coordinator.close()
             }
             if isLive {
-                CameraButton(title: String(localized: "Take Photo"), keyCap: "↵") {
+                CameraButton(title: String(localized: "Take Photo"), keyCaps: ["↵"]) {
                     coordinator.takePhoto()
                 }
             }

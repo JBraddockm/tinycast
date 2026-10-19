@@ -11,7 +11,7 @@ struct GeneralSettingsView: View {
         @Bindable var settings = settings
         return Form {
             Section {
-                SettingsRow(title: "App Launcher", anchor: .generalGlobalShortcuts) {
+                SettingsRow(title: "Show Launcher", anchor: .generalGlobalShortcuts) {
                     ShortcutRecorder(action: .togglePalette)
                 }
             } header: {
@@ -31,11 +31,11 @@ struct GeneralSettingsView: View {
                 }
                 Toggle(isOn: $settings.showInMenuBar) {
                     SettingsRowTitle(.generalGeneral, "Show in menu bar")
-                    Text("Shortcuts still work when hidden.")
+                    Text("Shortcuts still work when the menu bar icon is hidden.")
                 }
                 Toggle(isOn: $settings.automaticallyCheckForUpdates) {
                     SettingsRowTitle(.generalGeneral, "Automatically check for updates")
-                    Text("Check for Updates remains available when off.")
+                    Text("You can still check for updates manually.")
                 }
                 Picker(selection: $settings.popToRootTimeout) {
                     ForEach(PopToRootTimeout.allCases) { timeout in
@@ -75,7 +75,7 @@ struct GeneralSettingsView: View {
                         Text(appearance.title).tag(appearance)
                     }
                 } label: {
-                    SettingsRowTitle(.generalAppearance, "Theme")
+                    SettingsRowTitle(.generalAppearance, "Appearance")
                 }
                 InterfaceSizeRow()
                 WindowModeRow()
@@ -88,8 +88,8 @@ struct GeneralSettingsView: View {
                     SettingsRowTitle(.generalAppearance, "Follow the cursor across displays")
                 }
                 Toggle(isOn: $settings.paletteDraggable) {
-                    SettingsRowTitle(.generalAppearance, "Drag to reposition")
-                    Text("Drag the strip above the search field.")
+                    SettingsRowTitle(.generalAppearance, "Drag to move the launcher")
+                    Text("Move the launcher by dragging the search bar.")
                 }
             } header: {
                 SettingsSectionHeader(.generalAppearance)
@@ -105,7 +105,7 @@ struct GeneralSettingsView: View {
                     }
                 } label: {
                     SettingsRowTitle(.generalCalculator, "Number format")
-                    Text("With a decimal comma, ; separates arguments.")
+                    Text("With a decimal comma, use ; to separate arguments.")
                 }
             } header: {
                 SettingsSectionHeader(.generalCalculator)
@@ -114,7 +114,7 @@ struct GeneralSettingsView: View {
             Section {
                 Toggle(isOn: $settings.launcherShowsSuggestions) {
                     SettingsRowTitle(.generalSearch, "Show suggestions")
-                    Text("What you open most, while the search field is empty.")
+                    Text("Shows your most-used items when the search field is empty.")
                 }
                 Picker(selection: $settings.rootSearchSensitivity) {
                     ForEach(SearchSensitivity.allCases) { sensitivity in
@@ -122,7 +122,7 @@ struct GeneralSettingsView: View {
                     }
                 } label: {
                     SettingsRowTitle(.generalSearch, "Search sensitivity")
-                    Text("Lower finds names from scattered letters.")
+                    Text("A lower value allows less exact matches.")
                 }
                 LabeledContent {
                     Button("Reset…", role: .destructive) {
@@ -246,7 +246,7 @@ private struct InterfaceSizeRow: View {
     var body: some View {
         SettingsRow(
             title: "Interface size",
-            subtitle: String(localized: "Scales the launcher and its panels, not Settings."),
+            subtitle: String(localized: "Resizes the launcher and its panels, but not Settings."),
             anchor: .generalAppearance
         ) {
             HStack(spacing: Theme.Spacing.xs) {

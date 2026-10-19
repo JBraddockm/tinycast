@@ -1,4 +1,3 @@
-import QuartzCore
 import SwiftUI
 
 /// Central design tokens; every dark colour is the literal the forced-dark build shipped.
@@ -119,8 +118,8 @@ enum Theme {
         static let shortcutPopoverLine: CGFloat = 14
         /// Summed from the laid-out bands; the width is pinned by `callout-test`.
         static let shortcutPopover = CGSize(
-            width: 132,
-            height: Spacing.sm * 2 + heroKeyCap + Spacing.sm + shortcutPopoverLine + Spacing.sm
+            width: 176,
+            height: Spacing.sm * 2 + heroKeyCap + Spacing.sm + shortcutPopoverLine * 2 + Spacing.sm
                 + compactKeyCap + calloutCaretHeight)
         static let calloutCaretWidth: CGFloat = 15
         static let calloutCaretHeight: CGFloat = 7
@@ -257,6 +256,7 @@ enum Theme {
         static let dialogCompactWidth: CGFloat = 290
         /// Tinycast's own control dialog: fixed width, height measured from its SwiftUI content.
         static let dialogWidth: CGFloat = 420
+        static let dialogTextHeight: CGFloat = 180
         static let dialogButtonHeight: CGFloat = menuButton - 2
         static let dialogSymbol: CGFloat = 28
         static let dialogSymbolContainer: CGFloat = 52
@@ -329,23 +329,7 @@ enum Theme {
         static let glide = Animation.timingCurve(0.2, 0, 0, 1, duration: Theme.Duration.roomGlide)
     }
 
-    enum DialogMotion {
-        static let offset: CGFloat = 3
-        static let initialOpacity: CGFloat = 0.08
-    }
-
-    /// Motion owned by Tinycast's menus; extension-provided panels keep their own behavior.
-    @MainActor
     enum MenuMotion {
-        static let entryScale: CGFloat = 0.94
-        static let maximumScale: CGFloat = 1.003
-        static let exitScaleDelta: CGFloat = 0.04
-        static let expansionDuration: TimeInterval = 0.10
-        static let settleDuration: TimeInterval = 0.05
-        static let exitDuration: TimeInterval = 0.18
-        static let expansionTiming = CAMediaTimingFunction(controlPoints: 0.2, 0.7, 0.2, 1)
-        static let settleTiming = CAMediaTimingFunction(controlPoints: 0.42, 0, 0.58, 1)
-        static let exitTiming = CAMediaTimingFunction(controlPoints: 0.4, 0, 1, 1)
         /// Starts promptly and eases gently into the chevron's final direction.
         static let chevronAnimation = Animation.timingCurve(
             0.16, 1, 0.3, 1, duration: Theme.Duration.menuChevron)

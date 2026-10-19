@@ -74,7 +74,9 @@ struct SnippetsSettingsView: View {
 
             LabeledContent {
                 if settings.snippetsFolder != nil {
-                    Button("Use Default", action: coordinator.resetSnippetsFolder)
+                    Button(
+                        String(localized: "snippets-use-default-folder", defaultValue: "Use Default"),
+                        action: coordinator.resetSnippetsFolder)
                 }
                 Button("Choose…", action: coordinator.chooseSnippetsFolder)
                 Button("Open Folder", action: coordinator.revealSnippetsInFinder)

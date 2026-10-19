@@ -116,10 +116,12 @@ If a change touches anything in the right column, the harness on the left is man
 | `clipboard-text-test` | Apple Vision/PDF extraction, scheduling, retry backoff and recovery |
 | `paste-sequence-test` | `Clipboard/Model/PasteSequence.swift` — the walk's order, its end, and what starts it over |
 | `clipboard-test` | `Clipboard/Model/ClipboardStore.swift`, `ClipboardFilter.swift`, `ClipboardFileKind.swift`, the colour trio |
+| `clipboard-coordinator-test` | Edit Entry selection across query/type changes and pins, failed writes, deletion during editing and cancellation; isolated database and recorded clipboard effects |
 | `clipboard-thumbnail-test` | `Platform/Images/ImageThumbnail.swift` copies against the real store — a remove or clear mid-copy leaves none, same-named JPEG/PNG copies stay apart, a timeout or cancel frees the queue, and a failed or unreadable copy falls back to the original; a stand-in script plays the helper |
 | `pasteboard-test` | `Clipboard/Service/ClipboardManager.swift` capture and `Paster.write` — what a Finder copy reads as, and what a file or image entry writes back |
 | `emoji-test` | `Emoji/Model/EmojiCatalog.swift`, `EmojiGridGeometry.swift`, the generated data and keyword packs |
 | `emoji-search-test` | `Emoji/Service/EmojiIndex.swift`, `FrequentEmojiStore.swift`, `Scripts/gen-emoji.js`'s keyword format, multilingual search |
+| `command-escape-tap-test` | `Palette/CommandEscapeTap.swift` — dedicated run-loop dispatch while main is blocked, timeout recovery, stale actions, installation cancellation and teardown; private ports and unposted events only |
 | `palette-navigation-test` | `Palette/PaletteState.swift`'s screen motions — `prepare`, `replace`, `push`, `pop` — and hover arming, pointer drift, scroll disarming and highlight tokens |
 | `palette-selection-test` | `Features/PaletteRowIndex.swift` |
 | `interface-size-test` | `DesignSystem/InterfaceMetrics.swift`, `Features/Settings/InterfaceSize.swift`, `Extensions/Model/ExtensionFormMetrics.swift` |
@@ -411,10 +413,11 @@ caches, TCC grants and login item, so this cannot disturb an installed copy.
   and run it: Escape returns to the launcher **with the query still typed and the row still
   selected**, and the next press clears it. The same screen from its own global hotkey hides the
   palette instead, and shows its own header icon rather than a back chevron
-- ⌘⎋ from any depth lands on an empty root search with the window still open — **must be checked on
-  a real keyboard**: macOS claims the chord, so `CommandEscapeTap` is the only thing that delivers it
-  and it needs Accessibility granted to the running build. With the palette closed, ⌘⎋ still does
-  whatever macOS does with it
+- ⌘esc from any depth lands on an empty root search with the window still open — **must be checked
+  on a real keyboard**: macOS claims the chord, so `CommandEscapeTap` is the only thing that
+  delivers it and it needs Accessibility granted to the running build. With the palette closed, ⌘esc
+  still does whatever macOS does with it. Open a menu or dialog over the palette and verify ⌘esc
+  passes through while the palette is not key; after dismissing it, the palette chord works again
 - A bare ⌫ in an empty field walks the same path Escape does
 - General ▸ Escape Key Behavior set to `Close window and pop to root`: Escape on any screen closes
   the window, and reopening lands on the root search whatever Pop to Root Search says
@@ -479,7 +482,7 @@ caches, TCC grants and login item, so this cannot disturb an installed copy.
 - Copying something else while "Reading text…" shows leaves that copy on the pasteboard, and the
   pill says **Clipboard changed, text not copied**
 - A tall phone screenshot and a full-width Retina screenshot copy each line once, whole, in order
-- A copy from an excluded app (Settings ▸ Clipboard ▸ Disabled Applications) is **not** recorded
+- A copy from an excluded app (Settings ▸ Clipboard ▸ Excluded Applications) is **not** recorded
 - Password-manager copies are still not recorded
 - Off (Settings ▸ Clipboard ▸ Enable Clipboard History): nothing new is recorded, the launcher rows
   and their shortcuts are gone, the menu-bar row is gone, and Tab rings straight past the screen

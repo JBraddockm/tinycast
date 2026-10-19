@@ -128,7 +128,8 @@ struct SnippetEditorView: View {
             field(
                 String(localized: "Keyword"), placeholder: String(localized: "Optional, for example !notes"),
                 label: String(localized: "Snippet keyword"), text: $editor.keyword,
-                focus: .keyword, hint: String(localized: "Optional. Type this to expand the snippet."))
+                focus: .keyword, hint: String(localized: "Optional. Type this to expand the snippet.")
+            )
             option(
                 String(localized: "Enabled"),
                 detail: String(localized: "Disabled snippets cannot be expanded."),

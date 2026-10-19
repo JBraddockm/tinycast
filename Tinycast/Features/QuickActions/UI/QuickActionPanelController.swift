@@ -56,10 +56,8 @@ final class QuickActionPanelController: NSObject, NSWindowDelegate {
         self.panel = panel
         placeAtCursor(panel)
         // Non-activating like the palette: key focus without pulling the reader out of their app.
-        panel.fadeIn(duration: Theme.Duration.enter) {
-            panel.makeKeyAndOrderFront(nil)
-            panel.orderFrontRegardless()
-        }
+        panel.makeKeyAndOrderFront(nil)
+        panel.orderFrontRegardless()
     }
 
     func dismiss() {
@@ -70,7 +68,7 @@ final class QuickActionPanelController: NSObject, NSWindowDelegate {
         onRetranslate = nil
         closing.delegate = nil
         closing.onKey = nil
-        closing.fadeOut(duration: Theme.Duration.exit)
+        closing.orderOut(nil)
     }
 
     private func copyOutput() {

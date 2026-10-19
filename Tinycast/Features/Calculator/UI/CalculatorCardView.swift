@@ -70,8 +70,47 @@ struct CalculatorCard: View {
         }
         .padding(.horizontal, metrics.spacing.xl)
         .padding(.vertical, metrics.spacing.xxxl)
+        .overlay(alignment: .bottomTrailing) {
+            if result.isCurrency { RatesFreshness() }
+        }
         .leadCard(selected: selected)
     }
+}
+
+private struct RatesFreshness: View {
+    @Environment(\.metrics) private var metrics
+    @Environment(CurrencyRateStore.self) private var currencyRates
+    @State private var hovered = false
+
+    var body: some View {
+        if let fetchedAt = currencyRates.rates?.fetchedAt {
+            HStack(spacing: metrics.spacing.xs) {
+                Text("Updated \(fetchedAt, formatter: Self.formatter)")
+                Button(
+                    "Refresh Exchange Rates", systemImage: "arrow.clockwise", action: currencyRates.refresh
+                )
+                .labelStyle(.iconOnly)
+                .buttonStyle(.plain)
+                .symbolEffect(.rotate, options: .repeat(.continuous), isActive: currencyRates.isRefreshing)
+                .foregroundStyle(hovered ? .secondary : .tertiary)
+                .onHover { hovered = $0 }
+                .help("Refresh Exchange Rates")
+            }
+            .font(metrics.typography.compactKeyCap)
+            .foregroundStyle(.tertiary)
+            .padding(.trailing, metrics.spacing.lg)
+            .padding(.bottom, metrics.spacing.md)
+        }
+    }
+
+    @MainActor private static let formatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        formatter.timeStyle = .short
+        formatter.doesRelativeDateFormatting = true
+        formatter.formattingContext = .middleOfSentence
+        return formatter
+    }()
 }
 
 /// Dims the words that join an expression, so the values they join read first.

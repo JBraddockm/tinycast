@@ -111,6 +111,25 @@ struct PaletteNavigationTests {
         expect(editing.restoredSelection == nil, "a fresh summon releases the restored selection")
         expect(vm.restoredSelection == nil, "other screens keep their existing navigation behaviour")
 
+        let clipboard = PaletteState()
+        clipboard.prepare(mode: .clipboard)
+        clipboard.query = "draft"
+        clipboard.clipboardFilter = .text
+        clipboard.query = ""
+        clipboard.clipboardFilter = .all
+        clipboard.selection = 2
+        clipboard.preserveSelection()
+        clipboard.clipboardFilter = .all
+        expect(
+            clipboard.selection == 2 && clipboard.restoredSelection == 2,
+            "a programmatic query and filter change keeps its chosen row through the observers")
+        clipboard.clipboardFilter = .link
+        expect(clipboard.restoredSelection == nil, "a new type filter releases the preserved selection")
+        clipboard.selection = 1
+        clipboard.preserveSelection()
+        clipboard.query = "another"
+        expect(clipboard.restoredSelection == nil, "a new query releases the preserved selection")
+
         let quicklink = searchingLauncher()
         quicklink.push(mode: .quicklinks)
         quicklink.query = "GitHub"

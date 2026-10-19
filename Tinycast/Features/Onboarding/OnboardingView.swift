@@ -143,7 +143,7 @@ struct OnboardingView: View {
         return VStack(alignment: .leading, spacing: Theme.Spacing.md) {
             OnboardingCard {
                 OnboardingRow(
-                    title: String(localized: "App Launcher"),
+                    title: String(localized: "onboarding-open-launcher", defaultValue: "App Launcher"),
                     subtitle: String(localized: "Press this shortcut to open Tinycast."),
                     systemImage: "magnifyingglass", tint: .blue
                 ) {

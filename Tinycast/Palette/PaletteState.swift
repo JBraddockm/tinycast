@@ -18,7 +18,9 @@ final class PaletteState {
     var selection: Int = 0
     /// True while an IME holds marked text, which leaves `query` empty. The panel publishes it.
     var isComposing = false
-    var clipboardFilter: ClipboardFilter = .all
+    var clipboardFilter: ClipboardFilter = .all {
+        didSet { if oldValue != clipboardFilter { restoredSelection = nil } }
+    }
     var fileSearchFilter: FileSearchFilter = .all
     var emojiCategoryFilter: EmojiCategoryFilter = .all
     /// Nil means the configured default; zoom only overrides it for this picker session.
@@ -170,6 +172,10 @@ final class PaletteState {
     func rewriteQuery(_ text: String) {
         query = text
         queryRewriteToken = UUID()
+    }
+
+    func preserveSelection() {
+        restoredSelection = selection
     }
 
     func noteFavoriteSlot(_ index: Int) {

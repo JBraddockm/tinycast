@@ -36,7 +36,7 @@ struct RaycastImportSelection: View {
     ]
 
     private static let columns = Array(
-        repeating: GridItem(.flexible(), spacing: Theme.Spacing.md, alignment: .leading), count: 3)
+        repeating: GridItem(.flexible(), spacing: Theme.Spacing.md, alignment: .leading), count: 2)
 
     private func included(_ option: RaycastImportOptions) -> Binding<Bool> {
         Binding(

@@ -331,7 +331,7 @@ screens hold (see [palette.md](palette.md)).
   only in whether it holds one value or several. It drops `ExtensionPickerList`, a searchable list,
   and **the control keeps first responder the whole time it is open**: the list is a separate window,
   and a second field inside it would take focus off the control and close the list. So the
-  popover's search row renders the query rather than editing it, and every key — the arrows, ↵, ⎋,
+  popover's search row renders the query rather than editing it, and every key — the arrows, ↵, esc,
   ⌫ and each typed character — is claimed on the control. `PaletteState.isControlListOpen` is what
   keeps the palette's own arrow and Escape handlers out of an open list; without it ↓ moved the
   form's selection instead of the list's highlight.

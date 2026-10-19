@@ -8,14 +8,14 @@ struct CameraButton: View {
     }
 
     let title: String
-    var keyCap: String?
+    var keyCaps: [String] = []
     var emphasis: Emphasis = .primary
     let onActivate: () -> Void
 
     var body: some View {
         Button(title, action: onActivate)
             .buttonStyle(.modalAction(role, fillsWidth: false))
-            .tooltip(keyCap: keyCap)
+            .tooltip(keyCaps: keyCaps)
     }
 
     private var role: ModalActionButtonStyle.Role {

@@ -20,8 +20,8 @@ camera preview, and individual events as searchable launcher entries.
   `CameraSession.start()` resolves access and blocks on `startRunning` first, then hands
   `CameraPreviewController` a settled `Feed` — so the panel's first frame is live video rather than a
   stage it has to swap out, and the TCC prompt never takes key from a panel already up.
-  `stop()` runs from the fade-out's completion, so the camera light never outlives the preview but
-  is never torn down under a visible one either.
+  `stop()` runs once AppKit's close animation has left the screen, so the camera light never
+  outlives the preview but is never torn down under a visible one either.
 - **The card's window is `[start - lead, min(start + lead, end)]`.** The grace period exists because
   everyone joins late; the `min` is why it never outlives a meeting shorter than the lead.
 - **Recurrence comes from `predicateForEvents(withStart:end:calendars:)`**, which expands occurrences

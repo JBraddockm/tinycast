@@ -349,7 +349,7 @@ struct ExtensionAction: Equatable, Identifiable {
         case "arrowDown": return "↓"
         case "arrowLeft": return "←"
         case "arrowRight": return "→"
-        case "escape": return "⎋"
+        case "escape": return "esc"
         case "space": return "␣"
         case "pageUp": return "⇞"
         case "pageDown": return "⇟"

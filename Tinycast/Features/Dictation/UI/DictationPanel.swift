@@ -90,7 +90,7 @@ private final class DictationPanel: NSPanel {
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
         hidesOnDeactivate = false
         isReleasedWhenClosed = false
-        animationBehavior = .none
+        animationBehavior = .documentWindow
     }
 
     override var canBecomeKey: Bool { true }

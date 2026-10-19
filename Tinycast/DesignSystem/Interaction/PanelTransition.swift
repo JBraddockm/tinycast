@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-// How every borderless surface arrives and leaves, so a dialog and a HUD read alike.
+// How a borderless surface arrives and leaves.
 
 extension NSWindow {
     /// Fades the whole window, shadow included; `order` runs while still invisible.
@@ -41,6 +41,56 @@ extension NSWindow {
             context.duration = 0
             animator().alphaValue = 1
         }
+    }
+
+    /// AppKit's close animation keeps drawing the window after `orderOut`; `done` runs once it ends.
+    func orderOutAnimated(then done: @escaping @MainActor () -> Void) {
+        let onScreen = occlusionState.contains(.visible)
+        orderOut(nil)
+        guard onScreen else {
+            done()
+            return
+        }
+        OrderOutCompletion(done: done).arm(for: self)
+    }
+}
+
+@MainActor
+private final class OrderOutCompletion {
+    /// Longer than any close animation AppKit runs, so a missed notification still finishes.
+    private static let bound = Duration.seconds(1)
+
+    private var done: (@MainActor () -> Void)?
+    private var observer: NotificationToken?
+    private var timeout: Task<Void, Never>?
+
+    init(done: @escaping @MainActor () -> Void) {
+        self.done = done
+    }
+
+    func arm(for window: NSWindow) {
+        let token = NotificationCenter.default.addObserver(
+            forName: NSWindow.didChangeOcclusionStateNotification, object: window, queue: .main
+        ) { [self, weak window] _ in
+            MainActor.assumeIsolated {
+                guard window?.occlusionState.contains(.visible) != true else { return }
+                finish()
+            }
+        }
+        observer = NotificationToken(token, center: .default)
+        timeout = Task { [self] in
+            try? await Task.sleep(for: Self.bound)
+            finish()
+        }
+    }
+
+    private func finish() {
+        guard let done else { return }
+        self.done = nil
+        observer = nil
+        timeout?.cancel()
+        timeout = nil
+        done()
     }
 }
 

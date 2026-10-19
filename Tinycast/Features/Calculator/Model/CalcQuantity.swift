@@ -148,7 +148,8 @@ enum CalcQuantity {
             sourceBadge: sourceBadge, targetBadge: definition.name,
             payload: .value(
                 display: "\(CalcFormatter.grouped(formatted)) \(definition.code)",
-                copyText: "\(formatted) \(definition.code)"))
+                copyText: "\(formatted) \(definition.code)"),
+            isCurrency: true)
     }
 
     static func convertUnit(_ amount: Double, from: UnitDef, to: UnitDef) -> Double {
