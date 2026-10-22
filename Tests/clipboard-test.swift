@@ -31,6 +31,7 @@ struct ClipboardTests {
         imageCopiesLeaveWithTheirBlob()
         orphanedCopiesAreSweptOnLoad()
         multiFileCopyMakesOneRowEach()
+        fileBatchesRespectTheMemoryWindow()
         referencedFilesOutliveTheirRows()
         filePathsAreNeverATextForm()
         fileEntriesAreFoundByNameAndFolder()
@@ -750,6 +751,33 @@ struct ClipboardTests {
                 "and the reader inserts them newest-last")
             store.addFiles(["/tmp/c.pdf"], sourceBundleID: nil)
             expect(store.items.count == 3, "re-copying the leading file adds no row")
+        }
+    }
+
+    static func fileBatchesRespectTheMemoryWindow() {
+        withStore { store, _ in
+            for index in 0..<1000 { store.addText("entry \(index)", sourceBundleID: nil) }
+            let pinned = item(store, "entry 0")
+            store.togglePinned(pinned)
+
+            for batch in 0..<3 {
+                let paths = (0..<32).map { "/Users/me/batch-\(batch)-\($0).txt" }
+                store.addFiles(paths, sourceBundleID: nil)
+                expect(store.items.count == 1000, "each file batch keeps the window bounded")
+                expect(
+                    store.items.prefix(paths.count).compactMap(\.filePath) == paths.reversed(),
+                    "the entire new batch stays in recency order")
+                expect(
+                    store.items.contains { $0.id == pinned.id && $0.isPinned },
+                    "trimming preserves the oldest pin")
+            }
+
+            expect(
+                store.items.last(where: { !$0.isPinned })?.text == "entry 97",
+                "trimming removes the oldest unpinned rows")
+            expect(
+                store.search("entry 1", filter: .text).contains { $0.text == "entry 1" },
+                "trimmed rows remain searchable on disk")
         }
     }
 

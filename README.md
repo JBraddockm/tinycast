@@ -149,6 +149,11 @@ Questions, ideas, or just want to follow along? **[Join the Discord](https://dis
  </picture>
 </a>
 
+## Shoutout
+
+Big thanks to **[Rueya Supply](https://rueya.supply)**, which makes wallpapers and graphics for your
+desktop. Go check them out.
+
 ## License
 
 [AGPL-3.0](LICENSE)

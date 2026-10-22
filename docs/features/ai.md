@@ -57,7 +57,10 @@ bottom with the model picker. ⌘J hands a Quick AI conversation to the window.
   through `KeychainSecretStore.aiAPIKeys`, and never enter logs, errors or settings backups. A key is issued for one
   endpoint and never follows a connection retargeted at another — change the provider or base URL and
   both model discovery and Save ask for a new key, rather than introduce the saved one to a host it
-  was never meant to reach (`AIEndpointPolicy.sameDestination`).
+  was never meant to reach (`AIEndpointPolicy.sameDestination`). A connection's custom request
+  headers are one JSON item per connection in `KeychainSecretStore.aiRequestHeaders`. They are visible
+  rows in the editor rather than a hidden saved value, so they are saved with whatever endpoint the
+  connection is saved with, and removing a connection deletes them with its key.
 - **Remote endpoints require HTTPS.** Plain HTTP is accepted only for `localhost`, `127.0.0.1` and
   `::1`, where a key is optional, and any other scheme is rejected outright — a loopback host does
   not excuse `ftp://`. `AIEndpointPolicy` is the one place that decides this.
@@ -182,8 +185,9 @@ bottom with the model picker. ⌘J hands a Quick AI conversation to the window.
   only a message that is still whole. The connection's key, bearer tokens and key-shaped strings are
   replaced with `[redacted]`, and then the message is cut at `messageLimit` (600 characters). A key
   under eight characters is redacted only as a whole word, so it cannot eat into a longer one; a
-  local server's placeholder key is redacted like any other. A mid-stream error is
-  treated the same way: the decoder is handed the key, an Anthropic `error` event shows its message
+  local server's placeholder key is redacted like any other. Custom header values are redacted the
+  same way. A mid-stream error is
+  treated the same way: the decoder is handed the key and header values, an Anthropic `error` event shows its message
   under its line, and an OpenAI-compatible one reads through `metadata.raw` too, or says the provider
   stopped the response when there is no sentence to show.
 - **`Model/` stays Foundation-only.** `ai-provider-test` compiles the shipped provider models and pins
@@ -332,6 +336,12 @@ The base URL stays editable for every preset because gateways and organization p
 destinations. `AIHTTPConfiguration.endpointURL` accepts a complete endpoint or appends the transport's
 completion path. Gemini requests identify Tinycast through `x-goog-api-client`; OpenRouter requests
 carry the app title.
+
+A connection can also carry custom request headers for gateways that route or authenticate by header.
+They go to model discovery and every chat request after the route's own headers, so a custom name
+replaces a default regardless of case. With headers set, the API key is optional and an empty key
+sends no credential header. `AIRequestHeaders.validated` drops blank rows and refuses a name outside
+the HTTP token set, a name repeated in any case, and a value with a line break or control character.
 
 Each connection has an ordered, deduplicated list of exact model identifiers. While its editor is open,
 Tinycast asks the configured provider for the models available to the entered key and uses the result
@@ -935,7 +945,7 @@ control (`AIProviderTab`), and the chosen page is kept from one provider to the 
 - **Overview** reports an installed tool as checking, ready, sign-in required, missing or failed,
   with the account, Codex's usage windows and the command that ran. It never contains a credential
   field: installation and sign-in happen in each command's own flow. For a connection it shows the
-  provider, base URL and whether a key is stored; **Edit…** in the header opens the connection
+  provider, base URL, whether a key is stored and whether request headers are; **Edit…** in the header opens the connection
   editor, which remains the explicit Keychain-backed path.
 - **Models** is the checklist behind the second invariant above, with Show All, Hide All and a
   filter once a route offers more than eight. The rows are an `NSTableView` in one `Form` row

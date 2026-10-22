@@ -419,6 +419,7 @@ export const Icon = Object.freeze({
   "Print": "print-16",
   "QuestionMark": "question-mark-circle-16",
   "QuestionMarkCircle": "question-mark-circle-16",
+  "Quicklink": "quicklink-16",
   "QuotationMarks": "quotation-marks-16",
   "QuoteBlock": "quote-block-16",
   "Racket": "racket-16",

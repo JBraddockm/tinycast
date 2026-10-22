@@ -149,6 +149,9 @@ any **OpenAI Compatible** endpoint, including a local one like Ollama.
   asks for a new key instead of sending the old one to the new address.
 - While you edit a connection, Tinycast asks the provider which models your key can use, and you can
   search that list as you type. If a gateway can't list its models, type the model ID yourself.
+- If a gateway needs extra headers, add them under **Request Headers** in the connection editor.
+  They're sent with every request, replace a default header of the same name, and their values stay in
+  your Keychain. With headers set, the API key is optional.
 
 For gateways that follow DeepSeek's API, the reasoning effort menu includes **None**, which turns
 thinking off.

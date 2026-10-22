@@ -16,7 +16,11 @@ struct FilePreviewStage: View {
     private var url: URL { URL(filePath: path, directoryHint: .inferFromPath) }
 
     var body: some View {
-        stage.task(id: path) { probe = await Self.probe(path) }
+        stage.task(id: path) {
+            let loaded = await Self.probe(path)
+            guard !Task.isCancelled else { return }
+            probe = loaded
+        }
     }
 
     @ViewBuilder private var stage: some View {
@@ -90,7 +94,9 @@ private struct FileThumbnailStage: View {
                 return
             }
             image = nil
-            image = await FilePreviewThumbnail.loadAsync(url, maxPixel: maxPixel)
+            let loaded = await FilePreviewThumbnail.loadAsync(url, maxPixel: maxPixel)
+            guard !Task.isCancelled else { return }
+            image = loaded
         }
     }
 }
@@ -177,7 +183,9 @@ private struct AudioPoster: View {
             }
         }
         .task(id: url) {
-            image = await FilePreviewThumbnail.loadAsync(url, maxPixel: 300)
+            let loaded = await FilePreviewThumbnail.loadAsync(url, maxPixel: 300)
+            guard !Task.isCancelled else { return }
+            image = loaded
         }
     }
 }

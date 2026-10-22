@@ -372,8 +372,8 @@ final class ClipboardStore {
             let item = ClipboardItem(filePath: path, sourceBundleID: sourceBundleID)
             if let stmt = insertStmt { Self.bindAndInsert(stmt, item) }
             items.insert(item, at: 0)
+            trimWindow()
         }
-        trimWindow()
         prune()
     }
 

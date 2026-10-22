@@ -42,9 +42,9 @@ struct VolumeLevelTests {
             }
         }
 
-        // Off-grid levels land on the nearest line in the direction of travel, never past it.
+        // Off-grid levels move one line from their nearest line.
         expect(VolumeLevel.stepped(0.37, up: true), 0.40, "up from 37% lands on 40%")
-        expect(VolumeLevel.stepped(0.37, up: false), 0.35, "down from 37% lands on 35%")
+        expect(VolumeLevel.stepped(0.37, up: false), 0.30, "down from 37% lands on 30%")
         expect(VolumeLevel.stepped(0.01, up: false), 0, "down from 1% lands on 0%")
         expect(VolumeLevel.stepped(0.99, up: true), 1, "up from 99% lands on 100%")
         expect(VolumeLevel.stepped(0.021, up: true), 0.05, "a hair above 2% still steps up to 5%")
@@ -56,10 +56,26 @@ struct VolumeLevelTests {
             expect(climbing, expected, "climbing from 37% reaches \(Int(expected * 100))%")
         }
         var falling = 0.37
-        for expected in [0.35, 0.30, 0.25, 0.20] {
+        for expected in [0.30, 0.25, 0.20, 0.15] {
             falling = VolumeLevel.stepped(falling, up: false)
             expect(falling, expected, "falling from 37% reaches \(Int(expected * 100))%")
         }
+
+        // A device that stores each level a hair off the line still walks the full range.
+        var storedHigh = 0.5
+        var target = storedHigh
+        for _ in 0..<10 {
+            target = VolumeLevel.stepped(storedHigh, up: false)
+            storedHigh = target + 0.01
+        }
+        expect(target, 0, "a device reading 1% high still steps from 50% down to 0%")
+        var storedLow = 0.5
+        target = storedLow
+        for _ in 0..<10 {
+            target = VolumeLevel.stepped(storedLow, up: true)
+            storedLow = target - 0.01
+        }
+        expect(target, 1, "a device reading 1% low still steps from 50% up to 100%")
 
         // The ends absorb further presses instead of wrapping or overshooting.
         expect(VolumeLevel.stepped(0, up: false), 0, "down at zero stays at zero")

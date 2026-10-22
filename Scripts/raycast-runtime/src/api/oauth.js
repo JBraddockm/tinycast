@@ -1,5 +1,6 @@
 // Raycast's OAuth PKCE client (RFC 7636). Swift runs the browser sign-in and stores token sets.
 
+import { Buffer } from "../buffer.js";
 import { hostCall } from "../host.js";
 import { nodeModules } from "../node-shims.js";
 import { nestedEnums } from "./enums.generated.js";
@@ -19,6 +20,14 @@ const expiryMarginSeconds = 10;
 
 const randomURLSafe = (size) => nodeModules.crypto.randomBytes(size).toString("base64url");
 
+// The hosted redirect page reads its target scheme out of `state`, so it must be encoded JSON.
+function authorizationState(redirectMethod, providerName) {
+  const nonce = randomURLSafe(16);
+  if (redirectMethod !== RedirectMethod.Web) return nonce;
+  const envelope = { nonce, providerName, scheme: redirects[RedirectMethod.Web].scheme };
+  return Buffer.from(JSON.stringify(envelope)).toString("base64url");
+}
+
 class PKCEClient {
   constructor(options) {
     if (!redirects[options.redirectMethod]) throw new Error(`Unknown redirect method: ${options.redirectMethod}`);
@@ -35,7 +44,7 @@ class PKCEClient {
       clientId: clientId ?? (this.redirectMethod === RedirectMethod.ClientIdMetadataDocument ? clientIdMetadataDocument : undefined),
       codeVerifier,
       codeChallenge: nodeModules.crypto.createHash("sha256").update(codeVerifier).digest("base64url"),
-      state: randomURLSafe(16),
+      state: authorizationState(this.redirectMethod, this.providerName),
       redirectURI: redirects[this.redirectMethod].uri,
     };
     const query = {
@@ -62,13 +71,13 @@ class PKCEClient {
 
   async authorize(request) {
     const url = typeof request.toURL === "function" ? request.toURL() : request.url;
+    const sentState = new URL(url).searchParams.get("state");
     const redirect = await hostCall("oauth", "authorize", [url, redirects[this.redirectMethod].scheme]);
     const params = new URL(redirect).searchParams;
     const error = params.get("error");
     if (error) throw new Error(params.get("error_description") ?? error);
-    // Raycast's web redirect page drops `state`, so only a returned one can be checked.
-    const state = params.get("state");
-    if (state !== null && request.state !== undefined && state !== request.state) {
+    const states = params.getAll("state");
+    if (sentState !== null && (states.length !== 1 || states[0] !== sentState)) {
       throw new Error(`${this.providerName} sign-in returned a mismatched state.`);
     }
     const code = params.get("code");

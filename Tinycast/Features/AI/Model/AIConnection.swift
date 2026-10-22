@@ -363,16 +363,18 @@ struct AIHTTPConfiguration: Equatable, Sendable {
     let model: String
     let effort: String?
     let disablesThinking: Bool
+    let headers: [String: String]
 
     init(
         provider: AIProviderKind, baseURL: URL, model: String, effort: String? = nil,
-        disablesThinking: Bool = false
+        disablesThinking: Bool = false, headers: [String: String] = [:]
     ) {
         self.provider = provider
         self.baseURL = baseURL
         self.model = model
         self.effort = effort
         self.disablesThinking = disablesThinking
+        self.headers = headers
     }
 
     var shape: APIShape { provider.apiShape }

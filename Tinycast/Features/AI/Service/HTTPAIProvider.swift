@@ -15,6 +15,7 @@ struct HTTPAIProvider: AIProvider {
             let task = Task.detached {
                 let session = Self.makeSession()
                 defer { session.invalidateAndCancel() }
+                let secrets = [apiKey] + configuration.headers.values
                 do {
                     let urlRequest = try makeURLRequest(request)
                     let (bytes, response) = try await session.bytes(for: urlRequest)
@@ -29,9 +30,9 @@ struct HTTPAIProvider: AIProvider {
                             AIProviderFailure.description(
                                 status: response.statusCode, body: body,
                                 retryAfter: response.value(forHTTPHeaderField: "Retry-After"),
-                                secrets: [apiKey]))
+                                secrets: secrets))
                     }
-                    var decoder = AIStreamDecoder(shape: configuration.shape, secrets: [apiKey])
+                    var decoder = AIStreamDecoder(shape: configuration.shape, secrets: secrets)
                     var chunk = Data()
                     chunk.reserveCapacity(2_048)
                     // Per line, not per 2 KB: a short reply must show before the stream closes.
@@ -75,6 +76,7 @@ struct HTTPAIProvider: AIProvider {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.setValue("text/event-stream", forHTTPHeaderField: "Accept")
         applyAuthentication(to: &request)
+        for (name, value) in configuration.headers { request.setValue(value, forHTTPHeaderField: name) }
         request.httpBody = try JSONSerialization.data(
             withJSONObject: AIRequestBody.make(input, configuration: configuration))
         return request
@@ -84,14 +86,14 @@ struct HTTPAIProvider: AIProvider {
     private func applyAuthentication(to request: inout URLRequest) {
         switch configuration.shape {
         case .openAICompatible:
-            request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+            if !apiKey.isEmpty { request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization") }
             if configuration.provider == .gemini {
                 request.setValue(Self.googleClientHeader, forHTTPHeaderField: "x-goog-api-client")
             } else if configuration.provider == .openRouter {
                 request.setValue(Bundle.main.appDisplayName, forHTTPHeaderField: "X-OpenRouter-Title")
             }
         case .anthropic:
-            request.setValue(apiKey, forHTTPHeaderField: "x-api-key")
+            if !apiKey.isEmpty { request.setValue(apiKey, forHTTPHeaderField: "x-api-key") }
             request.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
         }
     }

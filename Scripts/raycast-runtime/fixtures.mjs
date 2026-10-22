@@ -6,6 +6,7 @@
 import { createHarness, bootConfig, describeTree } from "./test.mjs";
 import { transformSync } from "esbuild";
 import { runModuleFixtures } from "./modules-fixtures.mjs";
+import { runOAuthFixtures } from "./oauth-fixtures.mjs";
 
 let passes = 0;
 let failures = 0;
@@ -1133,7 +1134,7 @@ export async function runFixtures() {
           signIns.push([url, scheme]);
           return url.includes("deny")
             ? "com.raycast:/oauth?error=access_denied&error_description=The%20user%20denied%20access."
-            : "raycast://oauth?code=code-1&package_name=Extension";
+            : `raycast://oauth?code=code-1&package_name=Extension&state=${new URL(url).searchParams.get("state")}`;
         },
         "oauth.getTokens": ([provider]) => oauthTokens.get(provider) ?? null,
         "oauth.setTokens": ([provider, tokens]) => {
@@ -1465,6 +1466,7 @@ export async function runFixtures() {
   harness.stop("s1");
 
   await runModuleFixtures(check);
+  await runOAuthFixtures(check);
 
   console.log(failures === 0 ? "\nAll runtime fixtures passed." : `\n${failures} check(s) failed.`);
   if (import.meta.url === `file://${process.argv[1]}`) process.exit(failures === 0 ? 0 : 1);
