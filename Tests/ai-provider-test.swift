@@ -16,22 +16,32 @@ struct AIProviderTests {
     }
 
     static func instructionsFollowTheSetting() {
+        let cloud = AIModelSelection.codex(model: "gpt-5", effort: nil)
         for prompt in [nil, "", "   \n\t "] as [String?] {
             expect(
-                AIInstructions.compose(userPrompt: prompt, isEnabled: true, offersChoices: false)
+                AIInstructions.compose(
+                    userPrompt: prompt, isEnabled: true, offersChoices: false, model: cloud)
                     == AIPreamble.text,
                 "an absent or blank user prompt with choices off sends the preamble alone")
         }
         expect(
             AIInstructions.compose(
-                userPrompt: "  Answer only in haiku.  ", isEnabled: true, offersChoices: true)
+                userPrompt: "  Answer only in haiku.  ", isEnabled: true, offersChoices: true,
+                model: cloud)
                 == AIPreamble.text + "\n\n" + AIPreamble.choices + "\n\nAnswer only in haiku.",
             "instructions put the preamble and its choices before the trimmed user prompt")
         for prompt in [nil, "Answer only in haiku."] as [String?] {
             expect(
-                AIInstructions.compose(userPrompt: prompt, isEnabled: false, offersChoices: true)
+                AIInstructions.compose(
+                    userPrompt: prompt, isEnabled: false, offersChoices: true, model: cloud)
                     == nil,
                 "disabled instructions withhold the preamble, its choices and the user prompt")
+            expect(
+                AIInstructions.compose(
+                    userPrompt: prompt, isEnabled: true, offersChoices: true,
+                    model: .appleIntelligence)
+                    == nil,
+                "the on-device model gets no preamble, choices or user prompt")
         }
         expect(
             (AIPreamble.text + AIPreamble.choices).count < 1_800,
@@ -792,6 +802,7 @@ struct AIProviderTests {
         typealias Policy = AIConnectionKeyPolicy
 
         expect(
+<<<<<<< HEAD
             Policy.resolve(enteredKey: "  sk-new \n", connection: remote, saved: nil, hasStoredKey: false, hasHeaders: false)
                 == .store("sk-new"),
             "a typed key is stored trimmed")
@@ -819,6 +830,46 @@ struct AIProviderTests {
             "an unchanged endpoint keeps its saved key")
         expect(
             Policy.resolve(enteredKey: "", connection: moved, saved: remote, hasStoredKey: false, hasHeaders: false)
+=======
+            Policy.resolve(
+                enteredKey: "  sk-new \n", connection: remote, saved: nil, hasStoredKey: false,
+                hasHeaders: false)
+                == .store("sk-new"),
+            "a typed key is stored trimmed")
+        expect(
+            Policy.resolve(
+                enteredKey: "sk-new", connection: moved, saved: remote, hasStoredKey: true, hasHeaders: false)
+                == .store("sk-new"),
+            "a retarget that brings its own key replaces the old one")
+        expect(
+            Policy.resolve(
+                enteredKey: " ", connection: moved, saved: remote, hasStoredKey: true, hasHeaders: false)
+                == .reject("Enter an API key for this endpoint — the saved key stays with the old one."),
+            "a remote retarget without a key is refused, so the old key never reaches the new host")
+        expect(
+            Policy.resolve(
+                enteredKey: "", connection: local, saved: remote, hasStoredKey: true, hasHeaders: false)
+                == .removeStored,
+            "a retarget to loopback drops the key issued for the remote endpoint")
+        expect(
+            Policy.resolve(
+                enteredKey: "", connection: remote, saved: nil, hasStoredKey: false, hasHeaders: false)
+                == .reject("Enter an API key for this remote provider."),
+            "a new remote connection needs a key")
+        expect(
+            Policy.resolve(
+                enteredKey: "", connection: local, saved: nil, hasStoredKey: false, hasHeaders: false)
+                == .keep,
+            "a loopback endpoint saves without a key")
+        expect(
+            Policy.resolve(
+                enteredKey: "", connection: remote, saved: remote, hasStoredKey: true, hasHeaders: false)
+                == .keep,
+            "an unchanged endpoint keeps its saved key")
+        expect(
+            Policy.resolve(
+                enteredKey: "", connection: moved, saved: remote, hasStoredKey: false, hasHeaders: false)
+>>>>>>> main
                 == .reject("Enter an API key for this remote provider."),
             "with no saved key there is nothing to retarget, only a missing key")
         expect(

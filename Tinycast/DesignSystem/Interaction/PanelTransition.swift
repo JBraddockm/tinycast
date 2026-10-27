@@ -9,7 +9,7 @@ extension NSWindow {
         alphaValue = 0
         order()
         NSAnimationContext.runAnimationGroup { context in
-            context.duration = duration
+            context.duration = Motion.duration(duration)
             context.timingFunction = CAMediaTimingFunction(name: .easeOut)
             animator().alphaValue = 1
         } completionHandler: { [weak self] in
@@ -24,7 +24,7 @@ extension NSWindow {
     /// Safe to interrupt — the handler checks opacity — and `done` runs once it is off screen.
     func fadeOut(duration: TimeInterval, done: (@MainActor () -> Void)? = nil) {
         NSAnimationContext.runAnimationGroup { context in
-            context.duration = duration
+            context.duration = Motion.duration(duration)
             context.timingFunction = CAMediaTimingFunction(name: .easeIn)
             animator().alphaValue = 0
         } completionHandler: { [weak self] in
@@ -45,9 +45,9 @@ extension NSWindow {
 
     /// AppKit's close animation keeps drawing the window after `orderOut`; `done` runs once it ends.
     func orderOutAnimated(then done: @escaping @MainActor () -> Void) {
-        let onScreen = occlusionState.contains(.visible)
+        let animates = animationBehavior != .none && occlusionState.contains(.visible)
         orderOut(nil)
-        guard onScreen else {
+        guard animates else {
             done()
             return
         }

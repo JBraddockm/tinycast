@@ -68,6 +68,7 @@ enum TextTranslator {
     }
 
     private static func translate(
+<<<<<<< HEAD
         _ text: String,
         from source: Locale.Language,
         to target: Locale.Language
@@ -76,6 +77,10 @@ enum TextTranslator {
             throw Failure.osUnsupported
         }
 
+=======
+        _ text: String, from source: Locale.Language, to target: Locale.Language
+    ) async throws -> String {
+>>>>>>> main
         do {
             let session = TranslationSession(
                 installedSource: source,

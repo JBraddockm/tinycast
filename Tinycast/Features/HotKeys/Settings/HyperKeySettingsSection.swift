@@ -4,6 +4,7 @@ struct HyperKeySettingsSection: View {
     @Environment(AppCore.self) private var core
     @Environment(AppSettings.self) private var settings
     @State private var diagnostics: HyperKeyDiagnostics?
+    @State private var takeover: HyperKeyDiagnostics.Takeover?
 
     private var manager: HyperKeyManager { core.hyperKey }
 
@@ -43,8 +44,11 @@ struct HyperKeySettingsSection: View {
             }
 
             if settings.hyperKey != .none {
-                HyperKeyStatusRow(status: manager.status, isShowingDiagnostics: diagnostics != nil) {
+                HyperKeyStatusRow(
+                    status: manager.status, takeover: takeover, isShowingDiagnostics: diagnostics != nil
+                ) {
                     diagnostics = diagnostics == nil ? manager.diagnostics() : nil
+                    takeover = manager.takeover()
                 }
             }
 
@@ -81,28 +85,35 @@ struct HyperKeySettingsSection: View {
         } header: {
             SettingsSectionHeader(.generalHyperKey)
         }
+        .onAppear { takeover = manager.takeover() }
         .onChange(of: manager.status) {
+            takeover = manager.takeover()
             if diagnostics != nil { diagnostics = manager.diagnostics() }
         }
 
         if let diagnostics, settings.hyperKey != .none {
             HyperKeyDiagnosticsSection(
                 diagnostics: diagnostics,
-                refresh: { self.diagnostics = manager.diagnostics() },
+                refresh: {
+                    self.diagnostics = manager.diagnostics()
+                    takeover = self.diagnostics?.takeover
+                },
                 restart: {
                     manager.restart()
                     self.diagnostics = manager.diagnostics()
+                    takeover = self.diagnostics?.takeover
                 })
         }
     }
 
     private struct HyperKeyStatusRow: View {
         let status: HyperKeyManager.Status
+        let takeover: HyperKeyDiagnostics.Takeover?
         let isShowingDiagnostics: Bool
         let toggleDiagnostics: () -> Void
 
         var body: some View {
-            SettingsRow(title: String(localized: "Status"), subtitle: detail, subtitleLineLimit: 2) {
+            SettingsRow(title: String(localized: "Status"), subtitle: detail, subtitleLineLimit: 3) {
                 HStack(spacing: Theme.Spacing.sm) {
                     ColorDot(color: tint)
                     Text(title).foregroundStyle(.secondary)
@@ -116,6 +127,7 @@ struct HyperKeySettingsSection: View {
         }
 
         private var title: String {
+            if takeover != nil { return String(localized: "Taken Over") }
             switch status {
             case .off: return String(localized: "Off")
             case .active: return String(localized: "Active")
@@ -127,6 +139,7 @@ struct HyperKeySettingsSection: View {
         }
 
         private var detail: String? {
+            if let takeover { return describe(takeover) }
             switch status {
             case .blocked(let appName):
                 return String(localized: "\(appName) runs its own Hyper Key. Quit it to use this one.")
@@ -139,11 +152,22 @@ struct HyperKeySettingsSection: View {
         }
 
         private var tint: Color {
+            if takeover != nil { return Theme.Colors.destructive }
             switch status {
             case .active: return Theme.Colors.success
             case .needsAccessibility, .paused: return Theme.Colors.warning
             case .off, .blocked, .remapUnavailable: return Theme.Colors.destructive
             }
+        }
+
+        private func describe(_ takeover: HyperKeyDiagnostics.Takeover) -> String {
+            let keyboards = takeover.keyboards.formatted(.list(type: .and))
+            var sentences = [String(localized: "Another app now remaps Caps Lock on \(keyboards).")]
+            if !takeover.likelyApps.isEmpty {
+                sentences.append(
+                    String(localized: "Probably \(takeover.likelyApps.formatted(.list(type: .or)))."))
+            }
+            return sentences.joined(separator: " ")
         }
     }
 }

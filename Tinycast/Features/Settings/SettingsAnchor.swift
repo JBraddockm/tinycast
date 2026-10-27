@@ -9,7 +9,7 @@ struct SettingsAnchor: Hashable, Sendable {
 
     init(tab: SettingsTab, title: LocalizedStringResource) {
         self.tab = tab
-        self.title = String(localized: title)
+        self.title = title.resolved()
     }
 }
 
@@ -19,6 +19,7 @@ extension SettingsAnchor {
     static let generalSearch = Self(tab: .general, title: "Search")
     static let generalHyperKey = Self(tab: .general, title: "Hyper Key")
     static let generalAppearance = Self(tab: .general, title: "Appearance")
+    static let generalCompactShortcuts = Self(tab: .general, title: "Compact Shortcuts")
     static let generalCalculator = Self(tab: .general, title: "Calculator")
     static let generalGeneral = Self(tab: .general, title: "General")
 

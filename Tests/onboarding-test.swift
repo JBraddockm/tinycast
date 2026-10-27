@@ -98,7 +98,11 @@ final class PaletteCoordinator: NSObject, NSWindowDelegate {
     }
 
     let panel = Panel(
+<<<<<<< HEAD
         contentRect: NSRect(x: 300, y: 300, width: 500, height: 300),
+=======
+        contentRect: NSRect(x: -10000, y: -10000, width: 500, height: 300),
+>>>>>>> main
         styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
 
     func showPalette(mode: Mode) {

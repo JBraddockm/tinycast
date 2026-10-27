@@ -93,6 +93,7 @@ struct RelaunchTests {
         check("the new process handles reopen and terminates normally", completed)
         let second = events().filter { $0.hasPrefix("second.") }
         check("the helper launches one new process", second.filter { $0 == "second.start" }.count == 1)
+        check("the relaunch counts as a user launch", second.contains("second.user-launch"))
         check("the new process handles an AppKit reopen event", second.contains("second.reopen"))
         let stopped = await waitUntil {
             NSRunningApplication.runningApplications(withBundleIdentifier: bundleID).isEmpty
@@ -132,7 +133,7 @@ final class AppCore {
         root = URL(fileURLWithPath: path)
     }
 
-    func start() {
+    func start(launchedByUser: Bool) {
         let pidFile = root.appendingPathComponent("first.pid")
         if let value = try? String(contentsOf: pidFile, encoding: .utf8), let pid = Int32(value) {
             stage = "second"
@@ -151,6 +152,7 @@ final class AppCore {
                 record("request-returned")
             }
         } else {
+            if launchedByUser { record("user-launch") }
             Task { @MainActor in record("heartbeat") }
         }
     }

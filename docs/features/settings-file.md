@@ -16,6 +16,8 @@ in `Features/Settings/` (`Model/`, `Service/`, `SettingsFileSchema.swift`), the 
 - **A capability grant never has a key.** Snippets, Extensions, Calendar access, Auto Join, Camera
   Preview, Quick Actions, MCP and clipboard text recognition are switched on only in the app, which
   asks first. `settings-file-test` checks those paths stay absent.
+- **Removing a key ships a migration that strips it.** The import reports a key it no longer knows on
+  every launch, until a change made in the app rewrites the file. See [migrations.md](../migrations.md).
 - **`SettingsFileSchema`'s switch is exhaustive.** A new `SettingsFileKey` case fails to build until it
   is bound to a property.
 - **A bad edit never costs a setting.** A key the file leaves out keeps its value; a value Tinycast
@@ -31,6 +33,12 @@ in `Features/Settings/` (`Model/`, `Service/`, `SettingsFileSchema.swift`), the 
   being entered.
 
 ## Layout
+
+`appearance.compactBarCommands` is an ordered array of zero to four unique command identifiers.
+For example, `["command:clipboard-history", "command:search-emoji", "command:ai-chat"]` shows
+Clipboard History, Emoji & Symbols and Quick AI in that order. Only the eight commands offered by
+Compact Shortcuts are accepted; unknown, duplicate, unsupported or excess entries reject the whole
+value. `[]` removes every shortcut, and omitting the key leaves the current selection unchanged.
 
 | File | Role |
 | --- | --- |

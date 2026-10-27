@@ -22,12 +22,13 @@ enum SettingsBackupCoverage {
         "calcNumberStyle": .calcNumberStyle,
         "interfaceSize": .interfaceSize,
         "compactMode": .compactMode,
-        "showFavoritesInCompactMode": .showFavoritesInCompactMode,
+        "compactBarCommands": .compactBarCommands,
         "searchScopes": .searchScopes,
         "launcherShowsSuggestions": .launcherShowsSuggestions,
         "rootSearchSensitivity": .rootSearchSensitivity,
         "openOnCursorScreen": .openOnCursorScreen,
         "paletteDraggable": .paletteDraggable,
+        "animationsEnabled": .animationsEnabled,
         "fileSearchEnabled": .fileSearchEnabled,
         "fileSearchScopes": .fileSearchScopes,
         "fileSearchIgnorePatterns": .fileSearchIgnorePatterns,
@@ -36,6 +37,7 @@ enum SettingsBackupCoverage {
         "notesEnabled": .notesEnabled,
         "notesRendersMarkdown": .notesRendersMarkdown,
         "notesShowsFormattingBar": .notesShowsFormattingBar,
+        "notesShowsInMenuBar": .notesShowsInMenuBar,
         "customCommandsEnabled": .customCommandsEnabled,
         "customCommandsShowInLauncher": .customCommandsShowInLauncher,
         "snippetsShowInLauncher": .snippetsShowInLauncher,
@@ -88,6 +90,8 @@ enum SettingsBackupCoverage {
         AppSettingsKey.dictationAdaptsCapitalization.rawValue:
             "Dictation preferences stay local until backup supports them.",
         AppSettingsKey.dictationLiveInsertion.rawValue:
+            "Dictation preferences stay local until backup supports them.",
+        AppSettingsKey.dictationPlaysSounds.rawValue:
             "Dictation preferences stay local until backup supports them.",
         AppSettingsKey.dictationIdleRelease.rawValue:
             "Dictation memory use stays a device-local preference.",

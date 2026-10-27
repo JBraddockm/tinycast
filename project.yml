@@ -116,6 +116,7 @@ targets:
       - Tinycast/Features/FileSearch/Model/FileSearchIgnoreList.swift
       - Tinycast/Features/FileSearch/Model/FileSearchPolicy.swift
       - Tinycast/Features/FileSearch/Model/FileSearchQuery.swift
+      - Tinycast/Features/FileSearch/Model/FileSearchResult.swift
       - Tinycast/Features/FileSearch/Model/FileSearchScope.swift
       - Tinycast/Features/FileSearch/Service/FileIndexCrawler.swift
       - Tinycast/Features/FileSearch/Service/FileIndexSnapshot.swift

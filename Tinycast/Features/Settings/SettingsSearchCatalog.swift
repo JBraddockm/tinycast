@@ -17,13 +17,13 @@ struct SettingsSearchEntry: Identifiable, Hashable, Sendable {
 
     /// One setting, which its pane marks with a matching `SettingsRowTitle`.
     init(_ anchor: SettingsAnchor, _ title: LocalizedStringResource, keywords: [String] = []) {
-        let localized = String(localized: title)
+        let localized = title.resolved()
         self.init(.row(anchor, localized), localized, keywords + [title.key])
     }
 
     /// A whole group, for a result no single row answers — a list, or a section's master switch.
     init(group anchor: SettingsAnchor, _ title: LocalizedStringResource, keywords: [String] = []) {
-        self.init(.section(anchor), String(localized: title), keywords + [title.key])
+        self.init(.section(anchor), title.resolved(), keywords + [title.key])
     }
 
     init(pane: SettingsTab, keywords: [String] = []) {
@@ -141,14 +141,17 @@ enum SettingsSearchCatalog {
             .generalAppearance, "Appearance",
             keywords: ["dark", "light", "mode", "theme"]),
         .init(
+            .generalAppearance, "Show animations",
+            keywords: ["motion", "transitions", "reduce motion", "effects", "instant"]),
+        .init(
             .generalAppearance, "Interface size",
             keywords: ["text size", "font size", "scale", "zoom", "bigger", "larger", "legible"]),
         .init(
             .generalAppearance, "Window mode",
             keywords: ["compact", "expanded", "slim", "search bar", "small"]),
         .init(
-            .generalAppearance, "Show favorites in compact mode",
-            keywords: ["pinned", "apps", "compact"]),
+            group: .generalCompactShortcuts, "Compact Shortcuts",
+            keywords: ["slots", "buttons", "reorder", "clipboard", "emoji", "notes", "schedule", "quick ai"]),
         .init(
             .generalAppearance, "Follow the cursor across displays",
             keywords: ["monitor", "screen", "pointer", "multi display"]),
@@ -339,6 +342,7 @@ enum SettingsSearchCatalog {
         .init(.dictationDictation, "Enable Dictation"),
         .init(.dictationCommands, "Shortcut behavior"),
         .init(.dictationCommands, "Shortcut"),
+        .init(.dictationCommands, "Play sounds", keywords: ["sound", "chime", "beep", "audio", "feedback"]),
         .init(.dictationModel, "Model"),
         .init(.dictationModel, "Engine", keywords: ["parakeet", "redux", "ultra", "qwen"]),
         .init(.dictationModel, "Language"),
@@ -384,6 +388,9 @@ enum SettingsSearchCatalog {
         .init(
             .notesOptions, "Show Formatting Bar",
             keywords: ["toolbar", "format bar", "buttons", "bold", "heading", "markdown"]),
+        .init(
+            .notesOptions, "Show in Menu Bar",
+            keywords: ["status bar", "menu bar icon", "status item", "toolbar icon"]),
         .init(
             .notesOptions, "Notes Folder",
             keywords: ["location", "path", "dotfiles", "files", "markdown"]),

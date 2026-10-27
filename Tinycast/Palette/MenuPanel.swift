@@ -2,7 +2,7 @@ import AppKit
 import SwiftUI
 
 /// The ⌘K menu's own window, so glass renders against the desktop and nothing clips it.
-final class MenuPanel: NSPanel {
+final class MenuPanel: NSPanel, AnimatedPanel {
     weak var paletteState: PaletteState?
     var onKeyDown: ((NSEvent) -> Bool)?
     var onResignKey: ((_ stayedInPalette: Bool) -> Void)?
@@ -14,7 +14,7 @@ final class MenuPanel: NSPanel {
             contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel],
             backing: .buffered, defer: false)
         isFloatingPanel = true
-        animationBehavior = .documentWindow
+        followMotion()
         backgroundColor = .clear
         isOpaque = false
         hasShadow = true

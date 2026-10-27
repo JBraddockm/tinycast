@@ -69,7 +69,7 @@ final class CameraCoordinator {
     }
 
     private func present() {
-        let hosting = NSHostingView(rootView: CameraView(coordinator: self))
+        let hosting = NSHostingView(rootView: CameraView(coordinator: self).motionScope())
         hosting.setFrameSize(hosting.fittingSize)
         let panel = CameraPanel(content: hosting)
         panel.onAction = { [weak self] action in

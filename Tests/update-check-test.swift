@@ -9,6 +9,7 @@ struct UpdateCheckTests {
     static func main() async throws {
         try await stopsBeforeFirstCheck()
         try await cancelsAndRestarts()
+        try reportsInstalledVersionOnce()
         print("\(passes) passed, \(failures) failed")
         if failures > 0 { exit(1) }
     }
@@ -83,6 +84,29 @@ struct UpdateCheckTests {
         expect(reopened.latest == store.latest, "manual checking persists the release")
     }
 
+    static func reportsInstalledVersionOnce() throws {
+        let file = makeFile()
+        defer { try? FileManager.default.removeItem(at: file) }
+        try seedCache(at: file)
+        let fixture = FetchFixture()
+        guard let installed = AppVersion("1.1.0") else { fatalError("the fixture version must parse") }
+
+        makeStore(file: file, fixture: fixture).recordInstall(of: installed)
+        let relaunched = makeStore(file: file, fixture: fixture, running: installed)
+        expect(relaunched.latest?.version == installed, "recording an install keeps the cached release")
+        expect(
+            relaunched.takeInstalledVersion() == installed, "the installed version's first launch reports it")
+        expect(relaunched.takeInstalledVersion() == nil, "the report is taken once")
+        let later = makeStore(file: file, fixture: fixture, running: installed)
+        expect(later.takeInstalledVersion() == nil, "a later launch reports nothing")
+
+        makeStore(file: file, fixture: fixture).recordInstall(of: installed)
+        let unchanged = makeStore(file: file, fixture: fixture)
+        expect(unchanged.takeInstalledVersion() == nil, "a launch of another version reports nothing")
+        let afterwards = makeStore(file: file, fixture: fixture, running: installed)
+        expect(afterwards.takeInstalledVersion() == nil, "and clears the record")
+    }
+
     static func seedCache(at file: URL) throws {
         guard
             let release = ReleaseFeed.newest(
@@ -95,9 +119,11 @@ struct UpdateCheckTests {
         try JSONSerialization.data(withJSONObject: cache).write(to: file)
     }
 
-    static func makeStore(file: URL, fixture: FetchFixture) -> UpdateCheckStore {
+    static func makeStore(
+        file: URL, fixture: FetchFixture, running: AppVersion? = AppVersion("1.0.0")
+    ) -> UpdateCheckStore {
         UpdateCheckStore(
-            channel: .stable, runningVersion: AppVersion("1.0.0"), fileURL: file,
+            channel: .stable, runningVersion: running, fileURL: file,
             fetch: { await fixture.fetch() })
     }
 

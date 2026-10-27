@@ -32,7 +32,11 @@ export const hero = {
   // ends as written; none is wider than "Everything", so the line never rewraps.
   // The second line ends bare, because the hero draws a caret after it.
   headline: {
+<<<<<<< HEAD
     swap: ["Everything", "Every app", "Every file", "Every window", "Every note"],
+=======
+    swap: ["Everything", "Every app", "Every file", "Every clip", "Every note"],
+>>>>>>> main
     rest: "on your Mac.",
     second: "One keystroke away",
   },

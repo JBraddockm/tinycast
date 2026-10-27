@@ -106,4 +106,24 @@ enum HyperKeyQuickPress: String, CaseIterable, Sendable {
     case none
     case originalKey
     case escape
+
+    enum Effect: Equatable, Sendable {
+        case escape
+        case setCapsLock(Bool)
+        case switchInputSource
+    }
+
+    /// Like macOS, only turning Caps Lock on needs a deliberate hold; any press turns it off.
+    func effect(heldFor duration: TimeInterval, capsLockOn: Bool, switchesInputSource: Bool) -> Effect? {
+        switch self {
+        case .none:
+            return nil
+        case .escape:
+            return .escape
+        case .originalKey:
+            if capsLockOn { return .setCapsLock(false) }
+            if duration >= (switchesInputSource ? 0.15 : 0.075) { return .setCapsLock(true) }
+            return switchesInputSource ? .switchInputSource : nil
+        }
+    }
 }

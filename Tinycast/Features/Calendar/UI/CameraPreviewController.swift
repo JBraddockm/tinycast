@@ -27,7 +27,7 @@ final class CameraPreviewController {
             meeting: meeting, now: now, feed: feed,
             onJoin: { [weak self] in self?.finish(true) },
             onCancel: { [weak self] in self?.finish(false) })
-        let hosting = NSHostingView(rootView: view)
+        let hosting = NSHostingView(rootView: view.motionScope())
         hosting.setFrameSize(hosting.fittingSize)
         let panel = CameraPanel(content: hosting)
         panel.onAction = { [weak self] action in self?.finish(action == .primary) }

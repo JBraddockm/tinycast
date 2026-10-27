@@ -10,7 +10,7 @@ The mechanical bar, in one place so it cannot drift. All five pass before a chan
 | Check | Command |
 | --- | --- |
 | The harnesses | `./Scripts/run-tests.sh` |
-| Lint, settings search and translations | `./Scripts/lint.sh` |
+| Lint, settings search, translations and migrations | `./Scripts/lint.sh` |
 | Pure-layer purity | `grep -rln 'import AppKit\|import SwiftUI\|import Cocoa' Tinycast/Features/*/Model/` |
 | A clean build | `xcodebuild … -configuration Debug CODE_SIGNING_ALLOWED=NO`, zero **new** warnings |
 | Docs still true | any doc your change made wrong, fixed in the same commit |
@@ -113,10 +113,15 @@ If a change touches anything in the right column, the harness on the left is man
 | `file-search-session-test` | serialized query execution, coalescing, cancellation and refresh |
 | `menu-search-test` | `MenuSearch/Model/` decisions, `MenuSearch/Service/` session filtering, the shared `FuzzyMatch` scorer |
 | `action-menu-search-test` | Action-menu query normalization and shared fuzzy matching |
+| `app-installation-test` | Multiple app copies and app-wide preferences; file-favorite persistence, mixed ordering, hidden slots and restoration through the existing favorite key list |
 | `ranking-test` | `Launcher/Model/LauncherRankingStore.swift` |
 | `scopes-test` | `Launcher/Model/SearchScopes.swift` |
 | `app-name-test` | `Platform/AppDisplayName.swift` — every path that names a scanned bundle |
 | `language-test` | `AppLanguage` and both string catalogs — compile every language, load privacy prompts, and select plural forms and independent counts at runtime |
+<<<<<<< HEAD
+=======
+| `localized-resource-test` | `Platform/LocalizedResource.swift` — `resolved()` matches `String(localized:)` in every language, for plain, contextual, interpolated, plural and missing keys |
+>>>>>>> main
 | `onboarding-test` | Onboarding's handoff to the palette keeps focus; ordinary windows retain their Dock ownership |
 | `relaunch-test` | The shipped app delegate and relaunch helper — asynchronous cleanup, repeated quit requests, and a responsive replacement process |
 | `calc-test` | all of `Calculator/Model/` |
@@ -132,16 +137,20 @@ If a change touches anything in the right column, the harness on the left is man
 | `emoji-search-test` | `Emoji/Service/EmojiIndex.swift`, `FrequentEmojiStore.swift`, `Scripts/gen-emoji.js`'s keyword format, multilingual search |
 | `command-escape-tap-test` | `Palette/CommandEscapeTap.swift` — dedicated run-loop dispatch while main is blocked, timeout recovery, stale actions, installation cancellation and teardown; private ports and unposted events only |
 | `palette-navigation-test` | `Palette/PaletteState.swift`'s screen motions — `prepare`, `replace`, `push`, `pop` — and hover arming, pointer drift, scroll disarming and highlight tokens |
+| `compact-bar-test` | Compact shortcut order, selection boundaries, zero-to-four slots, identifiers, isolated preferences and invalid settings-file rejection |
 | `palette-selection-test` | `Features/PaletteRowIndex.swift` |
 | `interface-size-test` | `DesignSystem/InterfaceMetrics.swift`, `Features/Settings/InterfaceSize.swift`, `Extensions/Model/ExtensionFormMetrics.swift` |
 | `form-input-test` | Native field/textarea sizing, editing alignment, placeholders, Tab, Unicode selection, undo and code fonts |
 | `palette-placement-test` | `DesignSystem/Theme.swift`, `Palette/PalettePlacement.swift` |
 | `palette-menu-click-test` | `Palette/PalettePanel.swift` — complete click-away presses and subsequent control activation |
+| `hyper-key-engine-test` | Hyper chord transitions for every physical key, device-bit holds, own-bit and other-Shift residue, released modifiers, the Quick Press rule, repeats and interruption recovery |
 | `hotkey-test` | `HotKeys/Model/DoubleTapModifier.swift`, `DoubleTapDetector.swift`, `ModifierKey.swift`, `ModifierKeyDetector.swift`, `HotKeyBinding.swift`, `HotKeySpelling.swift`, `HyperKey.swift`, `HIDKeyMapping.swift`, `HotKeyAction.swift`, `Service/KeyShortcut.swift`, and the command→action mapping in `Launcher/Model/CommandID.swift` |
-| `hyper-key-test` | `HotKeys/Model/HIDKeyMapping.swift`, `HyperKeyConflictPolicy.swift`, `Service/KeyboardRemapper.swift` — mapping ownership, refused writes, crash recovery, device reconnection, Caps Lock and 🎤 remaps sharing a keyboard, conflict severities, Modifier Keys and Karabiner parsing |
+| `hyper-key-test` | `HotKeys/Model/HIDKeyMapping.swift`, `HyperKeyConflictPolicy.swift`, `Service/KeyboardRemapper.swift`, `RemapInstanceLock.swift` — mapping ownership, refused writes, crash recovery, device reconnection, Caps Lock and 🎤 remaps sharing a keyboard, conflict severities, Modifier Keys and Karabiner parsing, another app taking over Caps Lock, one process per Hyper Key |
 | `hotkey-dispatch-test` | `HotKeys/Service/HotKeyManager.swift` — Secure Input side isolation, shared Control registrations, press/release routing, recording and cancellation; isolated preferences and simulated Carbon registration |
+| `dictation-key-test` | `HotKeys/Service/DictationKeyManager.swift` — shared and separate preference domains, ownership handoff through the real health ticker, and retry cancellation on unbind or termination; isolated preferences, lock files and simulated keyboards |
 | `dictation-test` | `Dictation/Model/DictationModel.swift`, `DictationTextFormatter.swift` — model paths and text formatting |
 | `dictation-field-test` | Composer rebinding and teardown, field-scoped dictation cancellation, and queued insertion validity; synthetic capture and real AppKit editors |
+| `dictation-cue-test` | System dictation sound paths, stop-before-play ordering and missing resources, without playing audio |
 | `dictation-volume-test` | Volume recovery across fade steps, user changes, output switching, failed writes and cancellation; injected audio controls only |
 | `dictation-inference-test` | Dictation byte BPE, Fourier/mel features and non-overlapping audio chunks; no downloaded models |
 | `dictation-worker-test` | Dictation's framed channel, worker reuse/switching, removal, cancellation and broken pipes with a fixture helper |
@@ -177,6 +186,7 @@ If a change touches anything in the right column, the harness on the left is man
 | `text-diff-test` | `QuickActions/Model/TextDiffEngine.swift` — exact chunks, coalescing, Unicode, ties, token-cap boundaries and fast paths |
 | `settings-backup-test` | `Settings/AppSettingsKey.swift`, `Backup/Model/SettingsBackupCoverage.swift` |
 | `settings-file-test` | `Settings/Model/` and `Settings/Service/` — key paths, value tokens, the printer and parser, and the repository's import, replace, save, reload and symlink handling on a scratch folder |
+| `compact-favorites-migration-test` | `Migrations/CompactFavoritesMigration.swift` — strips the retired key and keeps every other value, and leaves a file with other problems to the import |
 | `window-file-test` | `WindowManagement/Model/WindowManagementFileFormat.swift` — command shortcuts, custom sizes, layouts and rooms as settings.json spells them, hand edits and bad records |
 | `launcher-settings-file-test` | Launcher settings application — invalid records, partial edits, deferred bundles, shortcut moves and records outside search scopes; isolated preferences and in-memory scan/Carbon effects |
 | `backup-archive-test` | all of `Backup/Model/`, plus `Backup/Service/BackupStaging.swift` |
@@ -259,6 +269,9 @@ The script then runs `Scripts/check-settings-search.js`, one check SwiftLint can
 `SettingsAnchor` must be claimed by a section, and every row in `SettingsSearchCatalog` must be
 marked by a `SettingsRowTitle`. Either gap compiles and reads fine, and fails only at runtime as a
 search result that navigates and then sits there.
+
+Last, `Scripts/check-migrations.sh` fails once a stable release has shipped a migration, which is the
+cue to delete it. See [migrations.md](migrations.md).
 
 ## Performance measurement
 
@@ -428,15 +441,35 @@ caches, TCC grants and login item, so this cannot disturb an installed copy.
   still does whatever macOS does with it. Open a menu or dialog over the palette and verify ⌘esc
   passes through while the palette is not key; after dismissing it, the palette chord works again
 - A bare ⌫ in an empty field walks the same path Escape does
-- General ▸ Escape Key Behavior set to `Close window and pop to root`: Escape on any screen closes
+- General ▸ Escape Key Behavior set to `Close window and pop to root`: Escape on sub-screens closes
   the window, and reopening lands on the root search whatever Pop to Root Search says
 - Reopening focuses the search field with an empty query, in the same position and at the same size
 - Compact mode: typing expands it, and the search bar does **not** shift vertically during the swap
+- Compact mode: the opening frames show no shortcut fill beneath the query before the buttons emerge
+- Compact mode: configure zero through four unique shortcuts, replace/remove them and move them up/down;
+  disabling a feature hides its button without losing its configured position, and Settings marks
+  it Off in the list and lists it under Off in both menus
+- Compact mode: Left/Right traverses Search and the visible buttons without wrapping; Down expands
+  Search or opens a selected shortcut, Return opens only a shortcut, and typing/pasting starts Search
+- Compact mode: Escape at expanded root clears text, then collapses, then closes under both preferences
+- Compact mode: a round button per enabled configured shortcut; the
+  capsule fills the rest, the whole width with none on. Each summon and each cleared query buds them out
+  of the capsule's end, the last one never clipped at the window's edge; with Show animations off they
+  appear in place. Mouse and keyboard activation open the command immediately, without a fuse,
+  delayed reveal or shortcut shapes beneath the expanded panel. Show Notes opens its window
+- Compact mode: keyboard selection has a medium gray fill in Light, a brighter fill in Dark, and a white
+  monochrome glyph in both, without a ring;
+  Emoji & Symbols uses the same outlined glyph as the launcher in both Light and Dark
+- Verify compact selection in the live glass compositor in both appearances; an offscreen view bitmap
+  omits the material and cannot prove selection contrast
+- Compact Shortcuts settings: command names sit beside their icons; replacement menus and borderless
+  move/remove controls work without stretching the labels across the row
+- The expanded header leaves even room above the query and below it, before the first section
 - With a CJK IME: the placeholder clears as soon as composition starts and the composing text never
   overlaps it; cancelling composition brings the placeholder back, and the list filters only once the
   candidate is committed — check on a second summon too, where first responder never moved
 - Typing filters instantly; ↑/↓ move the highlight and scroll it into view without yanking the list
-- ⌃N/⌃P move the highlight as ↓/↑ do; ⌃F/⌃B step the emoji grid's selection, and the caret elsewhere
+- ⌃N/⌃P move the highlight as ↓/↑ do; ⌃F/⌃B step compact shortcuts or the emoji grid's selection, and the caret elsewhere
 - The highlight always sits on the row the footer pill describes
 - With a calculation typed, the calculator card is first and is selected first
 - ⌘↵ on a number, unit or money card puts the answer in the search bar with the caret after it, so
@@ -520,14 +553,29 @@ caches, TCC grants and login item, so this cannot disturb an installed copy.
 - Recording captures a shortcut, and the old binding does not fire while recording
 - A conflicting binding is rejected and names its current owner
 - A double-tap binding fires; Hyper Key remaps and its status dot is green
-- Each Hyper Key choice — Caps Lock and all eight Left/Right modifiers — sends the chord, and Quick
-  Press is offered for Caps Lock only. Plug in a second keyboard: Caps Lock is Hyper on it too
+- Each Hyper Key choice — Caps Lock and all eight Left/Right modifiers — sends the chord.
+  Quick Press is offered for Caps Lock only, with original-key and Escape actions. Hyper Key never
+  requests Input Monitoring
+- Plug in a second keyboard: Caps Lock is Hyper there too. Change Hyper Key to a modifier while
+  disconnected, then reconnect: Caps Lock works normally again
+- An unused Escape action still fires after a long hold; Caps Lock ignores very brief accidental
+  presses while off, yet any press turns it off. A combo never triggers Quick Press. With Caps Lock
+  input-source switching on, a short press switches sources only while Caps Lock is off
+- Right Command as Hyper with Left Command held keeps the chord; Left Shift as Hyper with Include
+  Shift off sends ⌃⌥⇧⌘K when Right Shift is held with K
+- Run Tinycast Dev next to Tinycast: the second reads Blocked and names the first; quitting the
+  first hands the Hyper Key over without a relaunch
+- Revoke Accessibility while Hyper is live: the key goes back to normal. Grant it again: Hyper
+  returns within a couple of seconds without a relaunch
 - Lock the screen: Caps Lock types capitals in the password field; unlocking restores Hyper. Sleep
   and wake do the same
+- With Raycast running, Diagnostics… lists it as a warning and Hyper keeps working. Turn on Raycast's
+  Hyper Key on Caps Lock: Settings reads Taken Over in red, names the keyboards and Raycast, and
+  Diagnostics… lists it under Apps Changing Keys
 - With Hyperkey running, the status reads Blocked and a HUD names it; quitting Hyperkey restores
   Hyper without a relaunch. Diagnostics… lists BetterTouchTool as a warning when it runs
 - Remap Caps Lock in Keyboard ▸ Modifier Keys: Diagnostics… reports it with the keyboard's name
-- In a password field, Hyper with Caps Lock shows the Secure Input HUD. Turn on Secure Input
+- In a password field, Hyper with Caps Lock shows the Secure Input HUD at once. Turn on Secure Input
   Compatibility: a Hyper shortcut now fires there, and Diagnostics… names the Secure Input holder
 - With Secure Input held, record Hyper+J with and without Secure Input Compatibility: both save ✦J,
   never F18 or ⌃J, and a quick Hyper+J leaves Caps Lock off
@@ -706,6 +754,9 @@ caches, TCC grants and login item, so this cannot disturb an installed copy.
 - ⌥⌘C and ⇧⌘B toggle a code block and a quote; with Render Markdown off they do nothing special
 - Settings > Notes > Show Formatting Bar is disabled while Render Markdown is off, Settings search for
   "formatting" lands on it, and a backup round trip restores it
+- With Show in Menu Bar on, the Notes icon appears at once; a click shows Notes and a second click
+  hides it, and right-, Control- and Option-click open Create Note and Search Notes. Turning the
+  setting or Notes off removes the icon, and a ⌘-dragged position survives a relaunch
 - With VoiceOver, the bar reads as "Formatting" with each button named, lit ones as selected, the round
   button announcing Expanded or Collapsed, and the heading button its level; menu rows read their titles
   and the current one as selected
@@ -808,6 +859,20 @@ caches, TCC grants and login item, so this cannot disturb an installed copy.
   the five appears in Settings ▸ Commands
 - Export with auto join and camera preview on, import onto a clean profile: both come back **off**,
   while the menu-bar settings carry over
+
+### File favorites
+
+- In Search Files, use ⌘K → Add to Favorites on a folder and ⇧⌘F on a file. Open root search with an
+  empty query: both appear with app favorites in insertion order, including after relaunch.
+- Move files and apps across each other with ⌥⌘↑/↓ and the matching menu actions; selection follows
+  the moved row. Remove a favorite through either path; selection stays within Favorites.
+- Hold ⌘ and check that each displayed ⌘1–⌘0 opens that favorite, including with the meeting card
+  above Favorites and from the compact palette.
+- Search for a saved filename, including a short query and accented text: the favorite appears once.
+  Turn Show in launcher off: saved files remain available; disable File Search: they disappear.
+  Re-enable it: their order returns.
+- Export and import settings: the mixed order survives. Move or remove a saved file: opening reports
+  the failure and Remove from Favorites still works.
 
 ### System actions and window management
 

@@ -120,6 +120,7 @@ final class UpdateCoordinator {
         installTask = Task { [weak self] in
             do {
                 try await installer.install(release, onProgress: onProgress)
+                self?.store.recordInstall(of: release.version)
                 self?.stage = .readyToRelaunch
             } catch is CancellationError {
                 self?.stage = .available(release)

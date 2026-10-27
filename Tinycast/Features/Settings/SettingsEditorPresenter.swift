@@ -101,7 +101,7 @@ final class SettingsEditorPresenter: NSObject {
         }
     }
 
-    private final class Panel: NSPanel {
+    private final class Panel: NSPanel, AnimatedPanel {
         var cancelHandler: (() -> Void)?
 
         init(content: NSView, cornerRadius: CGFloat) {
@@ -116,7 +116,7 @@ final class SettingsEditorPresenter: NSObject {
             isOpaque = false
             backgroundColor = .clear
             hasShadow = true
-            animationBehavior = .documentWindow
+            followMotion()
             isMovableByWindowBackground = false
             isReleasedWhenClosed = false
             content.wantsLayer = true
@@ -161,7 +161,8 @@ final class SettingsEditorPresenter: NSObject {
             contentView = NSHostingView(
                 rootView: Theme.Colors.dialogDimming
                     .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-                    .ignoresSafeArea())
+                    .ignoresSafeArea()
+                    .motionScope())
         }
 
         override var canBecomeKey: Bool { false }
@@ -395,5 +396,6 @@ extension View {
             .environment(core.chatGPTSubscription)
             .environment(core.installedAI)
             .scrollContentBackground(.hidden)
+            .motionScope()
     }
 }

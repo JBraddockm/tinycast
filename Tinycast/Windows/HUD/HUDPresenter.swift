@@ -25,7 +25,7 @@ final class HUDPresenter {
     func show(_ view: some View, size: CGSize? = nil, dwells: Bool = true, interactive: Bool = false) {
         let panel = panel ?? make(acceptsMouseEvents: interactive)
         panel.ignoresMouseEvents = !interactive
-        let host = NSHostingView(rootView: view)
+        let host = NSHostingView(rootView: view.motionScope())
         // Never size from `host.frame` after attaching: AppKit resets it to the content rect.
         let content = size ?? host.fittingSize
         host.setFrameSize(content)

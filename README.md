@@ -28,16 +28,6 @@ For anything private, email [iabueammar@gmail.com](mailto:iabueammar@gmail.com).
   <img src="docs/screenshot.png" alt="Tinycast command palette" width="720">
 </p>
 
-## Support
-
-Tinycast is **free, and it stays that way**. If you enjoy it, consider buying a wallpaper pack and get a discord role. It would help me a lot.
-
-<p align="center">
-  <a href="https://tinycast.dev/support">
-    <img alt="Support Tinycast" width="188" height="44" src="docs/support-button.svg"></a><br>
-  <sub>Payments are handled securely by <a href="https://polar.sh">Polar.sh</a>.</sub>
-</p>
-
 ## Features
 
 - **App launcher** — fuzzy-search and launch anything, pin favorites, see what's running, quit an app
@@ -89,31 +79,11 @@ Then run the one line that matches your Mac:
 | Apple silicon, macOS 26 or newer | `brew install --cask tinycast`           |
 | Intel, macOS 26                  | `brew install --cask tinycast-universal` |
 
-Not sure which you have? **Apple menu → About This Mac.** Homebrew checks too, and refuses the
-wrong one.
+Not sure which Mac you have? **Apple menu → About This Mac.**
 
-Want early builds? `brew install --cask tinycast@beta` puts `Tinycast Beta.app` beside the stable
-app, with its own settings and permissions. Apple silicon, macOS 26+.
-
-Homebrew clears the macOS quarantine flag on every install and update, so there is nothing else to
-run. Downloading a DMG from [Releases](https://github.com/abue-ammar/tinycast/releases) instead?
-Tinycast is self-signed, so clear the flag once:
-`xattr -dr com.apple.quarantine "/Applications/Tinycast.app"`.
-
-## Permissions
-
-**Accessibility** — needed when Tinycast pastes or expands text into another app, and the only
-permission snippet keyword expansion needs. You're prompted when you first use a feature that needs
-it; grant access in **System Settings → Privacy & Security → Accessibility**. Snippets ship
-disabled, and keystrokes are matched locally, never stored and never sent anywhere.
-
-## Using it
-
-1. Open **Settings → General** and record a global shortcut to summon Tinycast.
-2. Press it anywhere → the palette floats in. Type to filter, **↵** to launch.
-3. **Tab** switches between Apps and Clipboard; **↑/↓** move, **Esc** dismisses.
-4. **Settings → Shortcuts** — search an app or custom command and record a global shortcut.
-5. **Settings → Snippets** — enable the feature, then create templates with expansion keywords.
+- **Early builds:** `brew install --cask tinycast@beta` installs `Tinycast Beta.app` beside the stable app.
+- **DMG from [Releases](https://github.com/abue-ammar/tinycast/releases)?** It's self-signed, so run
+  `xattr -dr com.apple.quarantine "/Applications/Tinycast.app"` once.
 
 ## Building from source
 
@@ -121,33 +91,54 @@ See **[docs/development.md](docs/development.md)** for the toolchain, build, pac
 website workflows. **[docs/](docs/README.md)** indexes everything else — architecture, engineering
 standards, the design system and one document per feature.
 
-## Contributing
+## Support
 
-> [!IMPORTANT]
-> **Open an issue before you write code — this is mandatory.** Get the bug or the feature agreed on
-> first; discussing it in the issue (or on [Discord](https://discord.gg/v2Eeb4QQy3)) is strongly
-> encouraged. A PR that doesn't close an issue marked `approved` is closed automatically however good
-> the patch is, and the work is wasted. Docs-only fixes are the one exception.
->
-> Tinycast's feature set is deliberately closed, and "another launcher has it" is not a reason on its
-> own. Ask whether a feature is wanted before you ask for it.
+Tinycast is **free, and it stays that way**. If you enjoy it, you can support it with crypto: scan a
+code with your wallet, or copy an address. Send only on the network named for that address. If yours
+isn't listed, [email me](mailto:iabueammar@gmail.com?subject=Supporting%20Tinycast).
 
-Read **[CONTRIBUTING.md](CONTRIBUTING.md)** first — it covers the memory budget every PR is held to,
-the before/after video requirement for visual changes, and why features get declined. Every PR fills
-in the **[pull request template](.github/PULL_REQUEST_TEMPLATE.md)**. Security issues go through
-[SECURITY.md](SECURITY.md), not the issue tracker.
+<table>
+  <tr>
+    <td align="center">
+      <img width="160" alt="Bitcoin address QR code" src="website/public/wallets/bitcoin-qr.svg"><br>
+      <b>Bitcoin</b>
+    </td>
+    <td align="center">
+      <img width="160" alt="Ethereum, Base and BNB Smart Chain address QR code" src="website/public/wallets/ethereum-qr.svg"><br>
+      <b>Ethereum, Base, BNB Smart Chain</b>
+    </td>
+    <td align="center">
+      <img width="160" alt="Solana address QR code" src="website/public/wallets/solana-qr.svg"><br>
+      <b>Solana</b>
+    </td>
+  </tr>
+</table>
 
-Questions, ideas, or just want to follow along? **[Join the Discord](https://discord.gg/v2Eeb4QQy3)**.
+**Bitcoin**
 
-## Star History
+```text
+bc1qpfxtjpuhm2cm8kg4lqgu3ffjch7vcjf678arwn
+```
 
-<a href="https://www.star-history.com/?repos=abue-ammar%2Ftinycast&type=date&legend=top-left">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=abue-ammar/tinycast&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=abue-ammar/tinycast&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=abue-ammar/tinycast&type=date&legend=top-left" />
- </picture>
-</a>
+**Ethereum, Base and BNB Smart Chain** (one address for all three)
+
+```text
+0x22A00612bc0bf1Dc73AAC75e8De1BA4e81fF0810
+```
+
+**Solana**
+
+```text
+4EH7JDXZxkJiahas1xgPyC1iBW9pfCVUXxVtpqvwAz6T
+```
+
+Prefer a card? Buy the wallpaper pack and get a Discord role.
+
+<p align="center">
+  <a href="https://tinycast.dev/support">
+    <img alt="Support Tinycast" width="188" height="44" src="docs/support-button.svg"></a><br>
+  <sub>Card payments are handled securely by <a href="https://polar.sh">Polar.sh</a>.</sub>
+</p>
 
 ## Shoutout
 

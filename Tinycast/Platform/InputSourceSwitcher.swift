@@ -56,6 +56,33 @@ final class InputSourceSwitcher {
         TISSelectInputSource(session.previousSource)
     }
 
+    static func toggleCapsLockInputSource() {
+        guard let current = currentSource() else { return }
+        let isASCII: Bool = property(kTISPropertyInputSourceIsASCIICapable, of: current) ?? false
+        let destination: TISInputSource?
+        if isASCII {
+            let candidates = enabledKeyboardSources().filter {
+                property(kTISPropertyInputSourceIsASCIICapable, of: $0) == false
+            }
+            let history =
+                UserDefaults.standard.persistentDomain(forName: "com.apple.HIToolbox")?[
+                    "AppleInputSourceHistory"] as? [[String: Any]] ?? []
+            destination =
+                history.lazy.compactMap { entry in
+                    candidates.first { source in
+                        guard let id = identifier(of: source) else { return false }
+                        let mode: String? = property(kTISPropertyInputModeID, of: source)
+                        return entry["Input Mode"] as? String == id
+                            || (mode != nil && entry["Input Mode"] as? String == mode)
+                            || entry["Bundle ID"] as? String == id
+                    }
+                }.first ?? candidates.first
+        } else {
+            destination = TISCopyCurrentASCIICapableKeyboardInputSource()?.takeRetainedValue()
+        }
+        if let destination { TISSelectInputSource(destination) }
+    }
+
     private static func currentSource() -> TISInputSource? {
         TISCopyCurrentKeyboardInputSource()?.takeRetainedValue()
     }

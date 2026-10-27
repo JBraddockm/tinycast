@@ -26,6 +26,8 @@ struct PaletteDropGuideView: View {
                 .opacity(min(opacity(at: horizontalDistance), opacity(at: verticalDistance)))
                 .animation(.easeInOut(duration: Theme.Duration.dropGuide), value: horizontalFlash)
         }
+        // Its host is typed to this view, so the root's scope is applied from inside.
+        .motionScope()
     }
 
     private var outerCorner: CGPoint {

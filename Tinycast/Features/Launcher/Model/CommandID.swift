@@ -49,7 +49,29 @@ enum CommandID: String, CaseIterable, Sendable {
     case support = "command:support"
     case quit = "command:quit"
 
-    var name: String { String(localized: nameResource) }
+    static let defaultCompactBarCommands: [CommandID] = [
+        .clipboardHistory, .searchEmoji, .searchFiles, .searchQuicklinks
+    ]
+
+    static let compactBarOptions: [CommandID] =
+        defaultCompactBarCommands + [
+            .searchSnippets, .showNotes, .mySchedule, .quickAI
+        ]
+
+    static let compactBarLimit = 4
+
+    static func validCompactBarCommands(_ commands: [CommandID]) -> Bool {
+        commands.count <= compactBarLimit && Set(commands).count == commands.count
+            && commands.allSatisfy(compactBarOptions.contains)
+    }
+
+    static func compactBarCommands(from identifiers: [String]) -> [CommandID]? {
+        let commands = identifiers.compactMap(CommandID.init(rawValue:))
+        guard commands.count == identifiers.count, validCompactBarCommands(commands) else { return nil }
+        return commands
+    }
+
+    var name: String { nameResource.resolved() }
 
     var englishName: String { nameResource.key }
 

@@ -2,7 +2,7 @@ import AppKit
 import Carbon.HIToolbox
 
 /// Editor and switcher differ only in style mask and chords, so one panel serves both.
-final class NotesPanel: NSPanel {
+final class NotesPanel: NSPanel, AnimatedPanel {
     var onEscape: (() -> Void)?
     /// ⌘⌫ is keyed separately: only its key code survives every keyboard layout.
     var onDeleteChord: (() -> Bool)?
@@ -32,7 +32,7 @@ final class NotesPanel: NSPanel {
         isOpaque = false
         backgroundColor = .clear
         hasShadow = true
-        animationBehavior = .documentWindow
+        followMotion()
         isReleasedWhenClosed = false
         isRestorable = false
         contentView = content
