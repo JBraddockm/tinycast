@@ -386,122 +386,128 @@ struct RootPaletteView: View {
     }
 
     /// Split from `body` for the same reason `keyHandlers` is: one chain cannot carry them all.
-    @ViewBuilder
-    private func stateObservers(_ content: some View) -> some View {
-        emojiObservers(content)
-            // Every show bumps focusToken so the search field refocuses.
-            .onChange(of: vm.focusToken) {
-                resetCompactSelection()
-                searchFocused = !screen.hidesSearchField
-            }
-            .onChange(of: vm.isVisible) { resetCompactSelection() }
-            .onChange(of: vm.isComposing) {
-                if vm.isComposing { resetCompactSelection() }
-            }
-            .onChange(of: compactCommands) {
-                compactSelection.reconcile(commands: compactCommands)
-            }
-            // A preserved screen re-summons as it was left, so a menu must end with the palette.
-            .modifier(PaletteHideObserver { if menuOpen { closeMenus() } })
-            .onChange(of: vm.query) {
-                resetCompactSelection()
-                if vm.collapseQueryLineBreaks() { return }
-                land(restoringSelection: true)
-                if vm.mode == .fileSearch { fileSearch.search(vm.query, filter: vm.fileSearchFilter) }
-                if vm.mode == .launcher { core.fileSearchCoordinator.searchFromLauncher(vm.query) }
-                if vm.mode == .dictionary { dictionary.lookUp(vm.query) }
-                if vm.mode == .menuSearch { menuSearch.filter(vm.query) }
-                if vm.mode == .switchWindows { windowSwitch.filter(vm.query) }
-                // A command that took over the search text filters its own list.
-                if vm.mode == .extensionCommand, let handler = extensionScreen.searchTextHandler {
+        @ViewBuilder
+        private func stateObservers(_ content: some View) -> some View {
+            let view1 = emojiObservers(content)
+                // Every show bumps focusToken so the search field refocuses.
+                .onChange(of: vm.focusToken) {
+                    resetCompactSelection()
+                    searchFocused = !screen.hidesSearchField
+                }
+                .onChange(of: vm.isVisible) { resetCompactSelection() }
+                .onChange(of: vm.isComposing) {
+                    if vm.isComposing { resetCompactSelection() }
+                }
+                .onChange(of: compactCommands) {
+                    compactSelection.reconcile(commands: compactCommands)
+                }
+                // A preserved screen re-summons as it was left, so a menu must end with the palette.
+                .modifier(PaletteHideObserver { if menuOpen { closeMenus() } })
+
+            let view2 = view1
+                .onChange(of: vm.query) {
+                    resetCompactSelection()
+                    if vm.collapseQueryLineBreaks() { return }
+                    land(restoringSelection: true)
+                    if vm.mode == .fileSearch { fileSearch.search(vm.query, filter: vm.fileSearchFilter) }
+                    if vm.mode == .launcher { core.fileSearchCoordinator.searchFromLauncher(vm.query) }
+                    if vm.mode == .dictionary { dictionary.lookUp(vm.query) }
+                    if vm.mode == .menuSearch { menuSearch.filter(vm.query) }
+                    if vm.mode == .switchWindows { windowSwitch.filter(vm.query) }
+                    // A command that took over the search text filters its own list.
+                    if vm.mode == .extensionCommand, let handler = extensionScreen.searchTextHandler {
+                        extensions.dispatch(handler: handler, arguments: [vm.query])
+                    }
+                }
+                // Anything typed while the command was still starting predates its handler.
+                .onChange(of: extensionScreen.searchTextHandler) { previous, handler in
+                    guard previous == nil, let handler, !vm.query.isEmpty else { return }
                     extensions.dispatch(handler: handler, arguments: [vm.query])
                 }
-            }
-            // Anything typed while the command was still starting predates its handler.
-            .onChange(of: extensionScreen.searchTextHandler) { previous, handler in
-                guard previous == nil, let handler, !vm.query.isEmpty else { return }
-                extensions.dispatch(handler: handler, arguments: [vm.query])
-            }
-            .modifier(ExtensionSelectionForwarder(screen: extensionScreen, selection: vm.selection))
-            // A narrower list means the old index points at a different row, or at none.
-            .onChange(of: vm.clipboardFilter) { land(restoringSelection: true) }
-            // The filter is part of the query, so narrowing re-runs it rather than thinning rows.
-            .onChange(of: vm.fileSearchFilter) {
-                land()
-                fileSearch.search(vm.query, filter: vm.fileSearchFilter)
-            }
-            .onChange(of: vm.mode) {
-                vm.clipboardFilter = .all
-                vm.fileSearchFilter = .all
-                vm.emojiCategoryFilter = .all
-                vm.emojiGridColumnsOverride = nil
-                if menuOpen { closeMenus() }
-                land(restoringSelection: true)
-                searchFocused = !screen.hidesSearchField
-                if vm.mode != .uninstall { uninstall.cancel() }
-                // Entering with no query is the blank screen's own request for recents.
-                if vm.mode == .fileSearch {
+                .modifier(ExtensionSelectionForwarder(screen: extensionScreen, selection: vm.selection))
+                // A narrower list means the old index points at a different row, or at none.
+                .onChange(of: vm.clipboardFilter) { land(restoringSelection: true) }
+                // The filter is part of the query, so narrowing re-runs it rather than thinning rows.
+                .onChange(of: vm.fileSearchFilter) {
+                    land()
                     fileSearch.search(vm.query, filter: vm.fileSearchFilter)
-                } else if vm.mode == .launcher {
-                    core.fileSearchCoordinator.searchFromLauncher(vm.query)
-                } else {
-                    fileSearch.cancel()
                 }
-                if vm.mode == .dictionary {
-                    dictionary.lookUp(vm.query)
-                } else {
-                    dictionary.reset()
+
+            let view3 = view2
+                .onChange(of: vm.mode) {
+                    vm.clipboardFilter = .all
+                    vm.fileSearchFilter = .all
+                    vm.emojiCategoryFilter = .all
+                    vm.emojiGridColumnsOverride = nil
+                    if menuOpen { closeMenus() }
+                    land(restoringSelection: true)
+                    searchFocused = !screen.hidesSearchField
+                    if vm.mode != .uninstall { uninstall.cancel() }
+                    // Entering with no query is the blank screen's own request for recents.
+                    if vm.mode == .fileSearch {
+                        fileSearch.search(vm.query, filter: vm.fileSearchFilter)
+                    } else if vm.mode == .launcher {
+                        core.fileSearchCoordinator.searchFromLauncher(vm.query)
+                    } else {
+                        fileSearch.cancel()
+                    }
+                    if vm.mode == .dictionary {
+                        dictionary.lookUp(vm.query)
+                    } else {
+                        dictionary.reset()
+                    }
+                    if vm.mode != .menuSearch { menuSearch.reset() }
+                    if vm.mode != .switchWindows { windowSwitch.reset() }
+                    if vm.mode != .meetingDetails { calendarStore.clearDetails() }
+                    if vm.mode != .rooms, vm.mode != .roomWindows { core.roomCoordinator.screensDidClose() }
+                    // Leaving the screen any other way than Escape still ends the command's session.
+                    if vm.mode != .extensionCommand, extensions.running != nil {
+                        Task { await extensions.stop() }
+                    }
                 }
-                if vm.mode != .menuSearch { menuSearch.reset() }
-                if vm.mode != .switchWindows { windowSwitch.reset() }
-                if vm.mode != .meetingDetails { calendarStore.clearDetails() }
-                if vm.mode != .rooms, vm.mode != .roomWindows { core.roomCoordinator.screensDidClose() }
-                // Leaving the screen any other way than Escape still ends the command's session.
-                if vm.mode != .extensionCommand, extensions.running != nil {
-                    Task { await extensions.stop() }
+                // `prepare` may change nothing else, so this still lands the list as freshly opened.
+                .onChange(of: vm.resetToken) {
+                    if menuOpen { closeMenus() }
+                    land()
                 }
-            }
-            // `prepare` may change nothing else, so this still lands the list as freshly opened.
-            .onChange(of: vm.resetToken) {
-                if menuOpen { closeMenus() }
-                land()
-            }
-            // ⌘. arrives as a token rather than a key press. See `PaletteState.pinChordToken`.
-            .onChange(of: vm.pinChordToken) { performShortcut(.pin) }
-            .onChange(of: vm.queryRewriteToken) {
-                if menuOpen { closeMenus() }
-                searchFocused = true
-                // Next turn, past the refocus that selects all, so typing extends the answer.
-                Task { @MainActor in (hostWindow as? PalettePanel)?.moveFieldEditorCaretToEnd() }
-            }
-            .onChange(of: vm.favoriteSlotToken) {
-                if let index = vm.favoriteSlotIndex { performShortcut(.favoriteSlot(index)) }
-            }
-            // One optional makes "exactly one menu" structural; this only presents it.
-            .onChange(of: openMenu) {
-                guard menuOpen else { return }
-                syncMenuPanel(presenting: true)
-            }
-            // The hosted tree is its own hierarchy, so the highlight has to be pushed into it.
-            .onChange(of: menuSelection) { syncMenuPanel(presenting: false) }
-            .onChange(of: vm.menuQuery) { menuQueryChanged() }
-            .onDisappear {
-                menuPanel.hide()
-                (hostWindow as? PalettePanel)?.onHeaderFieldBoundaryArrow = nil
-            }
-            // The first show builds this view after `prepare`, so no handler saw that reset.
-            .onAppear {
-                searchFocused = !screen.hidesSearchField
-                land()
-                focusPendingArgument()
-            }
-            .modifier(SearchFieldHiding(hidden: hidesSearchField, apply: applySearchFieldHiding))
-            // Several paths flip `paletteIsCollapsed`, so resize the window to match.
-            .onChange(of: core.paletteCoordinator.paletteIsCollapsed) {
-                resetCompactSelection()
-                core.paletteCoordinator.syncPaletteSize()
-            }
-    }
+                // ⌘. arrives as a token rather than a key press. See `PaletteState.pinChordToken`.
+                .onChange(of: vm.pinChordToken) { performShortcut(.pin) }
+                .onChange(of: vm.queryRewriteToken) {
+                    if menuOpen { closeMenus() }
+                    searchFocused = true
+                    // Next turn, past the refocus that selects all, so typing extends the answer.
+                    Task { @MainActor in (hostWindow as? PalettePanel)?.moveFieldEditorCaretToEnd() }
+                }
+                .onChange(of: vm.favoriteSlotToken) {
+                    if let index = vm.favoriteSlotIndex { performShortcut(.favoriteSlot(index)) }
+                }
+
+            view3
+                // One optional makes "exactly one menu" structural; this only presents it.
+                .onChange(of: openMenu) {
+                    guard menuOpen else { return }
+                    syncMenuPanel(presenting: true)
+                }
+                // The hosted tree is its own hierarchy, so the highlight has to be pushed into it.
+                .onChange(of: menuSelection) { syncMenuPanel(presenting: false) }
+                .onChange(of: vm.menuQuery) { menuQueryChanged() }
+                .onDisappear {
+                    menuPanel.hide()
+                    (hostWindow as? PalettePanel)?.onHeaderFieldBoundaryArrow = nil
+                }
+                // The first show builds this view after `prepare`, so no handler saw that reset.
+                .onAppear {
+                    searchFocused = !screen.hidesSearchField
+                    land()
+                    focusPendingArgument()
+                }
+                .modifier(SearchFieldHiding(hidden: hidesSearchField, apply: applySearchFieldHiding))
+                // Several paths flip `paletteIsCollapsed`, so resize the window to match.
+                .onChange(of: core.paletteCoordinator.paletteIsCollapsed) {
+                    resetCompactSelection()
+                    core.paletteCoordinator.syncPaletteSize()
+                }
+        }
 
     /// Split from `body`: one chain of this length is past what the type-checker will infer.
     @ViewBuilder

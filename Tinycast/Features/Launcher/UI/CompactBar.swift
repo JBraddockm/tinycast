@@ -14,13 +14,13 @@ struct CompactBarGeometry {
         width = metrics.size.panelWidth
         height = metrics.size.compactHeight
         // A point inside the bar's height, so the last button clears the window's rounded end.
-        diameter = height - metrics.scaled(1) * 2
+        diameter = height * 0.8
         gap = metrics.spacing.lg
         self.count = count
     }
 
     func capsuleWidth(revealed: Bool) -> CGFloat {
-        revealed ? width - CGFloat(count) * (diameter + gap) : width
+        revealed ? width : width + CGFloat(count) * (diameter + gap)
     }
 
     func center(of index: Int) -> CGPoint {
@@ -50,21 +50,41 @@ struct CompactBar: View {
         let geometry = CompactBarGeometry(metrics: metrics, count: commands.count)
         let revealed = isRevealed
         let capsule = Capsule(style: .continuous)
+
         // One container, or the buttons could never bead off the capsule they come out of.
-        GlassEffectContainer(spacing: metrics.scaled(BarMotion.blend)) {
-            ZStack(alignment: .topLeading) {
-                capsule.fill(.clear)
-                    .frame(width: geometry.capsuleWidth(revealed: revealed))
-                    .frame(maxHeight: .infinity)
-                    .glassEffect(.regular, in: capsule)
-                    .animation(
-                        reduceMotion ? nil : BarMotion.capsule.delay(BarMotion.revealDelay),
-                        value: revealed)
-                ForEach(Array(commands.enumerated()), id: \.element) { index, command in
-                    button(command, at: index, geometry: geometry, revealed: revealed)
+        Group {
+            if #available(macOS 26, *) {
+                GlassEffectContainer(spacing: metrics.scaled(BarMotion.blend)) {
+                    ZStack(alignment: .topLeading) {
+                        capsule.fill(.clear)
+                            .frame(width: geometry.capsuleWidth(revealed: revealed))
+                            .frame(maxHeight: .infinity)
+                            .frosted(in: capsule)
+                            .animation(
+                                reduceMotion ? nil : BarMotion.capsule.delay(BarMotion.revealDelay),
+                                value: revealed)
+                        ForEach(Array(commands.enumerated()), id: \.element) { index, command in
+                            button(command, at: index, geometry: geometry, revealed: revealed)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 }
+            } else {
+                // Fallback for macOS 15
+                ZStack(alignment: .topLeading) {
+                    capsule.fill(.clear)
+                        .frame(width: geometry.capsuleWidth(revealed: revealed))
+                        .frame(maxHeight: .infinity)
+                        .background(.regularMaterial, in: capsule)
+                        .animation(
+                            reduceMotion ? nil : BarMotion.capsule.delay(BarMotion.revealDelay),
+                            value: revealed)
+                    ForEach(Array(commands.enumerated()), id: \.element) { index, command in
+                        button(command, at: index, geometry: geometry, revealed: revealed)
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .overlay { scrim(geometry: geometry, revealed: revealed) }
         // Above the glass rather than inside it, where a morph would smear them.
@@ -97,7 +117,7 @@ struct CompactBar: View {
                 colorScheme == .dark && selection == command && revealed ? 1 : 0),
             in: .circle
         )
-        .glassEffect(.regular.interactive(), in: .circle)
+        .frosted(in: .circle)
         .overlay {
             if colorScheme == .dark {
                 Circle().fill(selection == command ? Theme.Colors.compactShortcutGlassSelection : .clear)
@@ -187,3 +207,17 @@ struct CompactBar: View {
         withTransaction(\.disablesAnimations, true) { isRevealed = false }
     }
 }
+
+// MARK: - Compatibility Shim for macOS 15 SDK
+
+#if os(macOS)
+// Fallback stub container in case GlassEffectContainer is missing from the older SDK compile targets
+struct GlassEffectContainer<Content: View>: View {
+    let spacing: CGFloat
+    @ViewBuilder let content: () -> Content
+
+    var body: some View {
+        content()
+    }
+}
+#endif

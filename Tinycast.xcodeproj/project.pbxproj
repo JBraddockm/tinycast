@@ -47,6 +47,7 @@
 		0B479A90BA6772D3DCC8009D /* WindowLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DFEC8744A55CB60CA864F19 /* WindowLayout.swift */; };
 		0B57F477B21A81B22DAA5513 /* AppleShortcutRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64E4C6445202F80D6756AF1A /* AppleShortcutRunner.swift */; };
 		0B9C941402B85C69A33200C2 /* UninstallProtection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 37A48095F6487DEE76663F88 /* UninstallProtection.swift */; };
+		0C11769F3090389C00057DD8 /* AIGuardrailsPolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C11769E3090389C00057DD8 /* AIGuardrailsPolicy.swift */; };
 		0C1CACEF014462D3F581CE54 /* EmojiSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B42664C60B760276FBAAD61 /* EmojiSettingsView.swift */; };
 		0CC2291DE8806FDFB478F8A0 /* FileSearchSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90831A25F96F3563BEC60FCC /* FileSearchSurface.swift */; };
 		0CD06036347A6D96B1F7947F /* AppleShortcut.swift in Sources */ = {isa = PBXBuildFile; fileRef = A379CB384B76FF70AC72E235 /* AppleShortcut.swift */; };
@@ -942,6 +943,7 @@
 		0ADFFB5180991764FB13FE0B /* ExtensionPackageManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExtensionPackageManager.swift; sourceTree = "<group>"; };
 		0B2FAC737503B853DE6B5ED4 /* MeetingCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MeetingCardView.swift; sourceTree = "<group>"; };
 		0BD0F1989B00B2B3BFF5BFCC /* SecureInputMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecureInputMonitor.swift; sourceTree = "<group>"; };
+		0C11769E3090389C00057DD8 /* AIGuardrailsPolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AIGuardrailsPolicy.swift; sourceTree = "<group>"; };
 		0C3B9645DB2293FA144B5AA2 /* Paster.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Paster.swift; sourceTree = "<group>"; };
 		0C3F123266ED0DA4BC9616B9 /* NoteMarkdownParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NoteMarkdownParser.swift; sourceTree = "<group>"; };
 		0CD9BD942CF0C95ECEFC41F4 /* CompactShortcutsSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompactShortcutsSection.swift; sourceTree = "<group>"; };
@@ -2855,6 +2857,7 @@
 		87070A80E9E3AB3E4B0A9E54 /* AI */ = {
 			isa = PBXGroup;
 			children = (
+				0C11769E3090389C00057DD8 /* AIGuardrailsPolicy.swift */,
 				62F0568B29175D36EF95BB84 /* Model */,
 				E98B3DB43012A362EF8DAE1D /* Service */,
 				F582FC7869A272CD878A62D4 /* Settings */,
@@ -4478,6 +4481,7 @@
 				54D56A2119945AA73F4FBA99 /* MCPServer.swift in Sources */,
 				16A8F14D5FC9C26CA6B616FB /* MCPServerConnection.swift in Sources */,
 				2E0957985928EC32511A5969 /* MCPServerEditor.swift in Sources */,
+				0C11769F3090389C00057DD8 /* AIGuardrailsPolicy.swift in Sources */,
 				44646A576847F2D9FB68D8CF /* MCPServerManager.swift in Sources */,
 				D37F4361928A38602002FAEF /* MCPSettingsSection.swift in Sources */,
 				F70A66A5BC558684091F6603 /* MCPSettingsStore.swift in Sources */,
@@ -5211,7 +5215,7 @@
 				CC3CD44A1E55885C69F58A29 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Debug;
 		};
 		3FA1137C6B8DDBC135706E0E /* Build configuration list for PBXNativeTarget "DictationHelper" */ = {
 			isa = XCConfigurationList;
@@ -5220,7 +5224,7 @@
 				339B88C139A72BDB7179C477 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Debug;
 		};
 		46034AD14BC918424C2FADC2 /* Build configuration list for PBXNativeTarget "Tinycast" */ = {
 			isa = XCConfigurationList;
@@ -5229,7 +5233,7 @@
 				58A6CE2BBFD809933397AE23 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Debug;
 		};
 		502FCF26DFC383FEE349B526 /* Build configuration list for PBXNativeTarget "FileIndexHelper" */ = {
 			isa = XCConfigurationList;
@@ -5238,7 +5242,7 @@
 				C03F43106AB6B1D337C10F56 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Debug;
 		};
 		83F990B09D354731A898025F /* Build configuration list for PBXNativeTarget "ClipboardTextHelper" */ = {
 			isa = XCConfigurationList;
@@ -5247,7 +5251,7 @@
 				828D07C0809E0B5A914BF94E /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
+			defaultConfigurationName = Debug;
 		};
 /* End XCConfigurationList section */
 	};

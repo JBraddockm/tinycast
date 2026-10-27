@@ -68,7 +68,6 @@ enum TextTranslator {
     }
 
     private static func translate(
-<<<<<<< HEAD
         _ text: String,
         from source: Locale.Language,
         to target: Locale.Language
@@ -76,11 +75,6 @@ enum TextTranslator {
         guard #available(macOS 26.0, *) else {
             throw Failure.osUnsupported
         }
-
-=======
-        _ text: String, from source: Locale.Language, to target: Locale.Language
-    ) async throws -> String {
->>>>>>> main
         do {
             let session = TranslationSession(
                 installedSource: source,
