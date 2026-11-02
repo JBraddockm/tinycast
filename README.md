@@ -34,8 +34,11 @@ For anything private, email [iabueammar@gmail.com](mailto:iabueammar@gmail.com).
   or every app at once.
 - **Global hotkey** — one shortcut summons the palette from anywhere.
 - **Per-app hotkeys** — bind a key to an app; press it to toggle (focus/hide).
-- **Search Files** — open files and folders from the folders you choose, through Spotlight, with no
-  index of our own.
+- **Deeplinks** — run any command, window action, quicklink, snippet, note or chat from a
+  `tinycast://` URL, for Karabiner-Elements, Shortcuts or scripts. A link can carry text and
+  arguments, and a link from outside asks before it acts. Copy Deeplink (⇧⌘C) gives you the link.
+- **Search Files** — find files and folders instantly from a private index of the folders you choose,
+  kept on your Mac. Needs Full Disk Access; off by default.
 - **Dictionary** — look a word up with the Define Word command, or define whatever you typed from the
   launcher's fallbacks, read from the Mac's own dictionaries.
 - **Clipboard history** — text and images, searchable, pasted back into the app you were using.
@@ -47,7 +50,7 @@ For anything private, email [iabueammar@gmail.com](mailto:iabueammar@gmail.com).
 - **Snippets** — reusable Markdown templates with dynamic placeholders, arguments, nested references
   and optional keyword expansion.
 - **Custom commands** — run named shell commands through fuzzy search or their own global hotkeys.
-- **Window management** — 34 Rectangle-style actions: halves, quarters, thirds, sizing, nudging,
+- **Window management** — 35 Rectangle-style actions: halves, quarters, thirds, sizing, nudging,
   display moves, fullscreen and Spaces.
 - **System actions** — lock, sleep, restart, empty trash, toggle appearance, Bluetooth, mute, hidden
   files, and more.
@@ -60,6 +63,8 @@ For anything private, email [iabueammar@gmail.com](mailto:iabueammar@gmail.com).
   longer conversations in the AI Chat window, with a searchable, pinnable history. Off out of the box,
   like every AI feature.
 - **Quick Actions** — fix grammar, rewrite, translate or summarize the selected text in any app.
+- **Dictation** — press a shortcut and speak, and the text lands in the app you're
+  using. Speech is turned into text on your Mac. Off by default.
 - **Raycast extensions** — run the ones you already have natively, rendered as SwiftUI.
 - **Backup and import** — export your settings to a file, or import your setup from Raycast.
 
@@ -93,9 +98,18 @@ standards, the design system and one document per feature.
 
 ## Support
 
-Tinycast is **free, and it stays that way**. If you enjoy it, you can support it with crypto: scan a
-code with your wallet, or copy an address. Send only on the network named for that address. If yours
-isn't listed, [email me](mailto:iabueammar@gmail.com?subject=Supporting%20Tinycast).
+Tinycast is **free, and it stays that way**. If it earns a place on your Mac, consider supporting its
+development. Thanks in advance.
+
+<p align="center">
+  <a href="https://tinycast.dev/support">
+    <img alt="Support Tinycast" width="188" height="44" src="docs/support-button.svg"></a><br>
+  <sub>Payments are handled securely by <a href="https://polar.sh">Polar.sh</a>.</sub>
+</p>
+
+You can also support Tinycast with crypto: scan a code with your wallet, or copy an address. Send
+only on the network named for that address. If yours isn't listed,
+[email me](mailto:iabueammar@gmail.com?subject=Supporting%20Tinycast).
 
 <table>
   <tr>
@@ -131,14 +145,6 @@ bc1qpfxtjpuhm2cm8kg4lqgu3ffjch7vcjf678arwn
 ```text
 4EH7JDXZxkJiahas1xgPyC1iBW9pfCVUXxVtpqvwAz6T
 ```
-
-Prefer a card? Buy the wallpaper pack and get a Discord role.
-
-<p align="center">
-  <a href="https://tinycast.dev/support">
-    <img alt="Support Tinycast" width="188" height="44" src="docs/support-button.svg"></a><br>
-  <sub>Card payments are handled securely by <a href="https://polar.sh">Polar.sh</a>.</sub>
-</p>
 
 ## Shoutout
 

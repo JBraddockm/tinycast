@@ -195,6 +195,7 @@ struct ExtensionTests {
         await searchAccessoryRuntimeChecks()
         await nodeContractChecks()
         await bufferEventChecks()
+        await sharedArrayBufferChecks()
         await webAssemblyChecks()
         await asyncComponentChecks()
         await menuBarRuntimeChecks()
@@ -299,6 +300,21 @@ struct ExtensionTests {
             "os.loadavg returns three finite values",
             loadAverages?.count == 3
                 && loadAverages?.allSatisfy { $0.doubleValue.isFinite && $0.doubleValue >= 0 } == true)
+
+        let interfaces = value("networkInterfaces") as? [[String: Any]] ?? []
+        check(
+            "os.networkInterfaces lists the IPv4 loopback as internal",
+            interfaces.contains {
+                $0["address"] as? String == "127.0.0.1" && $0["family"] as? String == "IPv4"
+                    && $0["internal"] as? Bool == true && $0["cidr"] as? String == "127.0.0.1/8"
+            },
+            "\(interfaces)")
+        check(
+            "os.networkInterfaces never exposes a hardware address",
+            !interfaces.isEmpty && interfaces.allSatisfy { $0["mac"] as? String == "00:00:00:00:00:00" })
+        check(
+            "os.networkInterfaces gives a scope ID to IPv6 addresses only",
+            interfaces.allSatisfy { ($0["scopeid"] is NSNumber) == ($0["family"] as? String == "IPv6") })
     }
 
     @MainActor
@@ -891,6 +907,23 @@ struct ExtensionTests {
         let tiny = ExtensionDeepLink.parse(
             url: URL(string: "tinycast://extensions/linear/linear/create-issue")!)
         check("deeplink mirrors raycast:// as tinycast://", tiny == canonical)
+        let copied = ExtensionDeepLink.url(
+            extensionName: "linear/linear", commandName: "create-issue", arguments: [:], scheme: "tinycast")
+        check(
+            "a copied scoped deeplink parses back to its command",
+            copied.flatMap(ExtensionDeepLink.parse) == canonical, String(describing: copied))
+        let copiedBare = ExtensionDeepLink.url(
+            extensionName: "demo", commandName: "search", arguments: [:], scheme: "tinycast-dev")
+        check(
+            "a copied bare deeplink parses back to its command",
+            copiedBare.flatMap(ExtensionDeepLink.parse)?.extensionCandidates == ["demo"],
+            String(describing: copiedBare))
+        let typed = ["query": "a & b = c + d", "tag": "café ✓"]
+        let copiedTyped = ExtensionDeepLink.url(
+            extensionName: "demo", commandName: "search", arguments: typed, scheme: "tinycast")
+        check(
+            "a copied deeplink carries the arguments typed into the row",
+            copiedTyped.flatMap(ExtensionDeepLink.parse)?.arguments == typed, String(describing: copiedTyped))
 
         let bare = ExtensionDeepLink.parse(url: URL(string: "raycast://extensions/demo/search")!)
         check(
@@ -972,6 +1005,24 @@ struct ExtensionTests {
         check(
             "deeplink reads fallback text and background launch",
             full?.fallbackText == "hello" && full?.launchType == .background)
+
+        let expectedContext: [String: RenderValue] = [
+            "id": .string("note-1"), "pinned": .bool(true), "tags": .array([.string("a")])
+        ]
+        let encodedContext =
+            #"{"id":"note-1","pinned":true,"tags":["a"]}"#
+            .addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? ""
+        for name in ["context", "launchContext"] {
+            let withContext = ExtensionDeepLink.parse(
+                url: URL(string: "raycast://extensions/demo/search?\(name)=\(encodedContext)")!)
+            check(
+                "deeplink decodes \(name) JSON",
+                withContext?.launchContext == expectedContext,
+                String(describing: withContext?.launchContext))
+        }
+        check(
+            "deeplink treats a context that isn't an object as none",
+            ExtensionDeepLink.parseContext("[1]").isEmpty && ExtensionDeepLink.parseContext("nope").isEmpty)
 
         let legacy = ExtensionDeepLink.parse(
             url: URL(string: "com.raycast:/extensions/demo/search")!)
@@ -1160,6 +1211,9 @@ struct ExtensionTests {
               const errorCode = (callback) => {
                 try { callback(); return "none"; } catch (error) { return error.code; }
               };
+              const errorMessage = (callback) => {
+                try { callback(); return "none"; } catch (error) { return error.message; }
+              };
               const filePaths = [
                 fileURLToPath("file:///Applications/Tinycast%20Beta.app"),
                 fileURLToPath(pathToFileURL("/tmp/a#b.png")),
@@ -1182,6 +1236,22 @@ struct ExtensionTests {
               const encrypted = Buffer.concat([encrypter.update("hello tinycast"), encrypter.final()]);
               const decrypter = crypto.createDecipheriv("aes-256-cbc", "k".repeat(32), Buffer.from("i".repeat(16)));
               const ecb = crypto.createCipheriv("aes-128-ecb", Buffer.alloc(16, 1), null).setAutoPadding(false);
+              const gcmKey = Buffer.alloc(32, 7);
+              const gcmSeal = (iv, aad) => {
+                const cipher = crypto.createCipheriv("aes-256-gcm", gcmKey, iv);
+                if (aad) cipher.setAAD(aad);
+                const ciphertext = Buffer.concat([cipher.update("hello gcm"), cipher.final()]);
+                return { ciphertext, tag: cipher.getAuthTag() };
+              };
+              const gcmOpen = (iv, sealed, aad) => {
+                const decipher = crypto.createDecipheriv("aes-256-gcm", gcmKey, iv);
+                if (aad) decipher.setAAD(aad);
+                decipher.setAuthTag(sealed.tag);
+                return Buffer.concat([decipher.update(sealed.ciphertext), decipher.final()]).toString("utf8");
+              };
+              const shortNonce = gcmSeal(Buffer.from("gcm-nonce-12"));
+              // A 16-byte nonce proves CryptoKit derives a long GCM nonce the way Node does.
+              const longNonce = gcmSeal(Buffer.alloc(16, 9), Buffer.from("header"));
               const cipherShim = [
                 crypto.pbkdf2Sync("password", "salt", 1000, 16, "sha512").toString("hex"),
                 crypto.pbkdf2Sync("", "", 1, 8, "SHA-256").toString("hex"),
@@ -1196,6 +1266,10 @@ struct ExtensionTests {
                 }),
                 errorCode(() => crypto.createCipheriv("aes-256-cbc", "short", "i".repeat(16))),
                 errorCode(() => crypto.pbkdf2Sync("p", "s", 1, 8, "nope")),
+                shortNonce.tag.toString("hex") + ":" + shortNonce.ciphertext.toString("hex"),
+                longNonce.tag.toString("hex") + ":" + longNonce.ciphertext.toString("hex"),
+                gcmOpen(Buffer.alloc(16, 9), longNonce, Buffer.from("header")),
+                errorMessage(() => gcmOpen(Buffer.alloc(16, 9), longNonce)),
                 derived,
               ].join(",");
               return h(List, { navigationTitle: "Synthetic", isLoading: false },
@@ -1268,13 +1342,16 @@ struct ExtensionTests {
                 + "ERR_INVALID_URL_SCHEME",
             String(describing: screen.items.first?.node.array("accessories").dropFirst(2).first))
         check(
-            "crypto shim derives PBKDF2 keys and round-trips AES like Node",
+            "crypto shim derives PBKDF2 keys, round-trips AES and authenticates GCM like Node",
             ExtensionAccessoriesView_labelForTest(
                 screen.items.first?.node.array("accessories").dropFirst(4).first)
                 == "afe6c5530785b6cc6b1c6453384731bd,f7ce0b653d2d72a4,5d11c49af18b4b3e482508362bd2c857,"
                 + "eb7b227687302ff167fef6a04d9f99f3,"
                 + "hello tinycast,17d614f379a9359077e95577fd31c20a,ERR_OSSL_BAD_DECRYPT,"
-                + "ERR_CRYPTO_INVALID_KEYLEN,ERR_CRYPTO_INVALID_DIGEST,6cba6dd1d44f53a3",
+                + "ERR_CRYPTO_INVALID_KEYLEN,ERR_CRYPTO_INVALID_DIGEST,"
+                + "875a7af65e66ba29298577f2c937c48b:589dd2d6d2696c5310,"
+                + "749e7f715a23139cbfa9b3259ab594e1:aaefe159005653143a,hello gcm,"
+                + "Unsupported state or unable to authenticate data,6cba6dd1d44f53a3",
             String(describing: screen.items.first?.node.array("accessories").dropFirst(4).first))
         check(
             "util shim answers debuglog, stripVTControlCharacters, aborted and inspect.custom",
@@ -1697,6 +1774,56 @@ struct ExtensionTests {
             check(name, host.huds == ["\(name) passed"], recorder.failures.joined(separator: "|"))
             await runtime.stop(session: name)
             runtime.shutdown()
+        }
+    }
+
+    @MainActor
+    static func sharedArrayBufferChecks() async {
+        let (runtime, host, recorder) = makeRuntime()
+        defer { runtime.shutdown() }
+        do {
+            try await runtime.boot(
+                config: .current(supportDirectory: FileManager.default.temporaryDirectory))
+            let command = #"""
+                const assert = require("assert");
+                const lock = new Int32Array(new SharedArrayBuffer(4));
+                Atomics.store(lock, 0, 5);
+                assert.equal(Atomics.add(lock, 0, "3"), 5);
+                assert.equal(Atomics.compareExchange(lock, 0, "8", 0), 8);
+                assert.equal(Atomics.load(lock, 0), 0);
+                assert.equal(Atomics.wait(lock, 0, 1), "not-equal");
+                assert.equal(Atomics.wait(lock, undefined, 4294967296, 0), "timed-out");
+                assert.equal(Atomics.wait(lock, 0, 0, -1), "timed-out");
+                assert.equal(Atomics.notify(lock, 0), 0);
+                const started = Date.now();
+                assert.equal(Atomics.wait(lock, 0, 0, 40), "timed-out");
+                assert(Date.now() - started >= 40);
+                const big = new BigInt64Array(new SharedArrayBuffer(8));
+                assert.equal(Atomics.wait(big, 0, "0", 0), "timed-out");
+                assert.equal(Atomics.wait(big, 0, 1n), "not-equal");
+                for (const operation of [
+                  () => Atomics.wait(new Uint32Array(1), 0, 0, 0),
+                  () => Atomics.wait(lock, 0, 0n, 0),
+                  () => Atomics.wait(lock, 0, 0),
+                  () => Atomics.wait(lock, 0, 0, Infinity),
+                ]) assert.throws(operation, TypeError);
+                assert.throws(() => Atomics.wait(lock, 1, 0, 0), RangeError);
+                module.exports.default = async () => {
+                  await require("@raycast/api").showHUD("SharedArrayBuffer passed");
+                };
+                """#
+            await runtime.start(
+                session: "shared-buffer", code: command,
+                file: URL(fileURLWithPath: "/tmp/shared-buffer.js"), mode: .noView,
+                context: launchContext(mode: .noView))
+            await settle(until: { recorder.finished || !recorder.failures.isEmpty })
+            check(
+                "SharedArrayBuffer allocation and finite waits work in JavaScriptCore",
+                host.huds == ["SharedArrayBuffer passed"] && recorder.finished,
+                recorder.failures.joined(separator: "|"))
+            await runtime.stop(session: "shared-buffer")
+        } catch {
+            check("SharedArrayBuffer runtime boots", false, String(describing: error))
         }
     }
 

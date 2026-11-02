@@ -42,7 +42,6 @@ struct CompactBar: View {
     let onRun: (CommandID) -> Void
     @Environment(PaletteState.self) private var palette
     @Environment(\.metrics) private var metrics
-    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isRevealed = false
 
@@ -86,7 +85,6 @@ struct CompactBar: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
         }
-        .overlay { scrim(geometry: geometry, revealed: revealed) }
         // Above the glass rather than inside it, where a morph would smear them.
         .overlay(alignment: .topLeading) {
             ForEach(Array(commands.enumerated()), id: \.element) { index, command in
@@ -112,10 +110,9 @@ struct CompactBar: View {
         .accessibilityLabel(command.name)
         .accessibilityAddTraits(selection == command ? [.isSelected] : [])
         .accessibilityHidden(!revealed)
-        .background(
-            Theme.Colors.panelScrim.opacity(
-                colorScheme == .dark && selection == command && revealed ? 1 : 0),
-            in: .circle
+        .glassEffect(
+            .regular.tint(selection == command ? Theme.Colors.compactShortcutSelectionTint : nil)
+                .interactive(), in: .circle
         )
         .frosted(in: .circle)
         .overlay {
@@ -127,32 +124,6 @@ struct CompactBar: View {
         .position(revealed ? geometry.center(of: index) : geometry.parked)
         .allowsHitTesting(revealed)
         .animation(travel(index), value: revealed)
-    }
-
-    private func scrim(geometry: CompactBarGeometry, revealed: Bool) -> some View {
-        Theme.Colors.panelScrim
-            .mask {
-                ZStack(alignment: .topLeading) {
-                    Capsule().fill(.white)
-                        .frame(width: geometry.capsuleWidth(revealed: revealed))
-                        .frame(maxHeight: .infinity)
-                        .animation(
-                            reduceMotion ? nil : BarMotion.capsule.delay(BarMotion.revealDelay),
-                            value: revealed)
-                    ForEach(commands.indices, id: \.self) { index in
-                        if colorScheme != .dark || selection != commands[index] {
-                            Circle().fill(.white)
-                                .frame(width: geometry.diameter, height: geometry.diameter)
-                                .opacity(revealed ? 1 : 0)
-                                .scaleEffect(revealed ? 1 : BarMotion.parkedScale)
-                                .position(revealed ? geometry.center(of: index) : geometry.parked)
-                                .animation(travel(index), value: revealed)
-                        }
-                    }
-                }
-            }
-            .allowsHitTesting(false)
-            .accessibilityHidden(true)
     }
 
     private func glyph(
@@ -168,13 +139,6 @@ struct CompactBar: View {
         )
         .animation(fade(index)) {
             $0.opacity(revealed ? 1 : 0).blur(radius: revealed ? 0 : BarMotion.glyphBlur)
-        }
-        .background {
-            if selection == command {
-                Circle().fill(Theme.Colors.compactShortcutSelection)
-                    .frame(width: geometry.diameter, height: geometry.diameter)
-                    .opacity(revealed ? 1 : 0)
-            }
         }
         // Shrinks with its circle but never travels: glyphs sent home would pile into one blot.
         .animation(travel(index)) {

@@ -29,7 +29,8 @@ Check existing [issues](https://github.com/abue-ammar/tinycast/issues) and
 
 - **A linked issue marked `approved`.** Put `Closes #<number>` in the PR description. Anyone may
   open the PR, not only the issue's author. Docs-only changes (`*.md`, `docs/`, `website/`) need no
-  approved issue.
+  approved issue. A PR with no linked issue gets a reminder and is closed automatically 24 hours
+  later.
 - The whole bar in [`docs/testing.md`](docs/testing.md#definition-of-done) passes — harnesses, lint,
   purity, a clean build. Engine changes come with new cases. There is no CI, so **run
   `./Scripts/run-tests.sh`, `./Scripts/lint.sh` and a build locally**. CodeRabbit reviews every PR
@@ -66,6 +67,14 @@ Two things that are only about contributing, and so are not in those docs:
 
 - Commit messages imperative: `Add per-app hotkey toggle`.
 - Behaviour you didn't mean to change, didn't change. Say so explicitly in the PR if it did.
+
+## Spam
+
+- Don't ping maintainers with `@` mentions, bumps or "any update?" comments. Every issue and pull
+  request is read.
+- Syncing a fork? Keep this repository's issue and pull request numbers out of your PR title and
+  description. Each one posts a "mentioned this" notice on the original thread.
+- **Constant spamming leads to a block.**
 
 ## Bugs
 
