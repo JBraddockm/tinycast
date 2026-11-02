@@ -286,14 +286,8 @@ struct AIProvidersPanel: View {
         if !settings.isRouteEnabled(.appleIntelligence) { turnedOffSection() }
         Section {
             LabeledContent {
-                if available {
-                    Text("Ready")
-                        .foregroundStyle(.secondary)
-                } else if AppleIntelligenceProvider.status().isSupported {
-                    Button("Open System Settings…") {
-                        NSWorkspace.shared.open(AppleIntelligence.settingsURL)
-                    }
-                }
+                Text(available ? "Ready" : "Unavailable")
+                    .foregroundStyle(.secondary)
             } label: {
                 Text(AppleIntelligence.title)
                 Text(appleIntelligenceDetail(available: available))
