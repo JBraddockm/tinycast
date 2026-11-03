@@ -284,7 +284,6 @@ private struct SettingsEditorPanelSurface: ViewModifier {
         let shape = RoundedRectangle(cornerRadius: Theme.Radius.panel, style: .continuous)
         content
             .background(WindowDragBackground())   // drag handle, behind content
-            .background(Theme.Colors.panelScrim, in: shape)
             .frosted(in: shape)
     }
 }
