@@ -713,9 +713,6 @@ run settings-file-test     Tinycast/Features/Settings/Model/*.swift \
                            Tinycast/Features/Settings/Service/SettingsFileMonitor.swift \
                            Tinycast/Features/Settings/Service/SettingsFileRepository.swift \
                            Tinycast/Platform/AppPaths.swift
-run compact-favorites-migration-test Tinycast/Migrations/CompactFavoritesMigration.swift \
-                           Tinycast/Features/Settings/Model/*.swift \
-                           Tinycast/Platform/AppPaths.swift
 run backup-archive-test   Tinycast/Platform/AppPaths.swift \
                            Tinycast/Features/Backup/Model/BackupArchive.swift \
                            Tinycast/Features/Backup/Model/BackupBundle.swift \
@@ -809,7 +806,8 @@ run settings-history-test  Tinycast/Features/Settings/SettingsTab.swift \
                            $L/SearchRelevance.swift \
                            Tinycast/Platform/LocalizedResource.swift
 run updates-test           Tinycast/Features/Updates/Model/*.swift \
-                           Tinycast/Features/Updates/Service/BundleSignature.swift
+                           Tinycast/Features/Updates/Service/BundleSignature.swift \
+                           Tinycast/Features/Updates/Service/UpdateSignature.swift
 run update-check-test      Tinycast/Features/Updates/Model/*.swift \
                            Tinycast/Features/Updates/Service/UpdateCheckStore.swift \
                            Tinycast/Platform/AppPaths.swift
@@ -820,6 +818,12 @@ run ai-provider-test       Tinycast/Features/Settings/AppSettingsKey.swift \
                            Tinycast/Features/AI/Service/CodexAppServerClient.swift \
                            Tinycast/Features/AI/Service/InstalledAIProbe.swift \
                            Tinycast/Platform/ExecutableLocator.swift Tinycast/Platform/ProcessExit.swift
+run opencode-mcp-test      Tinycast/Features/AI/Model/*.swift \
+                           Tinycast/Platform/ExecutableLocator.swift Tinycast/Platform/ProcessExit.swift \
+                           Tinycast/Features/AI/Service/AIProvider.swift \
+                           Tinycast/Features/AI/Service/AIToolLoopProvider.swift \
+                           Tinycast/Features/AI/Service/InstalledCLIProvider.swift \
+                           Tinycast/Features/AI/Service/OpenCodeMCPBridge.swift
 run ai-chat-test           Tinycast/Features/AI/Model/AIRequest.swift \
                            Tinycast/Features/AI/Model/AIConnection.swift \
                            Tinycast/Features/AI/Model/AIConversationOpenPolicy.swift \

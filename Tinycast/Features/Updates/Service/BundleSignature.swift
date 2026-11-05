@@ -1,58 +1,53 @@
 import Foundation
 import Security
 
-/// Proves a staged bundle is ours: the Developer ID chain, or the leaf a pre-switch copy pins.
 enum BundleSignature {
-    /// The team, not the certificate — a leaf is reissued on renewal and on a rename.
+    /// Any team, so a new one still updates through the release key, but never an ad-hoc build.
     static let developerID = """
         anchor apple generic \
-        and certificate leaf[subject.OU] = "J656U8XZ93" \
         and certificate 1[field.1.2.840.113635.100.6.2.6] exists \
         and certificate leaf[field.1.2.840.113635.100.6.1.13] exists
         """
 
-    static func isTrusted(_ bundleURL: URL) -> Bool {
+    /// Returned so the swap at quit can pin the exact bytes that were verified.
+    static func trustedHash(of bundleURL: URL, releaseSigned: Bool) -> Data? {
         var staticCode: SecStaticCode?
         guard SecStaticCodeCreateWithPath(bundleURL as CFURL, [], &staticCode) == errSecSuccess,
-            let staticCode
-        else { return false }
-        // An unsealed bundle can claim any identity, and a nested helper is where one hides.
-        let flags = SecCSFlags(rawValue: kSecCSCheckAllArchitectures | kSecCSCheckNestedCode)
-        guard SecStaticCodeCheckValidity(staticCode, flags, nil) == errSecSuccess else { return false }
-        if satisfiesDeveloperID(staticCode, flags: flags) { return true }
-        // A copy installed before the switch knows only the leaf it was itself signed with.
-        guard let running = runningLeaf(), let candidate = leaf(of: staticCode) else { return false }
-        return running == candidate
-    }
-
-    /// No `notarized`: its ticket lookup can hit the network, and the chain already proves ownership.
-    private static func satisfiesDeveloperID(_ code: SecStaticCode, flags: SecCSFlags) -> Bool {
-        var requirement: SecRequirement?
-        guard
-            SecRequirementCreateWithString(developerID as CFString, [], &requirement)
-                == errSecSuccess, let requirement
-        else { return false }
-        return SecStaticCodeCheckValidity(code, flags, requirement) == errSecSuccess
-    }
-
-    private static func runningLeaf() -> Data? {
-        var code: SecCode?
-        guard SecCodeCopySelf([], &code) == errSecSuccess, let code else { return nil }
-        var staticCode: SecStaticCode?
-        guard SecCodeCopyStaticCode(code, [], &staticCode) == errSecSuccess, let staticCode else {
-            return nil
-        }
-        return leaf(of: staticCode)
-    }
-
-    private static func leaf(of code: SecStaticCode) -> Data? {
-        var information: CFDictionary?
-        let flags = SecCSFlags(rawValue: kSecCSSigningInformation)
-        guard SecCodeCopySigningInformation(code, flags, &information) == errSecSuccess,
-            let dictionary = information as? [String: Any],
-            let certificates = dictionary[kSecCodeInfoCertificates as String] as? [SecCertificate],
-            let leaf = certificates.first
+            let staticCode,
+            let requirement = releaseSigned ? compiled(developerID) : runningRequirement,
+            SecStaticCodeCheckValidity(staticCode, flags, requirement) == errSecSuccess
         else { return nil }
-        return SecCertificateCopyData(leaf) as Data
+        return uniqueHash(of: staticCode)
+    }
+
+    /// An unsealed bundle can claim any identity, and a nested helper is where one hides.
+    private static let flags = SecCSFlags(
+        rawValue: kSecCSCheckAllArchitectures | kSecCSCheckNestedCode | kSecCSStrictValidate)
+
+    private static func compiled(_ text: String) -> SecRequirement? {
+        var requirement: SecRequirement?
+        guard SecRequirementCreateWithString(text as CFString, [], &requirement) == errSecSuccess
+        else { return nil }
+        return requirement
+    }
+
+    /// The running copy's own requirement, never a pinned one, so a renewed certificate matches.
+    private static var runningRequirement: SecRequirement? {
+        var code: SecCode?
+        var staticCode: SecStaticCode?
+        var requirement: SecRequirement?
+        guard SecCodeCopySelf([], &code) == errSecSuccess, let code,
+            SecCodeCopyStaticCode(code, [], &staticCode) == errSecSuccess, let staticCode,
+            SecCodeCopyDesignatedRequirement(staticCode, [], &requirement) == errSecSuccess
+        else { return nil }
+        return requirement
+    }
+
+    private static func uniqueHash(of staticCode: SecStaticCode) -> Data? {
+        var information: CFDictionary?
+        let options = SecCSFlags(rawValue: kSecCSSigningInformation)
+        guard SecCodeCopySigningInformation(staticCode, options, &information) == errSecSuccess
+        else { return nil }
+        return (information as? [String: Any])?[kSecCodeInfoUnique as String] as? Data
     }
 }

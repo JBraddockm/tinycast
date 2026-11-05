@@ -50,8 +50,8 @@ For anything private, email [iabueammar@gmail.com](mailto:iabueammar@gmail.com).
 - **Snippets** — reusable Markdown templates with dynamic placeholders, arguments, nested references
   and optional keyword expansion.
 - **Custom commands** — run named shell commands through fuzzy search or their own global hotkeys.
-- **Window management** — 35 Rectangle-style actions: halves, quarters, thirds, sizing, nudging,
-  display moves, fullscreen and Spaces.
+- **Window management** — 39 Rectangle-style actions: halves, quarters, thirds, sizing, nudging,
+  edge moves, display moves, fullscreen and Spaces.
 - **System actions** — lock, sleep, restart, empty trash, toggle appearance, Bluetooth, mute, hidden
   files, and more.
 - **Calendar and meetings** — your next meeting on the empty palette and in the menu bar, one key to
@@ -87,8 +87,8 @@ Then run the one line that matches your Mac:
 Not sure which Mac you have? **Apple menu → About This Mac.**
 
 - **Early builds:** `brew install --cask tinycast@beta` installs `Tinycast Beta.app` beside the stable app.
-- **DMG from [Releases](https://github.com/abue-ammar/tinycast/releases)?** It's self-signed, so run
-  `xattr -dr com.apple.quarantine "/Applications/Tinycast.app"` once.
+- **DMG from [Releases](https://github.com/abue-ammar/tinycast/releases)?** Drag Tinycast to
+  Applications. It's notarized by Apple, so it opens without a warning.
 
 ## Building from source
 
