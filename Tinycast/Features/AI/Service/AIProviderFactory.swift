@@ -1,22 +1,33 @@
+
 import FoundationModels
 import Foundation
 
 @MainActor
 enum AIProviderFactory {
+
     /// Chat's route, and the one every existing caller means.
     static func make(
         settings: AISettingsStore,
         subscription: ChatGPTSubscriptionManager,
         installedAI: InstalledAIManager,
         keyStore: KeychainSecretStore = .aiAPIKeys,
-        toolServers: AIToolServerSession? = nil
+        toolServers: AIToolServerSession? = nil,
+        toolSession: AIToolSession? = nil
     ) throws -> any AIProvider {
+
         guard let selection = settings.defaultModel else {
             throw AIProviderError.unavailable("Choose a default AI model in Settings.")
         }
+
         return try make(
-            selection: selection, settings: settings, subscription: subscription,
-            installedAI: installedAI, keyStore: keyStore, toolServers: toolServers)
+            selection: selection,
+            settings: settings,
+            subscription: subscription,
+            installedAI: installedAI,
+            keyStore: keyStore,
+            toolServers: toolServers,
+            toolSession: toolSession
+        )
     }
 
     /// Apple Intelligence needs macOS 26; every other route works back to macOS 15.
@@ -28,9 +39,12 @@ enum AIProviderFactory {
         installedAI: InstalledAIManager,
         keyStore: KeychainSecretStore = .aiAPIKeys,
         guardrails: AIGuardrailsPolicy = .default,
-        toolServers: AIToolServerSession? = nil
+        toolServers: AIToolServerSession? = nil,
+        toolSession: AIToolSession? = nil
     ) throws -> any AIProvider {
+
         switch selection {
+
         case .appleIntelligence:
             guard #available(macOS 26.0, *) else {
                 throw AIProviderError.unavailable(
@@ -43,83 +57,150 @@ enum AIProviderFactory {
             }
 
             let resolvedGuardrails: SystemLanguageModel.Guardrails
+
             switch guardrails {
             case .default:
                 resolvedGuardrails = .default
+
             case .permissiveContentTransformations:
                 resolvedGuardrails = .permissiveContentTransformations
             }
 
             return AppleIntelligenceProvider(guardrails: resolvedGuardrails)
+
         case .codex(let model, let effort):
             guard settings.enabledInstalledProviders.contains(.codex) else {
-                throw AIProviderError.unavailable(String(localized: "Codex is disabled in AI Settings."))
+                throw AIProviderError.unavailable(
+                    String(localized: "Codex is disabled in AI Settings.")
+                )
             }
+
             return CodexInstalledProvider(
-                turns: subscription.turns, model: model, effort: effort,
-                toolServers: toolServers)
+                turns: subscription.turns,
+                model: model,
+                effort: effort,
+                toolServers: toolServers
+            )
+
         case .claude(let model, let effort):
             guard settings.enabledInstalledProviders.contains(.claude) else {
-                throw AIProviderError.unavailable(String(localized: "Claude is disabled in AI Settings."))
+                throw AIProviderError.unavailable(
+                    String(localized: "Claude is disabled in AI Settings.")
+                )
             }
+
             return try installedAI.provider(
-                kind: .claude, model: model, effort: effort, toolServers: toolServers)
+                kind: .claude,
+                model: model,
+                effort: effort,
+                toolServers: toolServers
+            )
+
         case .grok(let model, let effort):
             guard settings.enabledInstalledProviders.contains(.grok) else {
-                throw AIProviderError.unavailable(String(localized: "Grok is disabled in AI Settings."))
+                throw AIProviderError.unavailable(
+                    String(localized: "Grok is disabled in AI Settings.")
+                )
             }
-            return try installedAI.provider(kind: .grok, model: model, effort: effort)
+
+            return try installedAI.provider(
+                kind: .grok,
+                model: model,
+                effort: effort
+            )
+
         case .openCode(let model, let effort):
             guard settings.enabledInstalledProviders.contains(.openCode) else {
-                throw AIProviderError.unavailable(String(localized: "OpenCode is disabled in AI Settings."))
+                throw AIProviderError.unavailable(
+                    String(localized: "OpenCode is disabled in AI Settings.")
+                )
             }
+
             return try installedAI.provider(
-                kind: .openCode, model: model, effort: effort, toolSession: toolSession)
+                kind: .openCode,
+                model: model,
+                effort: effort,
+                toolServers: toolServers,
+                toolSession: toolSession
+            )
+
         case .cursor(let model, let effort):
             guard settings.enabledInstalledProviders.contains(.cursor) else {
-                throw AIProviderError.unavailable(String(localized: "Cursor is disabled in AI Settings."))
+                throw AIProviderError.unavailable(
+                    String(localized: "Cursor is disabled in AI Settings.")
+                )
             }
-            return try installedAI.provider(kind: .cursor, model: model, effort: effort)
+
+            return try installedAI.provider(
+                kind: .cursor,
+                model: model,
+                effort: effort
+            )
+
         case .api(let connectionID, let model, let savedEffort):
             guard let connection = settings.connection(id: connectionID) else {
-                throw AIProviderError.unavailable(String(localized: "Choose an API connection in Settings."))
+                throw AIProviderError.unavailable(
+                    String(localized: "Choose an API connection in Settings.")
+                )
             }
+
             guard settings.isRouteEnabled(.api(connectionID)) else {
                 throw AIProviderError.unavailable(
-                    String(localized: "\(connection.title) is disabled in AI Settings."))
+                    String(localized: "\(connection.title) is disabled in AI Settings.")
+                )
             }
+
             let baseURL: URL
+
             do {
                 baseURL = try AIEndpointPolicy.validate(connection.baseURL)
             } catch let error as AIEndpointPolicy.ValidationError {
                 throw AIProviderError.unavailable(error.localizedDescription)
             }
+
             let key: String
+
             do {
                 key = try keyStore.secret(for: connection.id) ?? ""
             } catch {
                 throw AIProviderError.unavailable(
-                    String(localized: "The API key could not be read from Keychain."))
+                    String(localized: "The API key could not be read from Keychain.")
+                )
             }
+
             let headers: [String: String]
+
             do {
                 headers = try KeychainSecretStore.aiRequestHeaders.values(for: connection.id)
             } catch {
                 throw AIProviderError.unavailable(
-                    String(localized: "The request headers could not be read from Keychain."))
+                    String(localized: "The request headers could not be read from Keychain.")
+                )
             }
-            guard AIEndpointPolicy.isLoopback(connection.baseURL) || !key.isEmpty || !headers.isEmpty
+
+            guard AIEndpointPolicy.isLoopback(connection.baseURL)
+                    || !key.isEmpty
+                    || !headers.isEmpty
             else {
-                throw AIProviderError.unavailable(String(localized: "Add an API key in Settings."))
+                throw AIProviderError.unavailable(
+                    String(localized: "Add an API key in Settings.")
+                )
             }
+
             let effort = connection.offeredEffort(savedEffort, for: model)
+
             return HTTPAIProvider(
                 configuration: AIHTTPConfiguration(
-                    provider: connection.provider, baseURL: baseURL, model: model, effort: effort,
+                    provider: connection.provider,
+                    baseURL: baseURL,
+                    model: model,
+                    effort: effort,
                     disablesThinking: effort == AIConnection.ReasoningOptions.noEffort
                         && connection.takesThinkingField,
-                    headers: headers),
-                apiKey: key)
+                    headers: headers
+                ),
+                apiKey: key
+            )
         }
     }
 }
