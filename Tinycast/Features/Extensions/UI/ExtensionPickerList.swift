@@ -21,6 +21,7 @@ struct ExtensionPickerList: View {
     /// Moves the highlight under the pointer, so mouse and keyboard share one selection.
     let onHighlight: (Int) -> Void
     var body: some View {
+        let shape = RoundedRectangle(cornerRadius: metrics.radius.menuPanel, style: .continuous)
         VStack(alignment: .leading, spacing: 0) {
             if let searchPlaceholder {
                 ExtensionMenuSearchField(

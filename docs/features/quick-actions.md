@@ -39,7 +39,7 @@ selectable Markdown renderer with AI Chat.
   replace text the first had already changed. `QuickActionCoordinator` holds a single task and
   refuses a second while it lives; a generation token stops a task that finishes after being
   replaced — by a retranslate, say — from clearing the newer handle.
-- **`Model/` stays Foundation-only.** `quick-action-test` compiles that folder standalone, which is
+- **`Model/` stays Foundation-only.** `QuickActionTests` compiles that folder standalone, which is
   what keeps `FoundationModels`, `Translation` and `NaturalLanguage` in `Service/` and `UI/`.
 - **Quick Actions route themselves.** `quickActionModel` is a second routing decision, defaulting to
   Apple Intelligence and falling back to chat's model. A shortcut pressed all day should not bill an
@@ -177,7 +177,7 @@ the panel. System Settings has no anchor for the sheet itself, so the last click
 ## The panel
 
 `QuickActionPanel` is Tinycast's **fourth borderless surface**, beside the dialog, the notes panel
-and the join preview. It takes the same recipe — `GlassEffectView`, then the
+and the join preview. It takes the same recipe — `panelScrim`, then `GlassEffectView`, then the
 clip — and sits at `.floating` like the join preview, so a failure report still lands on top of it.
 Its footer speaks the same button language as a dialog's — `ModalActionButtonStyle`, with Replace
 as the `.primary` role — so every borderless surface answers in one voice rather than dropping Aqua
@@ -208,7 +208,7 @@ result already fits, since dimming text that needs no scrolling reads as a defec
 
 Three things here were settled by rendering them, not by reasoning:
 `scrollEdgeEffectStyle` draws nothing in this panel — it renders a material where a scroll view meets
-a safe area, and over `GlassEffectView` that composites to nothing. `safeAreaBar`
+a safe area, and over `panelScrim` + `GlassEffectView` that composites to nothing. `safeAreaBar`
 makes it visible but lays its bars *over* the content instead of insetting it, so text runs through
 the buttons and escapes the corner clip. And a ramp starting at the panel edge rather than below the
 bar leaves text about 60% visible behind the title.
@@ -309,6 +309,6 @@ failure handler, so automatic expansion stays silent as before.
 - Translate Korean text with Korean not downloaded and the target language installed: the panel names
   Korean, the language that is actually missing.
 - Revoke Accessibility while enabled: a HUD explains instead of failing silently.
-- Harnesses: `quick-action-test` (action metadata, prompt boundaries, preview choices, routes and
+- Harnesses: `QuickActionTests` (action metadata, prompt boundaries, preview choices, routes and
   their repair) and
-  `text-diff-test` (exact chunks, coalescing, Unicode, ties, token boundaries and fast paths).
+  `TextDiffTests` (exact chunks, coalescing, Unicode, ties, token boundaries and fast paths).

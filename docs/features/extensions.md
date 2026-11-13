@@ -308,7 +308,10 @@ screens hold (see [palette.md](palette.md)).
   The feature's own fills live in `ExtensionColors` — never in `Theme`.
 - **Form** — label-left/control-right rows. Field values live in the extension (React owns them); every
   edit dispatches `onTinycastChange` and the resulting re-render is what updates the control, so
-  `defaultValue`, a controlled `value`, and `ref.reset()` all behave. **A form takes the whole
+  `defaultValue`, a controlled `value`, and `ref.reset()` all behave. `Action.SubmitForm` saves each
+  `storeValue` field to `ExtensionStorage.formValues`, keyed by command and field id, and the launch
+  context hands them back so the field starts from the saved value on its first render; a controlled
+  `value` always wins. **A form takes the whole
   keyboard**: its fields _are_ the palette's rows, so the search field is hidden and the header left
   empty. `ExtensionFormField` says what each `Form.*` node is —
   which of them focus lands on, which keys the control keeps, and which need a focus ring drawn — and
@@ -372,11 +375,11 @@ screens hold (see [palette.md](palette.md)).
   separate `onKeyPress` modifiers let a character rule shadow ⌫, and ⌫ arrives carrying U+007F
   rather than the U+0008 SwiftUI's `.delete` names, so nothing was ever deleted from a search.
   Both spellings are answered before characters are considered at all, and the rules are pure so
-  `ext-form-test` drives them.
+  `ExtensionFormTests` drives them.
 
   `ExtensionDateField` is the same shape over `ExtensionDateExpression`, which parses what Raycast's
   date field parses — "tomorrow at 10am", "in 3 days", "next friday", "25 dec" — and offers the same
-  presets. It is pure and takes its clock and calendar as parameters, so `ext-form-test` drives it
+  presets. It is pure and takes its clock and calendar as parameters, so `ExtensionFormTests` drives it
   and the popover's flip-up rule directly.
 
   A picker opens downward, or upward when the form's bottom edge would cut the list off, which is
@@ -396,7 +399,7 @@ screens hold (see [palette.md](palette.md)).
   so both share one selection, and clicking a control takes focus as well as acting, which is what
   lets the two be mixed mid-form.
 
-  `Tests/ext-form-test.swift` drives activation rules, geometry and the parser; earlier interaction checks used
+  `Tests/ExtensionFormTests.swift` drives activation rules, geometry and the parser; earlier interaction checks used
   a Form Lab extension covering every control, sectioned and empty and 40-option lists, validation
   errors, wrapping labels, and forms taller than the palette, in both appearances.
 
@@ -629,7 +632,7 @@ scoped install matches by `owner/extension` first and falls back to the bare slu
 keep working. Anything else on a Raycast scheme just reopens the palette, and an unknown command says
 so rather than failing silently. Every other `tinycast://` link is a built-in's, and never reaches
 `ExtensionDeepLink`. `ExtensionDeepLink` owns the claimed schemes and the parsing,
-covered by `Tests/ext-test.swift`. Two-segment links without `source=webstore` keep running commands
+covered by `Tests/ExtensionTests.swift`. Two-segment links without `source=webstore` keep running commands
 as `<extension>/<command>`; three-segment command links keep running even with that parameter.
 An extension's own `open("raycast://…")` resolves through the same
 `ExtensionManager.resolve(_:)` instead of launching Raycast. Copy Deeplink on a command's launcher
@@ -672,7 +675,7 @@ with nothing due costs a comparison. Three guards keep it cheap:
   window call, since those would fire on a timer.
 
 `ExtensionRefreshPolicy` is where the parsing, due dates and backoff live, driven by
-`Tests/ext-refresh-test.swift`; `Tests/ext-metadata-test.swift` covers the store behind it. Menu-bar
+`Tests/ExtensionRefreshTests.swift`; `Tests/ExtensionMetadataTests.swift` covers the store behind it. Menu-bar
 commands run on their own lane in `ExtensionMenuBarManager` but read the same policy — `nextDue`,
 its failure backoff and its per-command phase — measured from the same `lastRun`, with a ten-second
 interval floor instead of sixty.
@@ -720,7 +723,8 @@ session that refuses to start fails immediately; duplicate or late callbacks can
 **Node built-ins** — `path`, `fs` (+ `fs/promises`, `createReadStream`/`createWriteStream`, a snapshot-backed `opendir`, and
 the descriptor calls `tar` unpacks through), `os` (`networkInterfaces` reports every MAC as zeros),
 `child_process` (`exec`, `execFile`, `execSync`, `execFileSync`, `spawnSync`, and a streaming `spawn`,
-each async form reporting the child's real `pid` for `process.kill` — Timers pauses that way),
+each async form reporting the child's real `pid` for `process.kill` — Timers pauses that way; an
+`fs.openSync` descriptor in `spawn` or `spawnSync`'s `stdio` replaces that stream's pipe),
 `crypto` (hashes, HMAC, PBKDF2, AES-CBC/ECB, AES-GCM with 16-byte tags and nonces of 12 bytes or
 more — CryptoKit's limits, narrower than Node's — random, UUID), `zlib` (gzip/zlib/raw deflate, both
 directions, plus `create*` streams that buffer until `end`), `http`/`https` (`request`, `get` and `Agent`, buffered over the same URLSession bridge
@@ -835,7 +839,7 @@ Launch contexts also carry JSON `props.launchContext`.
 
 Measured against the 37 extensions installed in a real Raycast on the development machine: **32
 extensions / 114 of 147 view commands** boot and render. `Scripts/raycast-runtime/test.mjs <dir>` and
-`Scripts/run-tests.sh ext-test` reproduce that measurement.
+`Scripts/run-tests.sh ExtensionTests` reproduce that measurement.
 
 ## What isn't supported yet
 
@@ -869,11 +873,11 @@ node fixtures.mjs
 node test.mjs ~/.config/raycast/extensions/<uuid> [command]
 
 # 3. the real Swift engine, against JavaScriptCore
-Scripts/run-tests.sh ext-test
-"${TMPDIR:-/tmp}"/tinycast-harness/ext-test ~/Library/Application\ Support/com.tinycast.app.dev/extensions/<name> [command]
+Scripts/run-tests.sh ExtensionTests
+"${TMPDIR:-/tmp}"/tinycast-harness/ExtensionTests ~/Library/Application\ Support/com.tinycast.app.dev/extensions/<name> [command]
 ```
 
-`ext-test` compiles the real engine sources — there is no copy to keep in sync. `EXT_TEST_VERBOSE=1`
+`ExtensionTests` compiles the real engine sources — there is no copy to keep in sync. `EXT_TEST_VERBOSE=1`
 prints the extension's own console output; `EXT_TEST_SETTLE_MS=8000` gives a slow command longer;
 `EXT_TEST_PREFS='{"version":"v8"}'` stands in for preferences the user set in Settings, which is the
 only way to reach a code path an extension gates on a preference with no manifest default. Both
@@ -884,13 +888,13 @@ round-trips and the Provider Usage action, with live fetches but a recorded `lau
 status items stay hidden so a test run cannot interfere with the running app's menus:
 
 ```sh
-EXT_TEST_MENU_BAR=1 "${TMPDIR:-/tmp}/tinycast-harness/ext-test" \
+EXT_TEST_MENU_BAR=1 "${TMPDIR:-/tmp}/tinycast-harness/ExtensionTests" \
   "$HOME/Library/Application Support/com.tinycast.app.dev/extensions/opencodex-usage" usage-menu-bar
 ```
 
 ### Debugging a failing extension
 
-1. Run it through `node test.mjs <dir>` for a full render-tree dump, then through `/tmp/ext-test <dir>`
+1. Run it through `node test.mjs <dir>` for a full render-tree dump, then through `/tmp/ExtensionTests <dir>`
    to confirm the same behaviour under JavaScriptCore.
 2. `EXT_TEST_VERBOSE=1` surfaces the extension's `console.error`, which is usually where an extension
    explains itself.
@@ -970,7 +974,7 @@ change size depending on where it came from. An inline `data:` image is the one 
 fitted: the extension that drew it has already sized it, and rasterizing would cost the vector.
 
 Change the number only against a rendered strip of real icons; it means nothing on its own.
-`ext-icon-test` guards the invariant: padding in the source cannot change the drawn size, and a
+`ExtensionIconTests` guards the invariant: padding in the source cannot change the drawn size, and a
 `data:` payload decodes in either encoding — and one naming a `raycast-*` colour draws ink, in the
 stroke that appearance calls for.
 
@@ -1002,5 +1006,5 @@ None of this is API, so every read is optional and `SymbolCatalog.fallback` — 
 opens on, since scrolling six thousand icons is not a way to choose one; a search reaches the whole
 catalog regardless of the selected category.
 
-`Tests/symbols-test.swift` compiles the real source and asserts those invariants against this machine's
+`Tests/SymbolsTests.swift` compiles the real source and asserts those invariants against this machine's
 CoreGlyphs (shapes and rules, not counts — those move every release).

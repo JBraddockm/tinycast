@@ -13,7 +13,7 @@ The command palette is a borderless floating `NSPanel` hosting SwiftUI; see
 - **The flat `selection` index must match the visible row order exactly**, including the inline
   calculator card at index 0 when present. Selection is the single source of truth for highlight and
   activation. `Features/PaletteRowIndex.swift` is that mapping and stays **Foundation-only and pure** —
-  no SwiftUI, no AppKit — so `palette-selection-test` compiles the shipped type rather than a copy.
+  no SwiftUI, no AppKit — so `PaletteSelectionTests` compiles the shipped type rather than a copy.
   Section headers are not selectable and never consume an index.
 - **A menu owns native text input while it is open.** Its panel becomes key so the menu field gets an
   AppKit field editor; the palette field stays mounted and inert beneath it.
@@ -273,12 +273,15 @@ Mouse and keyboard activation synchronously call `LauncherCoordinator.runCommand
 with animations disabled. No merge animation or delayed activation survives beneath the destination
 screen. Palette screens push over root search as before; Show Notes closes the palette and opens
 its existing window. The summon reveal still animates independently.
-Both compact and expanded surfaces use native regular glass without a custom scrim.
-The compact capsule and buttons have no additional surface mask or painted fill.
+The compact bar lays `panelScrim` over its capsule and buttons through a mask that follows the
+reveal, as the expanded panel lays it over its glass; the selected button stays out of the mask so
+its tint reads undimmed.
 
 At expanded launcher root, Escape clears the query while setting `forceExpanded`, so clearing and
 collapsing remain separate presses. The next Escape clears that flag and collapses; another closes.
 Menus and argument fields still take precedence, and sub-screen navigation keeps its own behavior.
+A summon clears `forceExpanded` whenever the field is empty, so a launcher Pop to Root Search
+restores still opens as the bar; a kept query, screen or extension restores expanded as before.
 
 The glass is a background of the header, not a wrapper around it: the field keeps its one structural
 position, and a container never paints its merged glass over the row. While compact the row is
@@ -295,7 +298,7 @@ The compact window adds a four-point transparent drawing margin for the native g
 Its content remains at the same anchor; dragging and snapping convert back to that visible anchor.
 
 All of the arithmetic lives in `PalettePlacement`, which is CoreGraphics-only and takes every screen
-fact as a parameter, so `palette-placement-test` drives the shipped rules rather than a copy of them.
+fact as a parameter, so `PalettePlacementTests` drives the shipped rules rather than a copy of them.
 
 The panel's width and height are not constants: they come from `InterfaceMetrics`, so Interface Size
 changes them. A change re-enters through `AppCore.track` → `applyInterfaceSize()`, which **drops the
@@ -482,7 +485,8 @@ The textarea routes undo/redo to its own manager, as the Notes editor does in a 
 `RootPaletteView` holds a single `OpenMenu?` rather than a flag per menu, so "at most one is open" is
 structural instead of a pair of `onChange` handlers pushing each other closed. The ⌘K Actions menu
 hangs `.bottomTrailing`, the app menu `.bottomLeading`, and everything drawn as a header control —
-the clipboard type filter, the AI model and effort menus, an `options=` argument field's choices and
+the clipboard type filter, the dictionary selector, the AI model and effort menus, an `options=`
+argument field's choices and
 a running command's `searchBarAccessory` dropdown — hangs `.belowHeaderTrailing`, under its own
 button. Native editor inputs supply their own choices and control frame through `openInputOptions`;
 `.belowControl` aligns the menu with either edge of that field and allows it beyond the palette's bounds.
@@ -498,7 +502,8 @@ both its ⌘K panel and its search-bar dropdown, and the reason the seam exists 
 [extensions.md](extensions.md)). The view is a closure because `moveMenu` resolves the open menu on
 every arrow key and needs the row count alone. Every open path goes through `open(_:highlighting:)`
 and states where the highlight starts: the first row, except the pop-up-shaped menus — the type
-filter, the AI model and effort menus, an extension's search-bar dropdown — which open on the choice
+filter, the dictionary selector, the AI model and effort menus, an extension's search-bar dropdown —
+which open on the choice
 they already hold.
 
 **The palette window consumes a click-away press through its release.** While a menu is open,

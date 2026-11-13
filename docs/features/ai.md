@@ -14,8 +14,8 @@ bottom with the model picker. ⌘J hands a Quick AI conversation to the window.
 ## Invariants
 
 - **AI is off out of the box, and off means fully off.** `AppSettings.aiEnabled` is the flag:
-  no `Quick AI` or `AI Chat` command in the launcher, no history database opened or created, no Codex
-  helper for chat, no stop for it on Tab's ring, the palette leaves `.ai` and the window closes.
+  no `Quick AI` or `AI Chat` command in the launcher, no history database opened or created, no
+  `chat-presets.json` read, no Codex helper for chat, no stop for it on Tab's ring, the palette leaves `.ai` and the window closes.
   Installed providers may still remain available for Quick Actions, which has its own switch and route. Turning AI off cancels
   every streaming reply and drops both transcripts, but touches neither the saved conversations in
   `ai-chats.sqlite3` nor a Keychain key. `aiEnabled` is excluded from settings backups like every
@@ -52,7 +52,8 @@ bottom with the model picker. ⌘J hands a Quick AI conversation to the window.
   Tinycast over anything else. It is not shown in the pane, and `AIPreamble.swift` holds the only
   copy of it — edit the prompt there, not here. `compose` returns `nil` when the user has turned
   the system prompt off or the chat is on Apple Intelligence, and every transport drops a nil
-  instruction, so a turn then carries none. The on-device model is small enough that any standing
+  instruction, so a turn then carries none. A preset's text still rides with the switch off, never
+  on device. The on-device model is small enough that any standing
   instruction — the preamble, the choices request or the user's own text — steers every answer
   toward it, so that route always gets the conversation alone.
 - **API keys live only in the login Keychain.** `AIConnection` persists the provider, endpoint and
@@ -119,10 +120,23 @@ bottom with the model picker. ⌘J hands a Quick AI conversation to the window.
   answer carries its sources without a second request.
 - **Tools are chosen per chat.** The Tools submenu under the composer's `+` switches MCP off for the
   chat or turns
-  single servers off (`ChatToolScope`, held on `AIChatState`, not stored); `@server` still narrows
+  single servers off (`ChatToolScope`, held on `AIChatState`, not stored — only a preset chat's
+  stamp keeps the scope of its last send and restores it on reopen); `@server` still narrows
   one turn inside that. The scope binds both shapes alike: Tinycast's loop is offered only the
   allowed servers' tools, and a Codex or Claude turn is handed only the allowed servers. A route that
   cannot call tools shows the menu disabled and says why.
+- **A preset is stamped on the chat it starts, never linked.** `AIChatState.usePreset` copies the
+  preset's name, glyph, instructions and tools into `ChatSession.preset` (`ChatPreset.Stamp`) and its
+  model into `ChatSession.model`, and refuses once the chat has a message. Until then the empty chat
+  follows its preset: `AIChatCoordinator` hands every edit and deletion to `followPreset`, so the
+  first send carries the preset as it stands. `conversation_presets` keeps the stamp, so editing or
+  deleting the preset never changes what a started chat sends; only the stamp's tools move, to the
+  scope of the chat's last send. The stamp's instructions take the user prompt's place in
+  `AIInstructions.compose(presetInstructions:…)` and are sent even with the system prompt off —
+  picking a preset is the reader asking for them — while the preamble still follows its own switch.
+  **Apple Intelligence has no presets:** `compose` returns `nil` on device, the composer hides the
+  preset menu while the chat's route is on device, and the preset editor never offers that route as
+  a preset's model. See [Chat presets](#chat-presets).
 - **A reply can end on choices, and a choice is only ever a message.** The preamble lets the model
   close a reply with a fenced `choices` block, one option per line. `ChatChoices.split` lifts the
   fence out of the prose (an unclosed one mid-stream too, so it never flashes as code). A small
@@ -202,7 +216,7 @@ bottom with the model picker. ⌘J hands a Quick AI conversation to the window.
   treated the same way: the decoder is handed the key and header values, an Anthropic `error` event shows its message
   under its line, and an OpenAI-compatible one reads through `metadata.raw` too, or says the provider
   stopped the response when there is no sentence to show.
-- **`Model/` stays Foundation-only.** `ai-provider-test` compiles the shipped provider models and pins
+- **`Model/` stays Foundation-only.** `AIProviderTests` compiles the shipped provider models and pins
   endpoints, request bodies, stream parsing, persistence repair, Codex protocol framing and both
   CLI routes' MCP launch encodings. Request
   bodies are `AIRequestBody`'s, in `Model/`, precisely so a wrong shape fails a harness rather than a
@@ -387,21 +401,29 @@ has it. The same answer carries the account, which `claudeAccount` reads for the
 from `agent --list-models` after `agent status --format json` confirms a login.
 
 Turning thinking off is a reasoning effort, not a second control: `reasoningOptions(for:)` answers with
-the connection's catalogued efforts, or — for a connection with no catalog to publish one — `Default`
+the connection's catalogued or declared efforts, or — for a gateway with nothing declared — `Default`
 and `None`. `takesThinkingField` decides who gets that pair: an OpenAI-shaped preset whose base URL is
 not that preset's own, because a preset pointed away from its own API is a gateway, and a gateway is
-the only destination Tinycast can offer the switch to honestly. Picking `None` sends
+the only destination Tinycast can offer the switch to honestly. Picking a gateway's `None` sends
 `"thinking": {"type": "disabled"}`, which is how DeepSeek and the endpoints that copied its contract
-answer without reasoning first. A vendor API is never offered the pair, nor levels declared while its
-base URL pointed elsewhere, and so is never sent a field it does not define — which matters precisely
-because the preset alone says nothing about the destination when every base URL is editable. A
-gateway's model may also carry levels the reader declares in the connection editor (`minimal`, `low`,
-`medium`, `high`, never inferred), kept between `Default` and `None`; a picked level is sent as
-OpenAI's `reasoning_effort`. OpenRouter is left out at any URL (`takesDeclaredLevels`), because its
-catalog already names each model's levels. A chat and a Quick Action keep their own effort, so
+answer without reasoning first. Every connection but OpenRouter (`takesDeclaredLevels`) takes levels
+the reader declares per model in the connection editor, kept after `Default`; OpenRouter is left out
+at any URL because its catalog already names each model's levels. `declarableLevels` is the ladder
+each destination defines, so no vendor is sent a field it does not: a gateway takes `minimal` through
+`max` with its `None` always appended; OpenAI takes `minimal` through `max` plus its own `none`;
+Gemini `minimal` through `high` plus `none`; Anthropic `low` through `max` and no `None`. Anthropic's
+`/v1/models` names each model's supported efforts under `capabilities.effort`, so adding a model
+from its catalog, or opening the editor on one saved earlier (`adoptCatalog`), pre-ticks them; OpenAI's
+and Gemini's catalogs do not, so their levels are never inferred. The same answer states each model's
+`max_tokens`, kept in `AIConnection.outputLimits` and sent as the Anthropic body's `max_tokens`, so a
+thinking model is never cut off by a cap below its own; a model whose ceiling was never read gets
+`AIRequest.defaultMaxOutputTokens` (32,000, the highest every Claude model accepts). `max_tokens`
+does not count against Anthropic's output rate limit, so the ceiling costs nothing unused. A picked level is sent as Responses' `reasoning.effort`, Chat Completions'
+`reasoning_effort` or Anthropic's `output_config.effort`; `Default` sends nothing, so the model keeps
+the provider's own default. Levels and output limits are dropped whenever the base URL or provider
+changes, because they describe one destination. A chat and a Quick Action keep their own effort, so
 `AIProviderFactory` sends only one the model still offers (`offeredEffort`): an unticked level, or one
-left behind by a changed provider, is dropped rather than sent. With nothing declared the only field
-ever written is the `None` one, so every other body is the one it always was, and the choice rides in
+left behind by a changed provider, is dropped rather than sent. The choice rides in
 `AIModelSelection.effort` like every other route's.
 
 ## Provider interface
@@ -420,7 +442,7 @@ terminal failures behind the same SSE parser. It releases function calls only af
 `response.completed`, using the complete `response.output` items rather than partially streamed
 arguments. A failed, incomplete or truncated response cannot release a tool call. Tool definitions
 set `strict: false` so the MCP server's optional parameters retain their existing meaning.
-The direct OpenAI route keeps the model's default reasoning and does not request visible summaries;
+The direct OpenAI route sends a declared reasoning effort and does not request visible summaries;
 its encrypted reasoning items are replayed between tool rounds independently of the thinking indicator.
 
 `AIProviderFactory` resolves the selection, validates an API endpoint, reads an API key at the last
@@ -478,7 +500,7 @@ The `AI Chat` command (`command:ai-chat-window`, `HotKeyAction.command(.aiChat)`
 `AppWindowController` window owned by `AIChatCoordinator`, autosaved as `AIChatWindow`, and closes it
 again when it is already key, the way Escape does. It is built the way Settings is — an
 `AIChatSplitViewController` with a native sidebar item, here collapsible, and a unified toolbar whose title is the open chat's — so it takes the system's own sidebar, toolbar and
-menus rather than the palette's glass surface. `AIChatWindowChrome` owns the toolbar — the sidebar toggle
+menus rather than the palette's scrim. `AIChatWindowChrome` owns the toolbar — the sidebar toggle
 and New Chat as two round buttons at the sidebar's trailing edge, then Find in Chat and Actions
 alone at the window's — the title, and one key monitor for ⌘V, ⌘B, ⌃⇥ / ⌃⇧⇥, ⌘F, ⌘G / ⇧⌘G, ⌘K
 and the Actions menu's own chords, and dies with the window.
@@ -499,7 +521,7 @@ and the Actions menu's own chords, and dies with the window.
   `ChatMarkdownText` draws each text segment into one read-only `NSTextView`, and
   `ChatMarkdownRenderer` builds its single attributed string: lists with hanging indents, quotes,
   code as `NSTextBlock`s, tables as an `NSTextTable`, with find's marks and the citation numbers
-  in it. Its leaf paths are `ChatFindIndex.leaves`'s, which `chat-markdown-test` pins. A code
+  in it. Its leaf paths are `ChatFindIndex.leaves`'s, which `ChatMarkdownTests` pins. A code
   block's `NSTextBlock` only lays it out: `ChatSelectableTextView.drawBackground(in:)` draws its box,
   a continuous rounded rectangle (`Theme.Radius.codeBlock`) over the block's bounds less its margin
   (the list or quote indent), because a text block paints only around the glyphs being redrawn and
@@ -655,7 +677,7 @@ them until an unrelated render or a window exit/re-enter recomputed hover. It di
 `DragGesture(minimumDistance: 0)` rather than a tap, so a press that drifts a few points still closes
 the menu, as a native menu's click-away does.
 
-Seven more `@MainActor @Observable` types join the shared state: `AISettingsStore`,
+Eight more `@MainActor @Observable` types join the shared state: `AISettingsStore`, `ChatPresetStore`,
 `ChatGPTSubscriptionManager`, `InstalledAIManager`, `ChatHistoryStore`, `AIChatSurfacesState` (which
 owns every live `AIChatState`), `MCPSettingsStore` and `MCPServerManager`. `AIChatCoordinator` — the
 window, and every chat action either surface sends — is the nineteenth feature coordinator,
@@ -731,19 +753,40 @@ window, and every chat action either surface sends — is the nineteenth feature
 - Escape closes AI Chat with the composer focused, preserving its draft and any streaming reply.
   Menus and rename fields cancel first; the sidebar clears a nonempty filter, then closes on the
   next Escape. Find in Chat cancels before a second Escape closes the window.
-- Harnesses: `ai-provider-test` (instruction composition and its enable/disable setting, endpoints,
+- On a fresh install, an empty chat's preset menu offers only Add Chat Preset…, which opens Settings
+  → AI on the Chat Presets section.
+- Add a chat preset with its own model and one tool server switched off, and pick it from an empty
+  chat's preset menu: the composer names the preset, the model and the tools menu match it, and
+  asking "what are your instructions?" quotes the preset. After a relaunch the chat reopens on the
+  same instructions, model and tools.
+- Edit that preset's instructions: the old chat still answers with the old ones; a new one, and an
+  empty chat that had already picked it, gets the new ones. With `Send a system prompt` off, a
+  preset chat still follows its instructions.
+- In a preset chat, switch a server the preset turned off back on and send. After a relaunch the chat
+  reopens with that server on.
+- Switch an empty chat to Apple Intelligence: the preset menu goes away, and the preset editor's model
+  menu offers no Apple Intelligence.
+- Pick a preset in an empty chat and press ⌘N: the chat goes back to No Preset. Pick it again, close
+  the window and reopen it with Recent Conversation set: the preset is still picked.
+- In an empty chat, pick a preset from the composer menu, then No Preset: the model and tools go back
+  to the defaults. After the first message the menu is a label and cannot be changed.
+- Delete a preset: the dialog asks first, the row leaves Settings and the composer menu, and chats it
+  started keep their instructions.
+- Harnesses: `AIProviderTests` (instruction composition and its enable/disable setting, a preset's
+  instructions, `ChatPresetStore`'s validation and unreadable-file refusal, endpoints,
   request bodies, stream decoding including leading
   think tags across content and SSE splits, persistence repair,
   Codex framing, on-device routing, the two MCP launch encodings and the two consent channels, the
   shown-model and switched-off-route rules, and a tool's override from settings to launch),
-  `opencode-mcp-test` (bridge authentication, scoped catalog, exact permissions, calls and limits),
-  `syntax-highlight-test` (every grammar's tokens, language aliases, the size limit, and that every
+  `OpenCodeMCPTests` (bridge authentication, scoped catalog, exact permissions, calls and limits),
+  `SyntaxHighlightTests` (every grammar's tokens, language aliases, the size limit, and that every
   prefix of a streaming block scans in order and inside its own bounds),
-  `ai-chat-test` (`ChatSession`, `MarkdownBlock` with its math delimiters, LaTeX subset and
-  mid-stream hold-back, `ChatHistoryStore` with renames and pins,
+  `AIChatTests` (`ChatSession`, `MarkdownBlock` with its math delimiters, LaTeX subset and
+  mid-stream hold-back, `ChatHistoryStore` with renames, pins and preset stamps, an empty chat
+  following its preset,
   `AIToolLoopProvider`, regenerate, `ChatReasoning`'s display text, the window's open policy and
   `AIChatSurfacesState`'s one-live-place rule),
-  and `apple-intelligence-test` (status copy, snapshot deltas,
+  and `AppleIntelligenceTests` (status copy, snapshot deltas,
   transcript assembly and error mapping, plus an optional real generation enabled with
   `TINYCAST_TEST_APPLE_INTELLIGENCE=1` when this Mac can run one), all in
   `run-tests.sh`.
@@ -873,9 +916,9 @@ transport code at all.
 | OpenCode command | never | a private file per picture, through `--file`, only for models whose catalog lists `image` input | never | selected Tinycast tools through a per-turn authenticated loopback bridge; all other tools denied |
 | Cursor command | never | never | never | the global config still loads — ask mode and withheld approval refuse the call |
 | OpenRouter | `plugins: [{id: "web"}]` — OpenRouter's own layer, any model | `image_url` part, only for models whose catalog lists the `image` modality | never yet — its catalog publishes a `file` modality Tinycast does not read | `tools` + `role: "tool"` turns |
-| OpenAI | not offered | `image_url` part, assumed supported | `file` part with `filename` and a `file_data` data URL | `tools` + `role: "tool"` turns |
+| OpenAI | the hosted `web_search` tool on the Responses route — never on a gateway | `image_url` part, assumed supported | `file` part with `filename` and a `file_data` data URL | `tools` + `role: "tool"` turns |
 | Gemini / compatible | not offered | `image_url` part, assumed supported | never — a gateway that has not implemented the part bills the upload before rejecting it | `tools` + `role: "tool"` turns; a call's `extra_content.google.thought_signature` goes back unchanged, or Gemini 3 rejects the next turn |
-| Anthropic | not offered | base64 `image` block | base64 `document` block, ahead of the text block | `tools` + `tool_use` / `tool_result` blocks |
+| Anthropic | the `web_search_20250305` server tool, five searches a turn, at `api.anthropic.com` only | base64 `image` block | base64 `document` block, ahead of the text block | `tools` + `tool_use` / `tool_result` blocks |
 
 A search is part of the reply, not a status: `item/started` for a `webSearch` item appends a
 `ChatSearch` to the streaming message pinned at the text length so far, `item/completed` (or the
@@ -883,8 +926,14 @@ next text delta, or the turn ending) marks it finished and fills in the query if
 carry it. `ChatMessage.segments` splits the text around its searches so the transcript renders
 text, a search row (spinner → globe, "Searching web" → "Searched web · query"), then the rest, in
 the order it happened. Searches persist in `message_searches`. OpenRouter's web plugin is invisible
-to the stream, so it shows none. The web-search instructions ask for citations linked by the
-publication's name — the model otherwise labels them "Read more".
+to the stream, so it shows none. OpenAI's `web_search_call` items and Anthropic's `server_tool_use`
+/ `web_search_tool_result` blocks map to the same start and finish. Both APIs report citations
+beside the text — `url_citation` annotations and `citations_delta` — so `AICitationLinker` inlines
+each as a host-labelled Markdown link after the span it cites, unless the reply already links that
+page, which is what `ChatReferences` reads as a source. Gemini's OpenAI-compatible endpoint has no
+search parameter, so it offers none. An Anthropic `pause_turn` ends the reply where it paused.
+The web-search instructions ask for citations linked by the publication's name — the model
+otherwise labels them "Read more".
 
 `AIModelCapabilities` says what the footer may offer for the selected model. OpenRouter is the only
 catalog that reports `architecture.input_modalities`, so it is the only provider gated on it:
@@ -925,7 +974,7 @@ guessed at, and a file past `AIAttachmentBudget.maxInlinedTextBytes` is refused 
 truncated — a silently truncated CSV is a lie the model then answers confidently.
 
 `AIAttachmentPolicy` is the one place deciding what may be attached and as what. It is pure and
-Foundation-only, so `ai-chat-test` pins it. It uses **extension allowlists rather than
+Foundation-only, so `AIChatTests` pins it. It uses **extension allowlists rather than
 `UTType.conforms(to:)`**: a machine's installed apps declare types, so a conformance answer differs
 between two Macs and would make a harness machine-dependent — the exact environment coupling
 `Model/` exists to keep out. Adding a type is a one-line change; a type answer that differs per Mac
@@ -974,6 +1023,29 @@ because there the field really is a search. Neither exit touches the conversatio
 The model switcher is `fixedSize` with its title shortened in `AIChatCoordinator` (26 characters,
 middle ellipsis) rather than truncated by layout: a flexible label claimed the row up to its max
 width and clipped the search field well short of the button.
+
+## Chat presets
+
+A preset is a name, a glyph, instructions, an optional model (`nil` follows AI Chat's default) and a
+`ChatToolScope`. `ChatPresetStore` keeps them as `chat-presets.json` in Application Support, ordered
+by `createdAt`, under the same rules as `CustomQuickActionStore`: name and instructions must be
+non-empty, a write lands on disk before the list moves, and a file that will not decode makes every
+mutation refuse rather than write over it.
+
+Settings → AI → **Chat Presets** lists them; the pencil opens `ChatPresetEditorPanel` and the trash
+asks through a `confirmationDialog` first. Chats a deleted preset started keep their stamp.
+
+A preset is picked only from the composer's preset menu, beside `+`, while the chat has no message —
+never from the launcher, a shortcut or a deep link. The menu offers No Preset, every preset and
+Manage Presets…; with none saved it offers only Add Chat Preset…, which reveals the Settings section.
+Once the first message is sent the menu becomes a plain label naming the chat's preset. Neither
+shows while the chat's route is Apple Intelligence.
+
+A plain chat started after a preset chat, in the same state, goes back to every tool server on.
+⌘N in an empty chat drops the preset picked in it, and the window's open policy never replaces an
+empty chat that has one. Presets live outside `UserDefaults` and so never travel in a settings backup
+or `settings.json`, for the reason the system prompt stays out of backups: standing instructions must
+not arrive on another Mac unread.
 
 ## Settings and backup boundary
 

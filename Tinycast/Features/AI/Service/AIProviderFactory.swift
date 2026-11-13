@@ -197,10 +197,8 @@ enum AIProviderFactory {
                     effort: effort,
                     disablesThinking: effort == AIConnection.ReasoningOptions.noEffort
                         && connection.takesThinkingField,
-                    headers: headers
-                ),
-                apiKey: key
-            )
+                    maxOutputTokens: connection.outputLimits?[model], headers: headers),
+                apiKey: key)
         }
     }
 }
