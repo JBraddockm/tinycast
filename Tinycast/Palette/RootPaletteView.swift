@@ -356,9 +356,7 @@ struct RootPaletteView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 .background(isCollapsed ? .clear : Theme.Colors.panelScrim)
                 // Square, as rounded glass feathers its edge; the clip alone cuts a crisp corner.
-                .background {
-                    Color.clear.glassEffect(isCollapsed ? .identity : .regular, in: Rectangle())
-                }
+                .background(GlassEffectView().opacity(isCollapsed ? 0 : 1))
                 .overlay {
                     Theme.Colors.dialogDimming
                         .opacity(core.isDimmingPaletteForDialog && !isCollapsed ? 1 : 0)
