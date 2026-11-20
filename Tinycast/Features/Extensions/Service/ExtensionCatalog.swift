@@ -9,6 +9,12 @@ struct InstalledExtension: Sendable, Hashable, Identifiable {
     var id: String { manifest.name }
     var title: String { manifest.title }
 
+    var commandEntryIDs: [String] {
+        manifest.commands.map {
+            ExtensionCommandRef(extensionName: manifest.name, commandName: $0.name).entryID
+        }
+    }
+
     /// Assets usually live in `assets/`, but a few manifests point at the extension root.
     var iconPath: String? {
         guard let icon = manifest.icon else { return nil }
@@ -91,7 +97,7 @@ enum ExtensionCatalog {
         let base =
             FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)
             .first ?? FileManager.default.homeDirectoryForCurrentUser
-        let bundleID = Bundle.main.bundleIdentifier ?? "com.tinycast.app"
+        let bundleID = Bundle.main.bundleIdentifier ?? "com.abueammar.tinycast"
         return base.appendingPathComponent(bundleID, isDirectory: true)
     }
 

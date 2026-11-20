@@ -2,7 +2,6 @@ import SwiftUI
 
 struct SettingsSidebarView: View {
     @Environment(SettingsNavigationState.self) private var navigation
-    @Environment(\.appearsActive) private var appearsActive
     @State private var query = ""
     @State private var highlighted: SettingsSearchEntry.ID?
     @FocusState private var searchFocused: Bool
@@ -59,11 +58,7 @@ struct SettingsSidebarView: View {
                         Label {
                             Text(tab.title)
                         } icon: {
-                            SettingsTabIcon(
-                                systemImage: tab.systemImage,
-                                tint: appearsActive
-                                    ? (navigation.tab == tab ? Color.primary : Color.accentColor)
-                                    : Color.secondary)
+                            SettingsTabIcon(tab: tab)
                         }
                         .tag(tab)
                     }
@@ -130,7 +125,7 @@ private struct SettingsSearchResultRow: View {
                     .truncationMode(.middle)
             }
         } icon: {
-            SettingsTabIcon(systemImage: entry.tab.systemImage, tint: .accentColor)
+            SettingsTabIcon(tab: entry.tab)
         }
         // Centred, not first-baseline: the tile sits against a two-line title and breadcrumb.
         .labelStyle(CenteredLabelStyle())

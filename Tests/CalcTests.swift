@@ -168,7 +168,28 @@ struct CalcTests {
         expectDisplay("-10 mod 3", "-1")  // fmod semantics: the sign follows the dividend
         expectDisplay("2 + 10 mod 3", "3")  // same precedence as * and /, binds tighter than +
         expectNil("10 mod 0")
-        expectNil("10 % 3")  // "%" stays percent, whatever follows it
+        expectDisplay("10 % 3", "1")  // spaced off its number, "%" is a remainder
+        expectDisplay("12 % 5", "2")
+        expectDisplay("2 + 10 % 3", "3")
+        expectDisplay("(2 + 3) % 2", "1")
+        expectDisplay("12%(2+3)", "0.6")
+        expectNil("15% 80")
+        expectNil("10%3")
+        expectNil("10 % 3%")
+        expectNil("10% 20%")
+        expectNil("molar mass of cococococococococococococococococococococococococococococococox")
+        expectNil("molar mass of H99999999999999999999")
+        expectDisplay("15% decrease from 813", "691.05")
+        expectDisplay("(15% tip on $80) / 2", "6.00 USD")
+        expectDisplay("((15% off 80) + 2) * 2", "140")
+        expectDisplay("(25% off $60) split 3", "15.00 USD")
+        expectDisplay("(c4 to hz) * 2", "523.2511306 Hz")
+        expectDisplay("(2m)", "2 m")
+        expectDisplay("(15% tip on $80)", "12.00 USD")
+        expectDisplay("(pi)", "3.141592654")
+        expectNil("(µs)")
+        expectNil("1000 usd in eur / (2 +)")
+        expectDisplay("15% increase on 813", "934.95")
         expectDisplay("450 + 20% - 5", "535")
 
         expectDisplay("10km to mi", "6.213711922 mi")
@@ -773,6 +794,13 @@ struct CalcTests {
         // A slash date still reads as a date when the other side names a keyword
         expectDisplayAt("9/4 - today", "42 days")
         expectDisplayAt("today - 9/4", "-42 days")
+        expectDisplayAt("today - 1.1.2026 + 3", "207 days")
+        expectDisplayAt("today - 1.1.2026 + 1 week - 1", "210 days")
+        expectDisplayAt("(today - 1.1.2026 + 3) / 2", "103.5 day")
+        expectDisplayAt("(15:00 - 9:30) / 2", "2.75 hr")
+        expectDisplayAt("week 44 2026", "Sun, 25 Oct – Sat, 31 Oct, 2026")
+        expectDisplayAt("week 1", "Sun, 28 Dec – Sat, 3 Jan, 2026")
+        expectNilAt("week 54 2026")
         // A lone word naming one moment answers; one that recurs is still an app search
         expectDisplayAt("today", "24 July")
         expectDisplayAt("tomorrow", "25 July")
@@ -1125,6 +1153,16 @@ struct CalcTests {
         // A ticker outranks a generated noun, and only that noun: `soles` still reaches PEN
         expectBadges("1 sol to usd", source: "Solana", target: "US Dollar")
         expectError("1 soles to usd", "No exchange rate for PEN.")
+        // Sats need no quote of their own: BTC's rate prices them at 100,000,000 to the coin
+        expectDisplay("1 btc to sats", "100,000,000.00 SATS")
+        expectDisplay("1 usd to sats", "1,666.67 SATS")
+        expectDisplay("1 eth to sats", "3,333,333.33 SATS")
+        expectDisplay("10000 sats to usd", "6.00 USD")
+        expectDisplay("10000 sats", "501.00 INR", region: "INR")
+        expectBadges("1 eth to sats", source: "Ethereum", target: "Satoshi")
+        check(
+            "sats are absent from the fetched coins", expected: "false",
+            got: "\(CalcCurrency.cryptoCodes.contains(CalcCurrency.satoshi.code))")
         check(
             "crypto is absent from the generated fiat table", expected: "true",
             got: "\(CurrencyData.all.allSatisfy { !CalcCurrency.cryptoCodes.contains($0.code) })")
@@ -1171,6 +1209,7 @@ struct CalcTests {
         check(
             "a coin-less snapshot is rejected on load", expected: "false",
             got: "\(CurrencyFeed.pricesCoins(coinless))")
+        check("sats need BTC's rate", expected: "true", got: "\(coinless.rate(for: "SATS") == nil)")
         check("the fixture prices coins", expected: "true", got: "\(CurrencyFeed.pricesCoins(fx))")
         expectSnapshotThrows(
             "feed reported failure",
@@ -2150,8 +2189,49 @@ struct CalcTests {
         expectDisplay("261.63 hz to pitch", "C4")
         expectDisplay("1 khz to note", "B5")
         expectDisplay("c4 to hz", "261.6255653 Hz")
+        expectDisplay("4° in nautical miles", "240 nmi")
+        expectDisplay("60 arcsec in nmi", "1 nmi")
+        expectDisplay("240 nmi in degrees", "4 deg")
         expectDisplay("bb3 to hz", "233.0818808 Hz")
         expectNil("a4 paper")
+        expectDisplay("1.75 as improper", "7/4")
+        expectDisplay("1.75 as mixed number", "1 3/4")
+        expectDisplay("0.5 as mixed", "1/2")
+
+        expectDisplay("speed of light in km/s", "299,792.458 km/s")
+        expectBadges("speed of light in km/s", source: "Speed Of Light", target: "Kilometers per Second")
+        expectDisplay("speed of light", "299,792,458 m/s")
+        expectDisplay("absolute zero in f", "-459.67 °F")
+        expectDisplay("boltzmann constant", "1.380649e-23 J/K")
+        expectNil("gravity falls")
+        expectDisplay("molar mass of C6H12O6", "180.156 g/mol")
+        expectNil("molar mass of")
+        expectDisplay("molar mass of CuSO4·5H2O", "249.677 g/mol")
+        expectDisplay("Ca(OH)2 molar mass", "74.092 g/mol")
+        expectDisplay("molar mass of CO2", "44.009 g/mol")
+        expectDisplay("molar mass of h2so4", "98.072 g/mol")
+        expectNil("molar mass of co2")  // CO₂ or Co₂
+        expectNil("molar mass of caco3")
+        expectNil("molar mass of sio2")
+        expectDisplay("molar mass of NaCl", "58.44 g/mol")
+        expectNil("molar mass of Xx2")
+        expectNil("molar mass of water")
+        expectNil("iron molar mass")
+        expectNil("molar mass of Carbon")
+        expectNil("100 gr to g")
+        expectDisplay("100 grains to g", "6.479891 g")
+        expectDisplay("5:00 min/km in km/h", "12 km/h")
+        expectDisplay("4:30 min/mi to km/h", "21.45792 km/h")
+        expectDisplay("first 10 characters of \"hello\"", "hello")
+        expectDisplay("last 2 words of \"one two three\"", "two three")
+        expectDisplay("length of \"hello world\"", "11")
+        expectDisplay("\"hello\" in uppercase", "HELLO")
+        expectDisplay("5\" to cm", "12.7 cm")
+        expectNil("5\" + 3\"x")
+        expectDisplay("100 eV to J", "1.602176634e-17 J")
+        expectDisplay("1 angstrom to nm", "0.1 nm")
+        expectDisplay("1 therm to kWh", "29.30011111 kWh")
+        expectDisplay("1 decade to years", "10 yr")
 
         // Pixels against physical size
         expectDisplay("3000 px to inches at 300 ppi", "10 in")
@@ -2326,6 +2406,8 @@ struct CalcTests {
     static let french = CalcNumberFormat(decimalSeparator: ",", groupingSeparator: "\u{202F}")!
     static let swiss = CalcNumberFormat(decimalSeparator: ".", groupingSeparator: "\u{2019}")!
     static let ungrouped = CalcNumberFormat(decimalSeparator: ",", groupingSeparator: nil)!
+    static let indian = CalcNumberFormat(
+        decimalSeparator: ".", groupingSeparator: ",", primaryGrouping: 3, secondaryGrouping: 2)!
 
     static func localeTests() {
         check(
@@ -2346,6 +2428,12 @@ struct CalcTests {
         )
         check("format [it argument separator]", expected: ";", got: String(italian.argumentSeparator))
         check("format [ch argument separator]", expected: ",", got: String(swiss.argumentSeparator))
+        check("format [secondary equal to primary]", expected: "nil", got: secondary(".", ",", 3, 3))
+        check("format [grouping without a separator]", expected: "nil", got: secondary(",", nil, 3, 2))
+        check("format [widths with a decimal comma]", expected: "nil", got: secondary(",", ".", 3, 2))
+        check("format [widths with a grouping quote]", expected: "nil", got: secondary(".", "'", 3, 2))
+        check("format [en primary width]", expected: "2", got: primary(".", ",", 2))
+        check("format [nbsp primary width]", expected: "3", got: primary(",", "\u{00A0}", 2))
 
         expectLocalized("2,3 + 1,5", "3,8", italian)
         expectLocalized("1.234,56 + 0,44", "1.235", italian)
@@ -2437,6 +2525,26 @@ struct CalcTests {
         expectSameAsEnglish("19.2.27", swiss)
         expectSameAsEnglish("1.2.3 + 1", swiss)
 
+        // India groups the last three digits and then every two: 20,00,000
+        expectLocalized("2000000 + 0", "20,00,000", indian)
+        expectLocalized("100000 + 0", "1,00,000", indian)
+        expectLocalized("12345678 + 0", "1,23,45,678", indian)
+        expectLocalized("123456789 + 0", "12,34,56,789", indian)
+        expectLocalized("123456.78 * 1", "1,23,456.78", indian)
+        expectLocalized("20,00,000 + 1", "20,00,001", indian)
+        expectLocalized("1,23,45,678 / 2", "61,72,839", indian)
+        expectLocalized("1/3", "0.3333333333", indian)
+        // The English habit reads too, and the pasteboard keeps its ungrouped text
+        expectLocalized("2,000,000 + 1", "20,00,001", indian)
+        expectLocalizedCopy("2000000 + 0", "2000000", indian)
+        // Reading input is untouched, so a comma is still the English grouping it always was
+        expectLocalized("2,3 + 1,5", "38", indian)
+        // Any other separators keep threes, so the answer still types back in
+        let indianComma = CalcNumberFormat(
+            decimalSeparator: ",", groupingSeparator: ".", primaryGrouping: 3, secondaryGrouping: 2)!
+        expectLocalized("2000000 + 0", "2.000.000", indianComma)
+        expectLocalized("2.000.000 + 1", "2.000.001", indianComma)
+
         // A format without grouping neither reads nor writes one
         expectLocalized("1234,5 * 2", "2469", ungrouped)
         expectLocalized("2^20", "1048576", ungrouped)
@@ -2512,6 +2620,20 @@ struct CalcTests {
 
     static func formatLabel(_ query: String, _ format: CalcNumberFormat) -> String {
         "\(query) [decimal \(format.decimalSeparator)]"
+    }
+
+    static func secondary(_ decimal: String, _ grouping: String?, _ primary: Int, _ secondary: Int) -> String
+    {
+        let format = CalcNumberFormat(
+            decimalSeparator: decimal, groupingSeparator: grouping, primaryGrouping: primary,
+            secondaryGrouping: secondary)
+        return "\(format?.secondaryGrouping as Any)"
+    }
+
+    static func primary(_ decimal: String, _ grouping: String?, _ primary: Int) -> String {
+        let format = CalcNumberFormat(
+            decimalSeparator: decimal, groupingSeparator: grouping, primaryGrouping: primary)
+        return "\(format.map { String($0.primaryGrouping) } ?? "nil")"
     }
 
     static func expectLocalized(_ query: String, _ expected: String, _ format: CalcNumberFormat) {

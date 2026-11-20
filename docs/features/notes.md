@@ -25,7 +25,10 @@ commands and global shortcuts can show, search, or extend the collection.
   collection navigation cannot abandon an in-memory draft.
 - **Tinycast is the only writer while editing.** There is no watcher or disk revision check: a save
   replaces the file with what is in the editor. Every show re-lists the folder and reloads the clean
-  active note; an unsaved draft is retained, including after a failed save.
+  active note; an unsaved draft is retained, including after a failed save. [iCloud
+  Sync](icloud-sync.md) writes a note another Mac changed only while the editor holds no unsaved
+  edit to it; one that does keeps its edit, which then uploads as the newer copy. A note deleted on
+  another Mac goes to the Trash.
 - **Search is on demand and unindexed.** An empty switcher query reads metadata plus the head of every
   unnamed note; a nonempty query reads bodies sequentially off-main and retains no collection-sized
   source cache.
@@ -42,7 +45,7 @@ commands and global shortcuts can show, search, or extend the collection.
   edit keep their old origins, so neither the frame nor the last fragment's position can be read on
   `didChange`.
 - **The editor is a surface snippets expand into.** `NoteTextView` adopts `InjectableTextView`,
-  so a typed keyword — and the Snippets browser's ↵ — is written straight into the text storage
+  so a typed keyword (and the Snippets browser's ↵) is written straight into the text storage
   rather than posted as events at whichever app happens to be frontmost. Quick Actions also read and
   replace its selected text in process. Only AI Chat's composer adopts it too: see
   [snippets.md](snippets.md#text-delivery-and-pasteboard-safety).
@@ -67,18 +70,18 @@ files, and symbolic links are ignored.
 
 Create uses `Untitled.md`, then `Untitled 2.md`, and so on, and rename claims a free name by the same
 rule. `importNotes` claims one the same way, so a note restored from a backup lands beside the note it
-shares a title with rather than over it. Collisions with *another* note are case- and diacritic-insensitive, so `plán` beside `Plan`
+shares a title with rather than over it. Collisions with _another_ note are case- and diacritic-insensitive, so `plán` beside `Plan`
 becomes `plán 2.md`. A note never collides with itself: only an exact filename match is a no-op, which
 is what lets a rename change nothing but the case or the accents. The active filename is local UI state
 in UserDefaults and does not ride settings backups.
 
 ## Derived titles
 
-A note still carrying a name `create` claimed — `Untitled`, `Untitled 2`, … — shows the first line of
+A note still carrying a name `create` claimed (`Untitled`, `Untitled 2`, …) shows the first line of
 its source that carries visible text. `NoteTitle` owns that rule: blank, rule and fence lines are
 skipped, block and inline Markdown markers are dropped whether or not rendering is on, and the line is
 capped to 120 characters so no row or title bar has to carry a paragraph. `NoteSummary.title` remains the filename; `displayTitle` is what every
-surface renders — switcher rows and their VoiceOver labels, the Trash confirmation, the window title,
+surface renders: switcher rows and their VoiceOver labels, the Trash confirmation, the window title,
 and the title band of `NoteSearch`, so a fuzzy query reaches a note nobody has named.
 An empty unnamed note displays a localized Untitled label, preserving its filename and numeric suffix.
 
@@ -100,7 +103,7 @@ coordinator through `@Environment`; it never receives `AppCore` or mutates the s
 Settings > Notes owns `AppSettings.notesEnabled`, which is false when absent. The pane lists **Show
 Notes**, **Create Note**, and **Search Notes** from `CommandCatalog`, so it can still render them while
 `AppIndex` omits them. It is their only pane: `SettingsTab.ownedCommands` names the three, which takes
-them out of Settings > Commands and out of reach of `Enable Commands` — Notes' own switch is the one
+them out of Settings > Commands and out of reach of `Enable Commands`; Notes' own switch is the one
 that decides they exist.
 
 `AppCore` observes enablement and calls `NotesCoordinator.applyEnabled()`. Disabling hides the panel,
@@ -122,7 +125,7 @@ status item rather than hiding it.
 Command-N creates, Command-P opens or refocuses the switcher, Command-O opens the Notes folder, and
 Command-F opens AppKit's find bar in the active note. Escape closes the find bar or switcher before
 hiding; Command-W and the red traffic light both hide directly. Hiding
-restores the prior external application or Tinycast window and flushes without delaying the order-out —
+restores the prior external application or Tinycast window and flushes without delaying the order-out,
 but only while that app is still the frontmost one, so closing a window the user has already left behind
 leaves them in whatever app they moved to.
 Command-Q is bound to nothing app-wide, so no chord over Notes can quit Tinycast.
@@ -138,7 +141,7 @@ The yellow and green traffic lights are disabled; double-clicking the free title
 unchanged window to the top-right of its current screen's visible area.
 
 The switcher is a borderless child window centred on its host and hung below the title bar, not an
-in-window screen — a note window may be 180pt tall, and the list must not be. It carries the same glass
+in-window screen: a note window may be 180pt tall, and the list must not be. It carries the same glass
 surface as a `PopoverMenu`, and its 240-point height is a ceiling rather than a size: the list reports
 its own height and the window shrinks to it with the top edge pinned. It travels with its host, dismisses
 like a popover when it resigns key, and closes outright when the last note goes. An empty query lists
@@ -240,17 +243,17 @@ reaches autosave.
   last glyph, which places the caret. Only `http`, `https` and `mailto` open. A revealed line carries
   no link attribute, so its URL is edited as text.
 
-| Shortcut | Does |
-| --- | --- |
-| ⌘Z, ⇧⌘Z | undo, redo |
-| ⌘B, ⌘I, ⌘E | bold, italic, inline code |
-| ⇧⌘X | strikethrough |
-| ⌥⌘C | code block |
-| ⇧⌘B | quote |
-| ⌘K | link |
+| Shortcut      | Does                        |
+| ------------- | --------------------------- |
+| ⌘Z, ⇧⌘Z       | undo, redo                  |
+| ⌘B, ⌘I, ⌘E    | bold, italic, inline code   |
+| ⇧⌘X           | strikethrough               |
+| ⌥⌘C           | code block                  |
+| ⇧⌘B           | quote                       |
+| ⌘K            | link                        |
 | ⇧⌘7, ⇧⌘8, ⇧⌘9 | numbered, bullet, task list |
-| ⌥⌘1, ⌥⌘2, ⌥⌘3 | heading 1, 2, 3 |
-| ⌥⌘0 | plain paragraph |
+| ⌥⌘1, ⌥⌘2, ⌥⌘3 | heading 1, 2, 3             |
+| ⌥⌘0           | plain paragraph             |
 
 Digits match by key code. The text view sees these chords before `NotesPanel` claims its own, and none
 collide. In a note, ⌘E replaces AppKit's Use Selection for Find.
@@ -259,7 +262,7 @@ AppKit still owns typing, selection, Cut, Copy, Paste, Select All, Find, marked 
 characters and undo grouping. The editor handles ⌘Z and ⇧⌘Z while focused, including in the
 non-activating panel and with rendering off. Its native undo manager holds one linear history in
 memory; editing after undo discards redo. The coordinator observes undo and redo completion with
-main-actor notifications, so both reach autosave, rendering, formatting and the character count.
+main-actor notifications, so both reach autosave, rendering, formatting and the counts.
 Copy yields raw Markdown and VoiceOver reads the source. Changing the note
 identity or editor epoch reinstalls and restyles the string and clears the previous document's undo
 history. Snippets expand through `insertText` and are styled like typed text. The empty-note placeholder
@@ -268,19 +271,19 @@ is drawn in the text view, so opening the find bar moves it with the editor cont
 ### The formatting bar
 
 While Render Markdown and Show Formatting Bar are both on, the band under the editor holds the
-character count at its leading edge and the formatting bar at its trailing edge. The bar is
+word and character counts at its leading edge and the formatting bar at its trailing edge. The bar is
 `NoteFormattingBar`, a frosted capsule in the title bar's recipe. It starts collapsed to one round
 `paintbrush` button; ⌥⌘T or a click expands it, and the buttons slide out from behind that button:
 a heading menu, Bold, Italic, Strikethrough, Inline Code and Link, then Code Block and Quote, then
 Numbered, Bullet and Task List. Hovering a button shows its name and shortcut. Each button is a
-28-point square, so the whole row fits the smallest window. The count hides when the row leaves it no
+28-point square, so the whole row fits the smallest window. The counts hide when the row leaves them no
 lane, and the band never widens the note.
 
 Expanded or collapsed is window state, not a preference: `AppCore` reads and writes it under
 `notesFormattingBarExpanded` in `UserDefaults` and hands it to `NotesCoordinator`, the way it hands
 the store the active note's filename. It is deliberately not an `AppSettings` key, so no settings
-backup carries it. With Show Formatting Bar off there is no round button at all and the count returns
-to its own footer.
+backup carries it. With Show Formatting Bar off there is no round button at all and the counts return
+to their own footer.
 
 `NoteEditorView` reports `NoteMarkdownEditing.formatting(source:selection:markdown:)` on every
 install, edit and selection change, and `NotesCoordinator` publishes it only when it changed. That
@@ -306,9 +309,12 @@ carried by settings backups. It only takes effect while Render Markdown is on, a
 otherwise.
 
 An empty note shows a `Start writing…` placeholder aligned to the 16-point text container inset. The
-character count comes straight off `NSTextStorage.length` and sits in a footer under the editor, or at
-the leading end of the formatting bar's band while the bar shows. Both belong to the editor surface,
-so neither appears when no note is active.
+character count comes straight off `NSTextStorage.length`. The word count is `NoteWordCount`: ICU word
+boundaries over the source, so Markdown markers and punctuation are not words and text without spaces
+still splits into words. It costs a pass over the whole note, so `NotesCoordinator` runs it off-main
+after every report and applies only the result for the current editor input. Both counts sit in a
+footer under the editor, or at the leading end of the formatting bar's band while the bar shows. Both
+belong to the editor surface, so neither appears when no note is active.
 
 ## Autosave
 
@@ -318,7 +324,7 @@ flush before loading another source. Termination awaits that flush before the ap
 vetoes the quit.
 
 **A save overwrites whatever is on disk.** There is no watcher, no revision comparison and no conflict
-state: editing the *active* note in another app while Tinycast has it open loses that edit the next time
+state: editing the _active_ note in another app while Tinycast has it open loses that edit the next time
 the debounce fires. Open Notes Folder (⌘O) invites exactly that, and this is the accepted trade for a
 feature whose whole job is one local editor. Showing the window re-lists the folder and reloads the
 active note if it is clean, waiting for an in-flight save first. An unsaved draft, including one whose
@@ -331,8 +337,8 @@ file was removed, loading chooses a remaining note, or the empty state when none
 `Tests/NotesTests.swift` compiles the shipped Notes model and service sources with the real fuzzy
 matcher. It covers repository safety, unique-name claiming, derived titles, search, selection,
 autosave, external reloads, draft preservation, empty collections, switcher interaction, and
-cancellation, plus the Markdown parser, every edit plan, the formatting each selection reports and the
-reveal policy.
+cancellation, plus the Markdown parser, every edit plan, the formatting each selection reports, the
+reveal policy and the word count.
 
 `Tests/NotesEditorTests.swift` uses real TextKit 2 and AppKit undo objects. It runs the native
 Cut/Copy/Paste, the native find bar, Unicode and marked-text cases with rendering off and on, and covers

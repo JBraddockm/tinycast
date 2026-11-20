@@ -46,7 +46,7 @@ final class QuicklinkStore {
 
     /// Under Application Support, the same per-channel root snippets use.
     private static var defaultDirectory: URL {
-        let bundleID = Bundle.main.bundleIdentifier ?? "com.tinycast.app"
+        let bundleID = Bundle.main.bundleIdentifier ?? "com.abueammar.tinycast"
         return FileManager.default
             .urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent(bundleID, isDirectory: true)
@@ -273,11 +273,6 @@ final class QuicklinkStore {
                 == SQLITE_OK,
             sqlite3_exec(db, Self.schema, nil, nil, nil) == SQLITE_OK
         else { return false }
-        // `IF NOT EXISTS` leaves an older table as it was, so its new column is added by hand.
-        sqlite3_exec(
-            db, "ALTER TABLE quicklinks ADD COLUMN is_enabled INTEGER NOT NULL DEFAULT 1", nil, nil,
-            nil)
-        // After the schema, so a column added later can be indexed the same way.
         sqlite3_exec(
             db,
             "CREATE INDEX IF NOT EXISTS quicklinks_pinned_at ON quicklinks(pinned_at) WHERE pinned_at IS NOT NULL",

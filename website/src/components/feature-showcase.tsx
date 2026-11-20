@@ -2,7 +2,14 @@
 
 import { ArrowUpRight } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ComponentProps,
+  type KeyboardEvent,
+} from "react";
 import type { Feature } from "../data/features";
 import { cn } from "../lib/cn";
 import { FeatureScene } from "./feature-scenes";
@@ -17,14 +24,68 @@ const keyMoves: Record<string, (index: number, count: number) => number> = {
   End: (_, n) => n - 1,
 };
 
-// A tab list styled as the palette's own result rows. It advances on its own
-// until someone picks a row; from then on the reader is in charge.
+// Mirrors Tailwind's lg breakpoint, below which the tab list is a horizontal strip.
+const carouselQuery = "(width < 64rem)";
+const scrollSettleMs = 150;
+
+// The strip renders a clone of the tabs on each side, so it can loop without an edge.
+const copies = [-1, 0, 1] as const;
+
+function isCarousel() {
+  return window.matchMedia(carouselQuery).matches;
+}
+
+function scrollBehavior(): ScrollBehavior {
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  return reduce ? "auto" : "smooth";
+}
+
+function tabsAt(list: HTMLElement, index: number) {
+  return Array.from(
+    list.querySelectorAll<HTMLElement>(`[data-feature-index="${index}"]`),
+  );
+}
+
+function centerOf(list: HTMLElement) {
+  return list.scrollLeft + list.clientWidth / 2;
+}
+
+function offsetToCenter(list: HTMLElement, tab: HTMLElement) {
+  return tab.offsetLeft + tab.offsetWidth / 2 - list.clientWidth / 2;
+}
+
+function nearestTab(list: HTMLElement, index: number) {
+  const center = centerOf(list);
+  const distance = (tab: HTMLElement) =>
+    Math.abs(tab.offsetLeft + tab.offsetWidth / 2 - center);
+  return tabsAt(list, index).reduce((best, tab) =>
+    distance(tab) < distance(best) ? tab : best,
+  );
+}
+
+// Content is identical in every copy, so shifting by one copy's width is invisible.
+function wrapToMiddleCopy(list: HTMLElement) {
+  const [before, middle] = tabsAt(list, 0);
+  if (!before || !middle) return;
+  const span = middle.offsetLeft - before.offsetLeft;
+  const center = centerOf(list);
+  if (center < middle.offsetLeft) {
+    list.scrollTo({ left: list.scrollLeft + span, behavior: "instant" });
+  } else if (center >= middle.offsetLeft + span) {
+    list.scrollTo({ left: list.scrollLeft - span, behavior: "instant" });
+  }
+}
+
+// A tab list styled as the palette's own result rows. It always advances on its
+// own: a pick restarts the timer there, and only reading the preview holds it.
 export function FeatureShowcase({ features }: { features: Feature[] }) {
   const [active, setActive] = useState(0);
-  const [isAutoplay, setIsAutoplay] = useState(true);
-  const [isPaused, setIsPaused] = useState(false);
+  const [isHoveringPreview, setIsHoveringPreview] = useState(false);
+  const [isKeyboardFocused, setIsKeyboardFocused] = useState(false);
   const [isOffscreen, setIsOffscreen] = useState(true);
   const root = useRef<HTMLDivElement>(null);
+  const tablist = useRef<HTMLDivElement>(null);
+  const hasCentered = useRef(false);
   const tabs = useRef<(HTMLButtonElement | null)[]>([]);
   const id = useId();
 
@@ -39,21 +100,46 @@ export function FeatureShowcase({ features }: { features: Feature[] }) {
     return () => observer.disconnect();
   }, []);
 
-  function choose(index: number) {
-    setIsAutoplay(false);
-    setActive(index);
-  }
+  useEffect(() => {
+    const list = tablist.current;
+    if (!list || !isCarousel()) return;
+    const behavior = hasCentered.current ? scrollBehavior() : "instant";
+    const tab = hasCentered.current
+      ? nearestTab(list, active)
+      : tabsAt(list, active)[1];
+    hasCentered.current = true;
+    if (!tab) return;
+    list.scrollTo({ left: offsetToCenter(list, tab), behavior });
+  }, [active]);
+
+  useEffect(() => {
+    const list = tablist.current;
+    if (!list) return;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    function onScroll() {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        if (list && isCarousel()) wrapToMiddleCopy(list);
+      }, scrollSettleMs);
+    }
+    list.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      clearTimeout(timer);
+      list.removeEventListener("scroll", onScroll);
+    };
+  }, []);
 
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     const move = keyMoves[event.key];
     if (!move) return;
     event.preventDefault();
     const next = move(active, features.length);
-    choose(next);
-    tabs.current[next]?.focus();
+    setActive(next);
+    tabs.current[next]?.focus({ preventScroll: true });
   }
 
   const feature = features[active];
+  const isPaused = isHoveringPreview || isKeyboardFocused;
 
   return (
     <div
@@ -61,73 +147,68 @@ export function FeatureShowcase({ features }: { features: Feature[] }) {
       className="feature-showcase grid items-start gap-2 rounded-2xl bg-tint/4 p-2 lg:grid-cols-[18rem_minmax(0,1fr)]"
       data-paused={isPaused || undefined}
       data-offscreen={isOffscreen || undefined}
-      onPointerEnter={() => setIsPaused(true)}
-      onPointerLeave={() => setIsPaused(false)}
-      onFocus={() => setIsPaused(true)}
-      onBlur={() => setIsPaused(false)}
+      onFocus={(event) =>
+        setIsKeyboardFocused(event.target.matches(":focus-visible"))
+      }
+      onBlur={() => setIsKeyboardFocused(false)}
     >
       <div
+        ref={tablist}
         role="tablist"
         aria-label="Features"
         aria-orientation="vertical"
         onKeyDown={onKeyDown}
-        className="flex gap-1 overflow-x-auto [scrollbar-width:none] lg:flex-col lg:overflow-visible"
+        className="relative flex gap-1 overflow-x-auto [scrollbar-width:none] lg:flex-col lg:overflow-visible"
       >
-        {features.map((item, index) => {
-          const Icon = featureIcons[item.icon];
-          const isActive = index === active;
-          return (
-            <button
-              key={item.title}
-              ref={(element) => {
-                tabs.current[index] = element;
-              }}
-              type="button"
-              role="tab"
-              id={`${id}-tab-${index}`}
-              aria-selected={isActive}
-              aria-controls={`${id}-panel`}
-              tabIndex={isActive ? 0 : -1}
-              onClick={() => choose(index)}
-              className={cn(
-                "relative flex shrink-0 items-center gap-3 overflow-hidden rounded-xl px-3 py-2.5 text-left transition-colors duration-200 ease-(--ease-quart)",
-                isActive
-                  ? "bg-tint/6 text-fg"
-                  : "text-fg-muted hover:bg-tint/4 hover:text-fg",
-              )}
-            >
-              <span
-                className={cn(
-                  "flex size-6 shrink-0 items-center justify-center rounded-md transition-colors duration-200",
-                  isActive
-                    ? "bg-violet text-white"
-                    : "bg-tint/6 text-fg-subtle",
-                )}
-              >
-                <Icon size={14} aria-hidden="true" />
-              </span>
-              <span className="whitespace-nowrap font-rounded text-body font-semibold">
-                {item.title}
-              </span>
-              {isActive && isAutoplay && (
-                <span
-                  key={active}
+        {copies.map((copy) =>
+          features.map((item, index) => {
+            const isActive = index === active;
+            if (copy !== 0) {
+              return (
+                <FeatureTab
+                  key={`${copy}-${item.title}`}
+                  feature={item}
+                  index={index}
+                  isActive={isActive}
+                  progressKey={active}
                   aria-hidden="true"
-                  className="feature-progress absolute inset-x-3 bottom-0 h-px origin-left bg-violet-bright"
-                  onAnimationEnd={() =>
-                    setActive((current) => (current + 1) % features.length)
-                  }
+                  tabIndex={-1}
+                  onClick={() => setActive(index)}
+                  className="lg:hidden"
                 />
-              )}
-            </button>
-          );
-        })}
+              );
+            }
+            return (
+              <FeatureTab
+                key={item.title}
+                ref={(element) => {
+                  tabs.current[index] = element;
+                }}
+                feature={item}
+                index={index}
+                isActive={isActive}
+                progressKey={active}
+                onProgressEnd={() =>
+                  setActive((current) => (current + 1) % features.length)
+                }
+                role="tab"
+                id={`${id}-tab-${index}`}
+                aria-selected={isActive}
+                aria-controls={`${id}-panel`}
+                tabIndex={isActive ? 0 : -1}
+                onClick={() => setActive(index)}
+              />
+            );
+          }),
+        )}
       </div>
 
       <div
         role="tabpanel"
         id={`${id}-panel`}
         aria-labelledby={`${id}-tab-${active}`}
+        onPointerEnter={() => setIsHoveringPreview(true)}
+        onPointerLeave={() => setIsHoveringPreview(false)}
         className="flex min-w-0 flex-col overflow-hidden rounded-xl bg-canvas"
       >
         <div aria-hidden="true" className="feature-stage aspect-[16/9] w-full">
@@ -148,5 +229,59 @@ export function FeatureShowcase({ features }: { features: Feature[] }) {
         </div>
       </div>
     </div>
+  );
+}
+
+type FeatureTabProps = Omit<ComponentProps<"button">, "children"> & {
+  feature: Feature;
+  index: number;
+  isActive: boolean;
+  progressKey: number;
+  onProgressEnd?: () => void;
+};
+
+function FeatureTab({
+  feature,
+  index,
+  isActive,
+  progressKey,
+  onProgressEnd,
+  className,
+  ...props
+}: FeatureTabProps) {
+  const Icon = featureIcons[feature.icon];
+  return (
+    <button
+      type="button"
+      data-feature-index={index}
+      className={cn(
+        "relative flex shrink-0 items-center gap-3 overflow-hidden rounded-xl px-3 py-2.5 text-left transition-colors duration-200 ease-(--ease-quart)",
+        isActive
+          ? "bg-tint/6 text-fg"
+          : "text-fg-muted hover:bg-tint/4 hover:text-fg",
+        className,
+      )}
+      {...props}
+    >
+      <span
+        className={cn(
+          "flex size-6 shrink-0 items-center justify-center rounded-md transition-colors duration-200",
+          isActive ? "bg-violet text-white" : "bg-tint/6 text-fg-subtle",
+        )}
+      >
+        <Icon size={14} aria-hidden="true" />
+      </span>
+      <span className="whitespace-nowrap font-rounded text-body font-semibold">
+        {feature.title}
+      </span>
+      {isActive && (
+        <span
+          key={progressKey}
+          aria-hidden="true"
+          className="feature-progress absolute inset-x-3 bottom-0 h-px origin-left bg-violet-bright"
+          onAnimationEnd={onProgressEnd}
+        />
+      )}
+    </button>
   );
 }
